@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="Tableau de bord d'administration SMI Enterprise - Analytics & Monitoring">
+    <meta name="author" content="SMI Enterprise">
+    <title>Dashboard Admin - SMI Enterprise | Analytics & Monitoring</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js for Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        /* Animations personnalisées */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+        
+        .animate-fade-in-up {
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+        
+        .skeleton {
+            background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite;
+        }
+        
+        .glass-effect {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        
+        .hover-lift {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Scrollbar personnalisée */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        
+        /* Loader personnalisé */
+        .loader {
+            border: 3px solid rgba(59, 130, 246, 0.2);
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Badge pulsant */
+        .pulse-badge {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 min-h-screen">
+
+    <!-- ============================================ -->
+    <!-- PAGE DE CONNEXION (Login Screen) -->
+    <!-- ============================================ -->
+    <div id="loginPage" class="flex items-center justify-center min-h-screen p-4">
+        <div class="glass-effect p-8 md:p-10 rounded-2xl shadow-2xl w-full max-w-md animate-fade-in-up border border-slate-700">
+            
+            <!-- Logo & Header -->
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl mb-4 shadow-lg">
+                    <i class="fas fa-shield-halved text-3xl text-white"></i>
+                </div>
+                <h1 class="text-3xl font-bold text-white mb-2">Console d'Administration</h1>
+                <p class="text-slate-400 text-sm">Système de Monitoring & Analytics SMI</p>
+            </div>
+            
+            <!-- Formulaire de connexion -->
+<form id="loginForm" onsubmit="event.preventDefault(); handleLogin(event);" class="space-y-5">                
+                <!-- Champ Utilisateur -->
+                <div class="relative">
+                    <label class="block text-sm font-medium text-slate-300 mb-2">
+                        <i class="fas fa-user mr-2 text-cyan-400"></i>Nom d'utilisateur
+                    </label>
+                    <input 
+    type="text" 
+    id="username" 
+    placeholder="Entrez votre nom d'utilisateur" 
+    autocomplete="off"
+    required
+    class="w-full px-4 py-3 bg-slate-900/50 rounded-xl text-white border border-slate-600 
+           focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none 
+           transition-all duration-300 placeholder-slate-500"
+>
+                    
+                </div>
+                
+                <!-- Champ Mot de passe -->
+                <div class="relative">
+                    <label class="block text-sm font-medium text-slate-300 mb-2">
+                        <i class="fas fa-lock mr-2 text-cyan-400"></i>Mot de passe
+                    </label>
+                   <div class="relative w-full">
+    <input 
+        type="password" 
+        id="password" 
+        placeholder="••••••••" 
+        autocomplete="new-password"
+        required
+        class="w-full px-4 py-3 bg-slate-900/50 rounded-xl text-white border border-slate-600 
+               focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none 
+               transition-all duration-300 placeholder-slate-500 pr-12"
+    >
+ <button type="button" id="togglePassword" class="absolute right-4 top-1/2 -translate-y-1/2 text-white transition-colors" style="color: white !important;">
+    <i class="fas fa-eye text-xl" id="eyeIcon"></i>
+</button>
+</div>
+                </div>
+                
+                <!-- Option "Se souvenir" -->
+                <div class="flex items-center justify-between text-sm">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" id="rememberMe" class="w-4 h-4 text-cyan-500 bg-slate-900 border-slate-600 rounded focus:ring-2 focus:ring-cyan-500">
+                        <span class="ml-2 text-slate-400">Se souvenir de moi</span>
+                    </label>
+                    <a href="#" class="text-cyan-400 hover:text-cyan-300 transition-colors">Mot de passe oublié?</a>
+                </div>
+                
+                <!-- Bouton de connexion -->
+                <button 
+                    type="submit" 
+                    id="loginBtn"
+                    class="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 
+                           text-white font-semibold py-3.5 px-6 rounded-xl transition-all duration-300 
+                           shadow-lg hover:shadow-cyan-500/50 transform hover:scale-[1.02] active:scale-[0.98]
+                           flex items-center justify-center space-x-2"
+                >
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Se connecter</span>
+                </button>
+            </form>
+            
+            <!-- Message d'erreur -->
+            <div id="errorMsg" class="hidden mt-4 p-4 bg-red-500/10 border border-red-500/50 rounded-xl">
+                <div class="flex items-center space-x-2 text-red-400">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span class="text-sm font-medium">Identifiants incorrects. Veuillez réessayer.</span>
+                </div>
+            </div>
+            
+            <!-- Informations de test -->
+            <div class="mt-6 p-4 bg-slate-900/50 rounded-xl border border-slate-700">
+                <p class="text-xs text-slate-400 text-center mb-2">
+                    <i class="fas fa-info-circle mr-1"></i>Identifiants de test
+                </p>
+               
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- DASHBOARD PRINCIPAL (Main Dashboard) -->
+    <!-- ============================================ -->
+    <div id="dashboardPage" class="hidden min-h-screen">
+        
+        <!-- Navbar / Header -->
+        <nav class="glass-effect sticky top-0 z-50 border-b border-slate-700">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    
+                    <!-- Logo & Titre -->
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg">
+                            <i class="fas fa-chart-line text-white"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-bold text-white">SMI Enterprise</h1>
+                            <p class="text-xs text-slate-400">Tableau de bord analytique</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Actions Header -->
+                    <div class="flex items-center space-x-3">
+                        
+                        <!-- Notifications -->
+                        <button class="relative p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all">
+                            <i class="fas fa-bell text-xl"></i>
+                            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full pulse-badge"></span>
+                        </button>
+                        
+                        <!-- Paramètres -->
+                        <button class="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all">
+                            <i class="fas fa-cog text-xl"></i>
+                        </button>
+                        
+                        <!-- User Profile -->
+                        <div class="flex items-center space-x-3 pl-3 border-l border-slate-700">
+                            <div class="text-right">
+                                <p class="text-sm font-medium text-white">Admin Principal</p>
+                                <p class="text-xs text-slate-400">Super Administrateur</p>
+                            </div>
+                            <img src="https://ui-avatars.com/api/?name=Admin&background=3b82f6&color=fff&size=128" 
+                                 class="w-10 h-10 rounded-full ring-2 ring-blue-500/50">
+                        </div>
+                        
+                        <!-- Déconnexion -->
+                        <button 
+                            onclick="handleLogout()" 
+                            class="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg 
+                                   transition-all duration-300 border border-red-500/30 hover:border-red-500/50"
+                        >
+                            <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Conteneur Principal -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            
+            <!-- Loading Overlay -->
+            <div id="loadingOverlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center">
+                <div class="text-center">
+                    <div class="loader mx-auto mb-4"></div>
+                    <p class="text-slate-300 font-medium">Chargement des données...</p>
+                    <p class="text-slate-500 text-sm mt-2">Analyse en cours</p>
+                </div>
+            </div>
+
+            <!-- Section Filtres & Actions -->
+            <div class="glass-effect rounded-2xl p-6 mb-8 border border-slate-700 animate-fade-in-up">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    
+                    <!-- Barre de recherche -->
+                    <div class="flex-1 max-w-md">
+                        <div class="relative">
+                            <input 
+                                type="text" 
+                                id="searchInput" 
+                                placeholder="Rechercher une session, un ID client..." 
+                                class="w-full px-4 py-3 pl-11 bg-slate-900/50 rounded-xl text-white border border-slate-600 
+                                       focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none 
+                                       transition-all duration-300 placeholder-slate-500"
+                            >
+                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- Filtres par période -->
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="filterByPeriod('today')" class="filter-btn px-4 py-2 bg-slate-700/50 hover:bg-blue-600 text-slate-300 hover:text-white rounded-lg transition-all duration-300 text-sm font-medium">
+                            <i class="fas fa-calendar-day mr-2"></i>Aujourd'hui
+                        </button>
+                        <button onclick="filterByPeriod('week')" class="filter-btn px-4 py-2 bg-slate-700/50 hover:bg-blue-600 text-slate-300 hover:text-white rounded-lg transition-all duration-300 text-sm font-medium">
+                            <i class="fas fa-calendar-week mr-2"></i>Cette semaine
+                        </button>
+                        <button onclick="filterByPeriod('month')" class="filter-btn px-4 py-2 bg-slate-700/50 hover:bg-blue-600 text-slate-300 hover:text-white rounded-lg transition-all duration-300 text-sm font-medium">
+                            <i class="fas fa-calendar-alt mr-2"></i>Ce mois
+                        </button>
+                        <button onclick="filterByPeriod('year')" class="filter-btn px-4 py-2 bg-slate-700/50 hover:bg-blue-600 text-slate-300 hover:text-white rounded-lg transition-all duration-300 text-sm font-medium">
+                            <i class="fas fa-calendar mr-2"></i>Cette année
+                        </button>
+                        <button onclick="resetFilters()" class="px-4 py-2 bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white rounded-lg transition-all duration-300 text-sm font-medium">
+                            <i class="fas fa-redo mr-2"></i>Réinitialiser
+                        </button>
+                    </div>
+                    
+                    <!-- Export -->
+                    <button 
+                        onclick="exportToExcel()" 
+                        class="px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400 
+                               text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-green-500/50 
+                               font-medium flex items-center space-x-2"
+                    >
+                        <i class="fas fa-file-excel"></i>
+                        <span>Exporter Excel</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- KPIs / Statistiques Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                
+                <!-- Card 1: Total Sessions -->
+                <div class="glass-effect rounded-2xl p-6 border border-slate-700 hover-lift animate-fade-in-up">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-users text-2xl text-blue-400"></i>
+                        </div>
+                        <span class="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-full text-xs font-semibold">
+                            <i class="fas fa-arrow-up mr-1"></i>+12%
+                        </span>
+                    </div>
+                    <h3 class="text-slate-400 text-sm font-medium mb-1">Total Sessions</h3>
+                    <p id="kpiTotalSessions" class="text-3xl font-bold text-white mb-1">0</p>
+                    <p class="text-xs text-slate-500">Sessions actives enregistrées</p>
+                </div>
+                
+                <!-- Card 2: Temps Moyen -->
+                <div class="glass-effect rounded-2xl p-6 border border-slate-700 hover-lift animate-fade-in-up" style="animation-delay: 0.1s">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 bg-cyan-500/10 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-clock text-2xl text-cyan-400"></i>
+                        </div>
+                        <span class="px-3 py-1 bg-cyan-500/10 text-cyan-400 rounded-full text-xs font-semibold">
+                            <i class="fas fa-arrow-down mr-1"></i>-8%
+                        </span>
+                    </div>
+                    <h3 class="text-slate-400 text-sm font-medium mb-1">Temps Moyen</h3>
+                    <p id="kpiAvgTime" class="text-3xl font-bold text-white mb-1">0s</p>
+                    <p class="text-xs text-slate-500">Durée moyenne par session</p>
+                </div>
+                
+                <!-- Card 3: Sessions Aujourd'hui -->
+                <div class="glass-effect rounded-2xl p-6 border border-slate-700 hover-lift animate-fade-in-up" style="animation-delay: 0.2s">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-calendar-day text-2xl text-purple-400"></i>
+                        </div>
+                        <span class="px-3 py-1 bg-purple-500/10 text-purple-400 rounded-full text-xs font-semibold">
+                            Actif
+                        </span>
+                    </div>
+                    <h3 class="text-slate-400 text-sm font-medium mb-1">Aujourd'hui</h3>
+                    <p id="kpiToday" class="text-3xl font-bold text-white mb-1">0</p>
+                    <p class="text-xs text-slate-500">Sessions du jour en cours</p>
+                </div>
+                
+                <!-- Card 4: Taux de Conversion -->
+                <div class="glass-effect rounded-2xl p-6 border border-slate-700 hover-lift animate-fade-in-up" style="animation-delay: 0.3s">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-chart-line text-2xl text-green-400"></i>
+                        </div>
+                        <span class="px-3 py-1 bg-green-500/10 text-green-400 rounded-full text-xs font-semibold">
+                            <i class="fas fa-arrow-up mr-1"></i>+5%
+                        </span>
+                    </div>
+                    <h3 class="text-slate-400 text-sm font-medium mb-1">Engagement</h3>
+                    <p id="kpiEngagement" class="text-3xl font-bold text-white mb-1">0%</p>
+                    <p class="text-xs text-slate-500">Taux d'engagement moyen</p>
+                </div>
+            </div>
+
+            <!-- Section Graphiques Analytics -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                
+                <!-- Graphique: Evolution des sessions -->
+                <div class="glass-effect rounded-2xl p-6 border border-slate-700 animate-fade-in-up">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-lg font-bold text-white flex items-center">
+                            <i class="fas fa-chart-area mr-3 text-blue-400"></i>
+                            Évolution des Sessions
+                        </h2>
+                        <span class="text-xs text-slate-500">7 derniers jours</span>
+                    </div>
+                    <canvas id="sessionsChart" height="250"></canvas>
+                </div>
+                
+                <!-- Graphique: Répartition par durée -->
+                <div class="glass-effect rounded-2xl p-6 border border-slate-700 animate-fade-in-up" style="animation-delay: 0.1s">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-lg font-bold text-white flex items-center">
+                            <i class="fas fa-chart-pie mr-3 text-purple-400"></i>
+                            Répartition par Durée
+                        </h2>
+                        <span class="text-xs text-slate-500">Distribution</span>
+                    </div>
+                    <canvas id="durationChart" height="250"></canvas>
+                </div>
+            </div>
+
+            <!-- Tableau des données -->
+            <div class="glass-effect rounded-2xl border border-slate-700 overflow-hidden animate-fade-in-up">
+                
+                <!-- Header du tableau -->
+                <div class="p-6 border-b border-slate-700">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xl font-bold text-white flex items-center">
+                            <i class="fas fa-table mr-3 text-cyan-400"></i>
+                            Historique des Sessions
+                        </h2>
+                        <span id="tableCounter" class="px-4 py-2 bg-slate-700/50 rounded-lg text-sm text-slate-300">
+                            <i class="fas fa-database mr-2"></i><strong id="rowCount">0</strong> entrées
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- Tableau responsive -->
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-slate-800/50">
+                            <tr>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                    <i class="fas fa-hashtag mr-2"></i>ID Session
+                                </th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                    <i class="fas fa-user mr-2"></i>ID Client
+                                </th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                    <i class="fas fa-clock mr-2"></i>Temps Passage
+                                </th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                    <i class="fas fa-calendar mr-2"></i>Date & Heure
+                                </th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                    <i class="fas fa-info-circle mr-2"></i>Statut
+                                </th>
+                                <th class="px-6 py-4 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                    <i class="fas fa-cog mr-2"></i>Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody" class="divide-y divide-slate-700/50">
+                            <!-- Les données seront injectées ici par JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination (future implémentation) -->
+                <div class="p-4 border-t border-slate-700 bg-slate-800/30">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm text-slate-400">
+                            Affichage de <strong id="displayCount">0</strong> résultats
+                        </p>
+                        <div class="flex space-x-2">
+                            <button class="px-3 py-1 bg-slate-700/50 hover:bg-slate-600 text-slate-300 rounded-lg transition-all text-sm">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button class="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm font-medium">1</button>
+                            <button class="px-3 py-1 bg-slate-700/50 hover:bg-slate-600 text-slate-300 rounded-lg transition-all text-sm">2</button>
+                            <button class="px-3 py-1 bg-slate-700/50 hover:bg-slate-600 text-slate-300 rounded-lg transition-all text-sm">3</button>
+                            <button class="px-3 py-1 bg-slate-700/50 hover:bg-slate-600 text-slate-300 rounded-lg transition-all text-sm">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="glass-effect border-t border-slate-700 mt-12">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                    <p class="text-slate-400 text-sm">
+                        © 2024 <strong class="text-white">SMI Enterprise</strong> - Tous droits réservés
+                    </p>
+                    <div class="flex items-center space-x-6 text-sm text-slate-400">
+                        <a href="#" class="hover:text-cyan-400 transition-colors">Documentation</a>
+                        <a href="#" class="hover:text-cyan-400 transition-colors">Support</a>
+                        <a href="#" class="hover:text-cyan-400 transition-colors">API</a>
+                        <span class="flex items-center">
+                            <i class="fas fa-shield-alt text-green-400 mr-2"></i>
+                            Connexion sécurisée
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- JAVASCRIPT CORE ENGINE -->
+    <!-- ============================================ -->
+   <script>
+// هاد الدالة دابا ولات ف المستوى العالمي (Global) باش يشوفها السطر 134 نيشان
+async function handleLogin(event) {
+    // 1. كنحبسو التحديث ديال الصفحة
+    event.preventDefault(); 
+    
+    // 2. كناخدو Inputs
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    
+    if (!usernameInput || !passwordInput) {
+        alert("تأكد خويا بلي الـ Inputs عندك فيهم id='username' و id='password'!");
+        return;
+    }
+    
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value.trim();
+    
+    // 🚀 3. الحل السريع: إلا كتبتي admin و admin123 غيطير بك نيشان للداشبورد بزز
+    if (username === 'admin' && password === 'admin123') {
+        localStorage.setItem('isAdminAuth', 'true');
+        window.location.href = 'dashboard.html';
+    } else {
+        // يلا دخل معلومات غالطين
+        const errorMsg = document.getElementById('errorMsg');
+        if (errorMsg) errorMsg.classList.remove('hidden');
+        else alert('Identifiants incorrects! (جرب admin / admin123)');
+    }
+}
+</script>
+
+</body>
+</html>

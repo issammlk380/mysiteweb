@@ -1,0 +1,2519 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SMI | Système de Maintenance Industrielle — Console Enterprise v3.0</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Oswald', 'sans-serif']
+                    },
+                    colors: {
+                        brand: {
+                            50:'#eff6ff', 100:'#dbeafe', 200:'#bfdbfe',
+                            300:'#93c5fd', 400:'#60a5fa', 500:'#3b82f6',
+                            600:'#2563eb', 700:'#1d4ed8', 800:'#1e40af',
+                            900:'#1e3a8a', 950:'#0f172a'
+                        }
+                    },
+                    boxShadow: {
+                        soft: '0 10px 40px rgba(15,23,42,0.07)',
+                        glow: '0 8px 32px rgba(37,99,235,0.22)',
+                        'glow-emerald': '0 8px 32px rgba(16,185,129,0.22)',
+                        'glow-amber': '0 8px 32px rgba(245,158,11,0.22)',
+                        'glow-red': '0 8px 32px rgba(239,68,68,0.22)',
+                        card: '0 2px 12px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)'
+                    },
+                    animation: {
+                        shimmer: 'shimmer 1.8s linear infinite',
+                        fadeInUp: 'fadeInUp 0.4s cubic-bezier(0.16,1,0.3,1)',
+                        fadeIn: 'fadeIn 0.3s ease-out',
+                        floaty: 'floaty 4s ease-in-out infinite',
+                        scaleIn: 'scaleIn 0.35s cubic-bezier(0.16,1,0.3,1)',
+                        slideLeft: 'slideLeft 0.3s ease-out',
+                        countUp: 'countUp 0.6s ease-out',
+                        spinSlow: 'spin 2s linear infinite'
+                    },
+                    keyframes: {
+                        shimmer: {
+                            '0%': { backgroundPosition: '-1200px 0' },
+                            '100%': { backgroundPosition: '1200px 0' }
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(14px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' }
+                        },
+                        floaty: {
+                            '0%,100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-6px)' }
+                        },
+                        scaleIn: {
+                            '0%': { opacity: '0', transform: 'scale(0.92)' },
+                            '100%': { opacity: '1', transform: 'scale(1)' }
+                        },
+                        slideLeft: {
+                            '0%': { opacity: '0', transform: 'translateX(20px)' },
+                            '100%': { opacity: '1', transform: 'translateX(0)' }
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <style>
+        /* ── Base & Scrollbar ───────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; }
+
+        :root {
+            --sidebar-w: 288px;
+            --header-h: 72px;
+            --radius-xl: 1.5rem;
+            --radius-2xl: 2rem;
+            --transition-base: 200ms cubic-bezier(0.4,0,0.2,1);
+        }
+
+        body { overflow-x: hidden; }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* ── Glass Morphism ─────────────────────────────────── */
+        .glass {
+            background: rgba(255,255,255,0.80);
+            backdrop-filter: blur(20px) saturate(1.6);
+            -webkit-backdrop-filter: blur(20px) saturate(1.6);
+        }
+        .dark .glass {
+            background: rgba(15,23,42,0.85);
+        }
+        .glass-sidebar {
+            background: rgba(10,18,40,0.98);
+            backdrop-filter: blur(30px);
+        }
+
+        /* ── Skeleton Loader ────────────────────────────────── */
+        .skeleton {
+            background: linear-gradient(90deg,
+                #f1f5f9 20%, #e8eef5 40%, #f1f5f9 60%);
+            background-size: 1200px 100%;
+            animation: shimmer 1.8s linear infinite;
+        }
+        .dark .skeleton {
+            background: linear-gradient(90deg,
+                #1e293b 20%, #293548 40%, #1e293b 60%);
+            background-size: 1200px 100%;
+        }
+
+        /* ── Status Indicators ──────────────────────────────── */
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+        }
+        .status-pill::before {
+            content: '';
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .s-termine    { background: #ecfdf5; color: #065f46; }
+        .s-termine::before    { background: #10b981; box-shadow: 0 0 0 2px rgba(16,185,129,.25); }
+        .s-en_reparation  { background: #fffbeb; color: #92400e; }
+        .s-en_reparation::before  { background: #f59e0b; box-shadow: 0 0 0 2px rgba(245,158,11,.25); animation: pulse 1.5s infinite; }
+        .s-en_attente { background: #f1f5f9; color: #475569; }
+        .s-en_attente::before { background: #94a3b8; }
+        .s-arret      { background: #fef2f2; color: #991b1b; }
+        .s-arret::before      { background: #ef4444; box-shadow: 0 0 0 2px rgba(239,68,68,.25); animation: pulse 1s infinite; }
+        .s-pending    { background: #fffbeb; color: #92400e; }
+        .s-pending::before    { background: #f59e0b; box-shadow: 0 0 0 2px rgba(245,158,11,.25); animation: pulse 1.5s infinite; }
+
+        .dark .s-termine    { background: rgba(16,185,129,.12); color: #6ee7b7; }
+        .dark .s-en_reparation  { background: rgba(245,158,11,.12); color: #fcd34d; }
+        .dark .s-en_attente { background: rgba(100,116,139,.15); color: #94a3b8; }
+        .dark .s-arret      { background: rgba(239,68,68,.12); color: #fca5a5; }
+        .dark .s-pending    { background: rgba(245,158,11,.12); color: #fcd34d; }
+
+        /* ── Criticality Badges ─────────────────────────────── */
+        .crit-badge { display: inline-flex; padding: 4px 11px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+        .crit-critique  { background: #fef2f2; color: #b91c1c; border: 1px solid rgba(239,68,68,.2); }
+        .crit-majeure   { background: #fffbeb; color: #b45309; border: 1px solid rgba(245,158,11,.2); }
+        .crit-moderee   { background: #eff6ff; color: #1d4ed8; border: 1px solid rgba(37,99,235,.2); }
+        .crit-faible    { background: #ecfdf5; color: #065f46; border: 1px solid rgba(16,185,129,.2); }
+        .dark .crit-critique  { background: rgba(239,68,68,.12);  color: #fca5a5; border-color: rgba(239,68,68,.2); }
+        .dark .crit-majeure   { background: rgba(245,158,11,.12); color: #fcd34d; border-color: rgba(245,158,11,.2); }
+        .dark .crit-moderee   { background: rgba(37,99,235,.12);  color: #93c5fd; border-color: rgba(37,99,235,.2); }
+        .dark .crit-faible    { background: rgba(16,185,129,.12); color: #6ee7b7; border-color: rgba(16,185,129,.2); }
+
+        /* ── Nav Active ─────────────────────────────────────── */
+        .nav-item-active {
+            background: linear-gradient(135deg, rgba(37,99,235,0.18), rgba(6,182,212,0.1));
+            border-left: 3px solid #60a5fa;
+            color: #bfdbfe;
+        }
+        .nav-item-inactive {
+            border-left: 3px solid transparent;
+            color: #94a3b8;
+        }
+        .nav-item-inactive:hover {
+            background: rgba(255,255,255,0.05);
+            color: #e2e8f0;
+            border-left-color: rgba(96,165,250,0.3);
+        }
+
+        /* ── Background Grid ────────────────────────────────── */
+        .bg-grid-dots {
+            background-image: radial-gradient(circle, rgba(148,163,184,.15) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .bg-grid-lines {
+            background-image:
+                linear-gradient(rgba(148,163,184,.07) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(148,163,184,.07) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+
+        /* ── KPI Cards ──────────────────────────────────────── */
+        .kpi-card {
+            transition: transform var(--transition-base), box-shadow var(--transition-base);
+        }
+        .kpi-card:hover {
+            transform: translateY(-3px);
+        }
+
+        /* ── Table ──────────────────────────────────────────── */
+        .table-row-hover:hover {
+            background: rgba(59,130,246,0.03);
+        }
+        .dark .table-row-hover:hover {
+            background: rgba(59,130,246,0.06);
+        }
+
+        th[data-sort] { cursor: pointer; user-select: none; }
+        th[data-sort]:hover { color: #3b82f6; }
+        th[data-sort] .sort-icon { opacity: 0.3; transition: opacity .2s, transform .2s; }
+        th[data-sort].sort-active .sort-icon { opacity: 1; color: #3b82f6; }
+        th[data-sort].sort-asc .sort-icon { transform: rotate(180deg); }
+
+        /* ── Chip Filters ───────────────────────────────────── */
+        .filter-chip {
+            transition: all var(--transition-base);
+            border: 1.5px solid transparent;
+        }
+        .filter-chip:hover { transform: translateY(-1px); }
+        .filter-chip.chip-active {
+            background: #2563eb !important;
+            color: #fff !important;
+            border-color: #2563eb !important;
+            box-shadow: 0 4px 14px rgba(37,99,235,.35);
+        }
+
+        /* ── Sidebar ────────────────────────────────────────── */
+        #sidebar {
+            transition: transform 300ms cubic-bezier(0.32,0.72,0,1);
+        }
+        #sidebar .sidebar-logo-glow {
+            box-shadow: 0 0 30px rgba(37,99,235,.5), 0 0 60px rgba(6,182,212,.2);
+        }
+
+        /* ── Progress Bars ──────────────────────────────────── */
+        .progress-bar { transition: width 0.8s cubic-bezier(0.16,1,0.3,1); }
+
+        /* ── Charts ─────────────────────────────────────────── */
+        .chart-container { position: relative; }
+
+        /* ── Toast ──────────────────────────────────────────── */
+        .toast-item {
+            animation: slideLeft 0.3s cubic-bezier(0.16,1,0.3,1);
+        }
+        .toast-exit {
+            animation: none;
+            opacity: 0;
+            transform: translateX(20px);
+            transition: all 0.25s ease;
+        }
+
+        /* ── Print ──────────────────────────────────────────── */
+        @media print {
+            .no-print { display: none !important; }
+            #sidebar { display: none !important; }
+            main { margin-left: 0 !important; }
+            body { background: #fff !important; }
+            .bg-white { box-shadow: none !important; }
+        }
+
+        /* ── Scrollbar for table ────────────────────────────── */
+        .table-scroll { overflow-x: auto; }
+
+        /* ── Pulse for active items ─────────────────────────── */
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.5; } }
+
+        /* ── Section Transitions ────────────────────────────── */
+        .tab-panel {
+            animation: fadeInUp 0.35s cubic-bezier(0.16,1,0.3,1);
+        }
+
+        /* ── Number highlight ───────────────────────────────── */
+        .value-up   { color: #10b981; }
+        .value-warn { color: #f59e0b; }
+        .value-crit { color: #ef4444; }
+        .value-info { color: #3b82f6; }
+    </style>
+</head>
+
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen font-sans antialiased">
+
+<!-- ══════════════════════════════════════════
+     OVERLAY MOBILE
+═══════════════════════════════════════════ -->
+<div id="sidebarOverlay"
+     class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 hidden lg:hidden no-print
+            transition-opacity duration-300"></div>
+
+<!-- ══════════════════════════════════════════
+     GLOBAL LOADING
+═══════════════════════════════════════════ -->
+<div id="globalLoading"
+     class="fixed inset-0 z-[200] hidden items-center justify-center
+            bg-slate-950/50 backdrop-blur-md no-print">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-700/60
+                rounded-3xl px-8 py-7 shadow-2xl flex items-center gap-5 animate-scaleIn">
+        <div class="relative">
+            <div class="w-14 h-14 rounded-2xl border-[3px] border-brand-200
+                        border-t-brand-600 animate-spinSlow"></div>
+            <div class="absolute inset-2 rounded-xl bg-brand-500/10 animate-pulse"></div>
+        </div>
+        <div>
+            <p class="font-bold text-lg text-slate-900 dark:text-slate-100">Synchronisation…</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                Chargement des données de maintenance industrielle
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SIDEBAR
+═══════════════════════════════════════════ -->
+<aside id="sidebar"
+       class="fixed inset-y-0 left-0 z-50 w-72 -translate-x-full lg:translate-x-0
+              flex flex-col glass-sidebar border-r border-white/[0.06] no-print">
+
+    <!-- Logo -->
+    <div class="px-6 pt-7 pb-6 border-b border-white/[0.07]">
+        <div class="flex items-center gap-4">
+            <div class="relative shrink-0">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 via-blue-600 to-cyan-500
+                            flex items-center justify-center sidebar-logo-glow">
+                    <i class="fa-solid fa-gears text-xl text-white"></i>
+                </div>
+                <span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full
+                             bg-emerald-400 border-2 border-[#0a1228] animate-pulse"></span>
+            </div>
+            <div>
+                <h1 class="font-display text-[1.35rem] tracking-widest text-white leading-none">
+                    INDUS<span class="text-brand-400">-CORE</span>
+                </h1>
+                <p class="text-[10px] text-blue-300/70 uppercase tracking-[0.2em] mt-1 font-semibold">
+                    SMI · Enterprise v3.0
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
+        <p class="px-3 mb-3 text-[10px] uppercase tracking-[0.25em] text-slate-500 font-bold">
+            Navigation
+        </p>
+
+        <button onclick="APP.switchTab('dashboard')"
+                class="nav-item nav-item-active w-full text-left flex items-center gap-3.5
+                       px-4 py-3.5 rounded-2xl transition-all duration-200 group"
+                data-tab="dashboard">
+            <span class="w-9 h-9 rounded-xl bg-brand-500/15 group-hover:bg-brand-500/25
+                         flex items-center justify-center transition-colors text-brand-400">
+                <i class="fa-solid fa-chart-pie text-sm"></i>
+            </span>
+            <div class="flex-1 text-left">
+                <p class="font-semibold text-sm leading-none">Vue d'ensemble</p>
+                <p class="text-[10px] text-slate-500 mt-1">KPIs & interventions</p>
+            </div>
+            <i class="fa-solid fa-chevron-right text-[10px] text-slate-600
+                      group-hover:text-brand-400 transition-colors"></i>
+        </button>
+
+        <button onclick="APP.switchTab('analytics')"
+                class="nav-item nav-item-inactive w-full text-left flex items-center gap-3.5
+                       px-4 py-3.5 rounded-2xl transition-all duration-200 group"
+                data-tab="analytics">
+            <span class="w-9 h-9 rounded-xl bg-white/5 group-hover:bg-brand-500/15
+                         flex items-center justify-center transition-colors text-slate-400
+                         group-hover:text-brand-400">
+                <i class="fa-solid fa-chart-line text-sm"></i>
+            </span>
+            <div class="flex-1 text-left">
+                <p class="font-semibold text-sm leading-none">Analyses & Tendances</p>
+                <p class="text-[10px] text-slate-500 mt-1">Graphiques & métriques</p>
+            </div>
+            <i class="fa-solid fa-chevron-right text-[10px] text-slate-600
+                      group-hover:text-brand-400 transition-colors"></i>
+        </button>
+
+        <button onclick="APP.switchTab('reports')"
+                class="nav-item nav-item-inactive w-full text-left flex items-center gap-3.5
+                       px-4 py-3.5 rounded-2xl transition-all duration-200 group"
+                data-tab="reports">
+            <span class="w-9 h-9 rounded-xl bg-white/5 group-hover:bg-brand-500/15
+                         flex items-center justify-center transition-colors text-slate-400
+                         group-hover:text-brand-400">
+                <i class="fa-solid fa-file-export text-sm"></i>
+            </span>
+            <div class="flex-1 text-left">
+                <p class="font-semibold text-sm leading-none">Rapports & Exports</p>
+                <p class="text-[10px] text-slate-500 mt-1">CSV, Excel, impression</p>
+            </div>
+            <i class="fa-solid fa-chevron-right text-[10px] text-slate-600
+                      group-hover:text-brand-400 transition-colors"></i>
+        </button>
+
+        <!-- Séparateur -->
+        <div class="pt-4 pb-2">
+            <div class="h-px bg-white/[0.06] mx-2"></div>
+            <p class="px-3 mt-4 mb-2 text-[10px] uppercase tracking-[0.25em] text-slate-500 font-bold">
+                Système
+            </p>
+        </div>
+
+        <button id="btnHealthCheck"
+                class="w-full text-left flex items-center gap-3.5 px-4 py-3.5 rounded-2xl
+                       nav-item-inactive transition-all duration-200 group">
+            <span class="w-9 h-9 rounded-xl bg-white/5 group-hover:bg-emerald-500/15
+                         flex items-center justify-center transition-colors text-slate-400
+                         group-hover:text-emerald-400">
+                <i class="fa-solid fa-heart-pulse text-sm"></i>
+            </span>
+            <div class="flex-1 text-left">
+                <p class="font-semibold text-sm leading-none">Vérification API</p>
+                <p class="text-[10px] text-slate-500 mt-1">Test de connectivité</p>
+            </div>
+        </button>
+    </nav>
+
+    <!-- API Status Panel -->
+    <div class="px-4 pb-4">
+        <div class="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4">
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-[10px] uppercase tracking-[0.22em] text-slate-400 font-bold">
+                    Statut système
+                </p>
+                <div id="apiStatusDot"
+                     class="w-2 h-2 rounded-full bg-slate-500 animate-pulse"></div>
+            </div>
+            <p id="apiStatusText" class="text-sm font-semibold text-slate-300">
+                Initialisation…
+            </p>
+            <div class="mt-3 space-y-1.5 text-[11px] text-slate-400">
+                <div class="flex justify-between">
+                    <span>Source</span>
+                    <span id="dataSourceLabel" class="text-slate-300 font-medium max-w-[130px] truncate text-right">—</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Synchro</span>
+                    <span id="lastSyncLabel" class="text-slate-300 font-medium">—</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alertes -->
+        <div class="mt-3 rounded-2xl border border-red-500/20 bg-red-500/[0.07] p-4
+                    flex items-center justify-between">
+            <div>
+                <p class="text-[10px] uppercase tracking-[0.22em] text-red-400/80 font-bold">
+                    Alertes actives
+                </p>
+                <p id="sidebarAlertCount"
+                   class="mt-1 text-2xl font-display text-white">0</p>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center
+                        text-red-400">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<!-- ══════════════════════════════════════════
+     MAIN
+═══════════════════════════════════════════ -->
+<main class="lg:ml-72 min-h-screen flex flex-col">
+
+    <!-- ── Header ───────────────────────────────────────── -->
+    <header class="sticky top-0 z-30 glass border-b border-slate-200/70 dark:border-slate-800/70
+                   px-4 sm:px-6 no-print" style="height:var(--header-h)">
+        <div class="h-full flex items-center justify-between gap-4">
+
+            <!-- Left -->
+            <div class="flex items-center gap-4 min-w-0">
+                <button id="btnSidebar"
+                        class="lg:hidden w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700
+                               hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors
+                               flex items-center justify-center text-slate-600 dark:text-slate-300">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                        <p id="headerEyebrow"
+                           class="hidden sm:block text-[10px] uppercase tracking-[0.22em]
+                                  text-slate-400 font-bold">
+                            Dashboard
+                        </p>
+                        <span class="hidden sm:block text-slate-300 dark:text-slate-700">/</span>
+                        <h2 id="headerTitle"
+                            class="text-base sm:text-lg font-extrabold tracking-tight truncate text-slate-900 dark:text-slate-100">
+                            Tableau de bord maintenance
+                        </h2>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- Horloge -->
+                <div class="hidden md:block text-right pl-2">
+                    <p id="currentDate"
+                       class="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-none">—</p>
+                    <p id="currentTime"
+                       class="text-[10px] font-mono text-slate-400 mt-0.5">—</p>
+                </div>
+
+                <div class="hidden md:block w-px h-8 bg-slate-200 dark:bg-slate-700/60 mx-1"></div>
+
+                <!-- Actions -->
+                <button id="btnRefreshHeader"
+                        class="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700
+                               hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors
+                               flex items-center justify-center text-slate-500 dark:text-slate-400
+                               hover:text-brand-600 dark:hover:text-brand-400 group"
+                        title="Actualiser (Ctrl+R)">
+                    <i class="fa-solid fa-rotate group-hover:animate-spinSlow"></i>
+                </button>
+
+                <button id="btnTheme"
+                        class="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700
+                               hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors
+                               flex items-center justify-center text-slate-500 dark:text-slate-400"
+                        title="Changer le thème">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+
+                <button id="btnNotifications"
+                        class="relative w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700
+                               hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors
+                               flex items-center justify-center text-slate-500 dark:text-slate-400"
+                        title="Alertes actives">
+                    <i class="fa-solid fa-bell"></i>
+                    <span id="notifBadge"
+                          class="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1
+                                 rounded-full bg-red-500 text-white text-[9px] font-bold
+                                 hidden items-center justify-center border-2
+                                 border-white dark:border-slate-950">
+                        0
+                    </span>
+                </button>
+
+                <!-- Avatar -->
+                <div class="hidden sm:flex items-center gap-3
+                            pl-3 border-l border-slate-200 dark:border-slate-700/60 ml-1">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-600 to-cyan-500
+                                flex items-center justify-center text-white text-xs font-bold
+                                shadow-glow cursor-pointer hover:scale-105 transition-transform">
+                        AM
+                    </div>
+                    <div class="hidden lg:block">
+                        <p class="text-sm font-bold leading-none text-slate-900 dark:text-slate-100">
+                            Admin Manager
+                        </p>
+                        <p class="text-[10px] uppercase tracking-[0.16em] mt-0.5 text-slate-400">
+                            Superviseur
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ── Content ───────────────────────────────────────── -->
+    <div class="flex-1 p-3 sm:p-5 lg:p-6 space-y-6">
+
+        <!-- ── Hero Banner ───────────────────────────────── -->
+        <section class="relative overflow-hidden rounded-3xl bg-gradient-to-r
+                        from-[#0c1d4f] via-[#0d2977] to-[#0c3d6e] text-white shadow-soft">
+            <div class="absolute inset-0 bg-grid-lines opacity-70"></div>
+            <div class="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10
+                        rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl"></div>
+            <div class="absolute bottom-0 left-1/3 w-72 h-72 bg-brand-600/15
+                        rounded-full translate-y-1/2 blur-2xl"></div>
+
+            <div class="relative p-6 sm:p-8 lg:p-10
+                        flex flex-col xl:flex-row xl:items-center xl:justify-between gap-8">
+                <!-- Text -->
+                <div class="max-w-2xl">
+                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full
+                                bg-white/10 border border-white/15 backdrop-blur
+                                text-[10px] font-bold uppercase tracking-[0.2em] text-blue-200">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        Supervision temps réel · Zéro coupure opérationnelle
+                    </div>
+                    <h3 class="mt-4 text-2xl sm:text-3xl font-extrabold leading-tight">
+                        Console de pilotage<br/>
+                        <span class="text-cyan-300">Maintenance Industrielle</span>
+                    </h3>
+                    <p class="mt-3 text-blue-100/80 text-sm max-w-xl leading-relaxed">
+                        Suivi en temps réel des pannes, interventions et indicateurs de performance.
+                        Basculement automatique sur données de démonstration si le backend est indisponible.
+                    </p>
+                </div>
+
+                <!-- Stats mini -->
+                <div class="grid grid-cols-2 gap-3 min-w-[260px]">
+                    <div class="rounded-2xl bg-white/8 border border-white/12 backdrop-blur p-4">
+                        <p class="text-[10px] uppercase tracking-[0.2em] text-blue-200/70 font-bold">
+                            Disponibilité
+                        </p>
+                        <p id="heroAvailability"
+                           class="mt-2 text-3xl font-display tracking-wide">—</p>
+                    </div>
+                    <div class="rounded-2xl bg-white/8 border border-white/12 backdrop-blur p-4 animate-floaty">
+                        <p class="text-[10px] uppercase tracking-[0.2em] text-blue-200/70 font-bold">MTTR</p>
+                        <p id="heroMTTR" class="mt-2 text-3xl font-display tracking-wide">—</p>
+                    </div>
+                    <div class="rounded-2xl bg-white/8 border border-white/12 backdrop-blur p-4">
+                        <p class="text-[10px] uppercase tracking-[0.2em] text-blue-200/70 font-bold">
+                            Interventions
+                        </p>
+                        <p id="heroInterventions"
+                           class="mt-2 text-3xl font-display tracking-wide">—</p>
+                    </div>
+                    <div class="rounded-2xl bg-white/8 border border-white/12 backdrop-blur p-4">
+                        <p class="text-[10px] uppercase tracking-[0.2em] text-blue-200/70 font-bold">
+                            Techniciens
+                        </p>
+                        <p id="heroTechs"
+                           class="mt-2 text-3xl font-display tracking-wide">—</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══ TAB: DASHBOARD ════════════════════════════════ -->
+        <section id="tab-dashboard" class="tab-panel space-y-6">
+
+            <!-- KPI Cards -->
+            <div id="kpiContainer"
+                 class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+                <div class="skeleton h-40 rounded-3xl"></div>
+                <div class="skeleton h-40 rounded-3xl"></div>
+                <div class="skeleton h-40 rounded-3xl"></div>
+                <div class="skeleton h-40 rounded-3xl"></div>
+            </div>
+
+            <!-- Filters Bar -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800
+                        rounded-3xl p-5 shadow-card no-print">
+                <div class="flex items-center justify-between mb-5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-brand-500/10 flex items-center justify-center">
+                            <i class="fa-solid fa-sliders text-brand-600 text-sm"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-800 dark:text-slate-200">
+                            Filtres & Recherche
+                        </h3>
+                    </div>
+                    <button id="btnResetFilters"
+                            class="text-[11px] font-bold text-slate-400 hover:text-red-500
+                                   transition-colors flex items-center gap-1.5">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        Réinitialiser
+                    </button>
+                </div>
+
+                <!-- Filtres principaux -->
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
+                    <!-- Recherche -->
+                    <div class="xl:col-span-2">
+                        <label class="block text-[10px] font-extrabold uppercase tracking-[0.2em]
+                                      text-slate-400 mb-2">
+                            Recherche globale
+                        </label>
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2
+                                      -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input id="searchFilter" type="text"
+                                   placeholder="Machine, technicien, atelier, pièce…"
+                                   class="w-full pl-10 pr-4 py-3 rounded-xl text-sm
+                                          bg-slate-50 dark:bg-slate-800
+                                          border border-slate-200 dark:border-slate-700
+                                          focus:border-brand-500 focus:ring-3 focus:ring-brand-500/15
+                                          outline-none transition-all placeholder:text-slate-400">
+                        </div>
+                    </div>
+
+                    <!-- Période -->
+                    <div>
+                        <label class="block text-[10px] font-extrabold uppercase tracking-[0.2em]
+                                      text-slate-400 mb-2">Période</label>
+                        <select id="dateRangeFilter"
+                                class="w-full px-3.5 py-3 rounded-xl text-sm
+                                       bg-slate-50 dark:bg-slate-800
+                                       border border-slate-200 dark:border-slate-700
+                                       focus:border-brand-500 focus:ring-3 focus:ring-brand-500/15
+                                       outline-none transition-all">
+                            <option value="all">Tout l'historique</option>
+                            <option value="today">Aujourd'hui</option>
+                            <option value="week">Cette semaine</option>
+                            <option value="month">Ce mois</option>
+                            <option value="year">Cette année</option>
+                        </select>
+                    </div>
+
+                    <!-- Machine -->
+                    <div>
+                        <label class="block text-[10px] font-extrabold uppercase tracking-[0.2em]
+                                      text-slate-400 mb-2">Machine</label>
+                        <select id="machineFilter"
+                                class="w-full px-3.5 py-3 rounded-xl text-sm
+                                       bg-slate-50 dark:bg-slate-800
+                                       border border-slate-200 dark:border-slate-700
+                                       focus:border-brand-500 focus:ring-3 focus:ring-brand-500/15
+                                       outline-none transition-all">
+                            <option value="all">Toutes les machines</option>
+                        </select>
+                    </div>
+
+                    <!-- Technicien -->
+                    <div>
+                        <label class="block text-[10px] font-extrabold uppercase tracking-[0.2em]
+                                      text-slate-400 mb-2">Technicien</label>
+                        <select id="technicianFilter"
+                                class="w-full px-3.5 py-3 rounded-xl text-sm
+                                       bg-slate-50 dark:bg-slate-800
+                                       border border-slate-200 dark:border-slate-700
+                                       focus:border-brand-500 focus:ring-3 focus:ring-brand-500/15
+                                       outline-none transition-all">
+                            <option value="all">Tous les techniciens</option>
+                        </select>
+                    </div>
+
+                    <!-- Par page -->
+                    <div>
+                        <label class="block text-[10px] font-extrabold uppercase tracking-[0.2em]
+                                      text-slate-400 mb-2">Lignes / page</label>
+                        <select id="perPageFilter"
+                                class="w-full px-3.5 py-3 rounded-xl text-sm
+                                       bg-slate-50 dark:bg-slate-800
+                                       border border-slate-200 dark:border-slate-700
+                                       focus:border-brand-500 focus:ring-3 focus:ring-brand-500/15
+                                       outline-none transition-all">
+                            <option value="10">10</option>
+                            <option value="25" selected>25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Chips statut + actions -->
+                <div class="mt-5 flex flex-col sm:flex-row sm:items-center
+                            sm:justify-between gap-4">
+                    <!-- Chips -->
+                    <div id="statusChips" class="flex flex-wrap gap-2">
+                        <button data-status="all"
+                                class="filter-chip chip-active px-4 py-2 rounded-xl text-xs font-bold">
+                            <i class="fa-solid fa-border-all mr-1.5"></i>Tous
+                        </button>
+                        <button data-status="termine"
+                                class="filter-chip px-4 py-2 rounded-xl text-xs font-bold
+                                       bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300
+                                       hover:bg-emerald-50 dark:hover:bg-emerald-900/20
+                                       hover:text-emerald-700 dark:hover:text-emerald-300
+                                       border border-slate-200 dark:border-slate-700">
+                            <span class="status-pill s-termine" style="padding:0;background:none;color:inherit;font-size:inherit;gap:5px;">
+                                <span style="width:6px;height:6px;border-radius:50%;background:#10b981;display:inline-block;"></span>
+                            </span>
+                            Terminés
+                        </button>
+                        <button data-status="en_reparation"
+                                class="filter-chip px-4 py-2 rounded-xl text-xs font-bold
+                                       bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300
+                                       hover:bg-amber-50 dark:hover:bg-amber-900/20
+                                       hover:text-amber-700 dark:hover:text-amber-300
+                                       border border-slate-200 dark:border-slate-700">
+                            <span class="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 mr-1"></span>
+                            En réparation
+                        </button>
+                        <button data-status="en_attente"
+                                class="filter-chip px-4 py-2 rounded-xl text-xs font-bold
+                                       bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300
+                                       hover:bg-slate-200 dark:hover:bg-slate-700
+                                       border border-slate-200 dark:border-slate-700">
+                            <span class="inline-block w-1.5 h-1.5 rounded-full bg-slate-400 mr-1"></span>
+                            En attente
+                        </button>
+                        <button data-status="arret"
+                                class="filter-chip px-4 py-2 rounded-xl text-xs font-bold
+                                       bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300
+                                       hover:bg-red-50 dark:hover:bg-red-900/20
+                                       hover:text-red-700 dark:hover:text-red-300
+                                       border border-slate-200 dark:border-slate-700">
+                            <span class="inline-block w-1.5 h-1.5 rounded-full bg-red-500 mr-1"></span>
+                            Arrêts machine
+                        </button>
+                    </div>
+
+                    <!-- Boutons d'action -->
+                    <div class="flex flex-wrap gap-2 shrink-0">
+                        <button id="btnRefresh"
+                                class="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700
+                                       text-white text-xs font-bold shadow-glow
+                                       transition-all hover:-translate-y-px flex items-center gap-2">
+                            <i class="fa-solid fa-rotate"></i>
+                            Actualiser
+                        </button>
+                        <button id="btnExportCsvTop"
+                                class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700
+                                       text-white text-xs font-bold transition-all
+                                       hover:-translate-y-px flex items-center gap-2">
+                            <i class="fa-solid fa-file-csv"></i>
+                            CSV
+                        </button>
+                        <button id="btnExportXlsxTop"
+                                class="px-4 py-2.5 rounded-xl bg-green-700 hover:bg-green-800
+                                       text-white text-xs font-bold transition-all
+                                       hover:-translate-y-px flex items-center gap-2">
+                            <i class="fa-solid fa-file-excel"></i>
+                            Excel
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800
+                        rounded-3xl shadow-card overflow-hidden">
+
+                <!-- Table Header -->
+                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800
+                            flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="flex flex-col gap-0.5">
+                            <h3 class="font-bold text-slate-900 dark:text-slate-100
+                                       flex items-center gap-2.5">
+                                <span class="w-1.5 h-6 rounded-full bg-brand-600 block"></span>
+                                Journal des interventions
+                            </h3>
+                            <p class="text-xs text-slate-400 pl-4">
+                                Filtré, trié et synchronisé en temps réel.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span id="rowCount"
+                              class="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800
+                                     text-xs font-bold text-slate-500">
+                            0 entrée
+                        </span>
+                        <span id="modeBadge"
+                              class="px-3 py-1 rounded-lg text-xs font-bold
+                                     bg-blue-100 text-blue-700 dark:bg-blue-900/25 dark:text-blue-300">
+                            Mode —
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Table Body -->
+                <div class="table-scroll">
+                    <table class="w-full min-w-[1380px] text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50/90 dark:bg-slate-800/50 text-[10px]
+                                       uppercase tracking-[0.15em] text-slate-400 font-extrabold">
+                                <th class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 w-12">
+                                    #
+                                </th>
+                                <th data-sort="machine"
+                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-2">
+                                        Machine
+                                        <i class="fa-solid fa-arrow-up sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th data-sort="atelier"
+                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-2">
+                                        Atelier
+                                        <i class="fa-solid fa-arrow-up sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th data-sort="status"
+                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-2">
+                                        Statut
+                                        <i class="fa-solid fa-arrow-up sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th data-sort="jour"
+                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-2">
+                                        Date
+                                        <i class="fa-solid fa-arrow-up sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    Déclaration
+                                </th>
+                                <th class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    Arr. tech.
+                                </th>
+                                <th data-sort="temps_attente"
+                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-2">
+                                        Attente
+                                        <i class="fa-solid fa-arrow-up sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th data-sort="temps_reparation"
+                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-2">
+                                        Réparation
+                                        <i class="fa-solid fa-arrow-up sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th data-sort="criticite"
+                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-2">
+                                        Criticité
+                                        <i class="fa-solid fa-arrow-up sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th data-sort="technicien"
+                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-2">
+                                        Technicien
+                                        <i class="fa-solid fa-arrow-up sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    Pièce / Observation
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody"
+                               class="text-sm divide-y divide-slate-50 dark:divide-slate-800/80">
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="px-6 py-4 border-t border-slate-100 dark:border-slate-800
+                            flex flex-col sm:flex-row items-center justify-between gap-4 no-print">
+                    <p id="paginationInfo"
+                       class="text-xs text-slate-400 font-medium">—</p>
+                    <div id="pagination" class="flex items-center gap-1.5 flex-wrap"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══ TAB: ANALYTICS ════════════════════════════════ -->
+        <section id="tab-analytics" class="tab-panel hidden space-y-6">
+
+            <!-- Row 1 -->
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+
+                <!-- Chart Machines -->
+                <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80
+                            dark:border-slate-800 p-6 shadow-card">
+                    <div class="flex items-start justify-between mb-5">
+                        <div>
+                            <h3 class="font-bold text-slate-900 dark:text-slate-100
+                                       flex items-center gap-2">
+                                <span class="w-7 h-7 rounded-lg bg-brand-500/12 flex items-center
+                                             justify-center text-brand-600 text-xs">
+                                    <i class="fa-solid fa-industry"></i>
+                                </span>
+                                Fréquence par machine
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-1 pl-9">
+                                Top 10 équipements les plus sollicités
+                            </p>
+                        </div>
+                    </div>
+                    <div class="chart-container h-[320px]">
+                        <canvas id="chartMachines"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart Status -->
+                <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80
+                            dark:border-slate-800 p-6 shadow-card">
+                    <div class="flex items-start justify-between mb-5">
+                        <div>
+                            <h3 class="font-bold text-slate-900 dark:text-slate-100
+                                       flex items-center gap-2">
+                                <span class="w-7 h-7 rounded-lg bg-emerald-500/12 flex items-center
+                                             justify-center text-emerald-600 text-xs">
+                                    <i class="fa-solid fa-signal"></i>
+                                </span>
+                                Répartition par statut
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-1 pl-9">
+                                Vision globale des états d'intervention
+                            </p>
+                        </div>
+                    </div>
+                    <!-- Légende custom -->
+                    <div id="statusLegend" class="flex flex-wrap gap-3 mb-4 pl-1"></div>
+                    <div class="chart-container h-[280px]">
+                        <canvas id="chartStatus"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trend Chart (plein width) -->
+            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80
+                        dark:border-slate-800 p-6 shadow-card">
+                <div class="flex items-start justify-between mb-5">
+                    <div>
+                        <h3 class="font-bold text-slate-900 dark:text-slate-100
+                                   flex items-center gap-2">
+                            <span class="w-7 h-7 rounded-lg bg-amber-500/12 flex items-center
+                                         justify-center text-amber-600 text-xs">
+                                <i class="fa-solid fa-wave-square"></i>
+                            </span>
+                            Évolution mensuelle des temps moyens
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1 pl-9">
+                            Temps d'attente vs. temps de réparation par mois (minutes)
+                        </p>
+                    </div>
+                </div>
+                <div class="chart-container h-[340px]">
+                    <canvas id="chartTrend"></canvas>
+                </div>
+            </div>
+
+            <!-- Row 2 -->
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+
+                <!-- Techniciens -->
+                <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80
+                            dark:border-slate-800 p-6 shadow-card">
+                    <div class="mb-5">
+                        <h3 class="font-bold text-slate-900 dark:text-slate-100
+                                   flex items-center gap-2">
+                            <span class="w-7 h-7 rounded-lg bg-cyan-500/12 flex items-center
+                                         justify-center text-cyan-600 text-xs">
+                                <i class="fa-solid fa-users-gear"></i>
+                            </span>
+                            Charge par technicien
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1 pl-9">
+                            Nombre d'interventions par collaborateur
+                        </p>
+                    </div>
+                    <div class="chart-container h-[300px]">
+                        <canvas id="chartTechs"></canvas>
+                    </div>
+                </div>
+
+                <!-- Jours de semaine -->
+                <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80
+                            dark:border-slate-800 p-6 shadow-card">
+                    <div class="mb-5">
+                        <h3 class="font-bold text-slate-900 dark:text-slate-100
+                                   flex items-center gap-2">
+                            <span class="w-7 h-7 rounded-lg bg-red-500/12 flex items-center
+                                         justify-center text-red-600 text-xs">
+                                <i class="fa-solid fa-calendar-week"></i>
+                            </span>
+                            Pannes par jour de semaine
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1 pl-9">
+                            Distribution hebdomadaire des incidents déclarés
+                        </p>
+                    </div>
+                    <div class="chart-container h-[300px]">
+                        <canvas id="chartWeekday"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Criticality + Atelier -->
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+
+                <!-- Criticité -->
+                <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80
+                            dark:border-slate-800 p-6 shadow-card">
+                    <div class="mb-5">
+                        <h3 class="font-bold text-slate-900 dark:text-slate-100
+                                   flex items-center gap-2">
+                            <span class="w-7 h-7 rounded-lg bg-red-500/12 flex items-center
+                                         justify-center text-red-600 text-xs">
+                                <i class="fa-solid fa-gauge-high"></i>
+                            </span>
+                            Répartition par criticité
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1 pl-9">
+                            Classification des incidents selon leur impact
+                        </p>
+                    </div>
+                    <div class="chart-container h-[280px]">
+                        <canvas id="chartCriticality"></canvas>
+                    </div>
+                </div>
+
+                <!-- Atelier -->
+                <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80
+                            dark:border-slate-800 p-6 shadow-card">
+                    <div class="mb-5">
+                        <h3 class="font-bold text-slate-900 dark:text-slate-100
+                                   flex items-center gap-2">
+                            <span class="w-7 h-7 rounded-lg bg-purple-500/12 flex items-center
+                                         justify-center text-purple-600 text-xs">
+                                <i class="fa-solid fa-warehouse"></i>
+                            </span>
+                            Pannes par atelier
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1 pl-9">
+                            Identification des zones de production les plus impactées
+                        </p>
+                    </div>
+                    <div class="chart-container h-[280px]">
+                        <canvas id="chartAtelier"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══ TAB: REPORTS ══════════════════════════════════ -->
+        <section id="tab-reports" class="tab-panel hidden space-y-6">
+
+            <!-- Top Row -->
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+                <!-- Export Center -->
+                <div class="xl:col-span-2 bg-white dark:bg-slate-900 border border-slate-200/80
+                            dark:border-slate-800 rounded-3xl p-6 shadow-card">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-8 h-8 rounded-xl bg-brand-500/10 flex items-center
+                                    justify-center text-brand-600">
+                            <i class="fa-solid fa-file-circle-check text-sm"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-900 dark:text-slate-100">
+                                Centre d'exportation
+                            </h3>
+                            <p class="text-xs text-slate-400">
+                                Exports basés sur les données actuellement filtrées.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="grid sm:grid-cols-3 gap-4 no-print">
+                        <!-- CSV -->
+                        <button id="btnExportCsv"
+                                class="group rounded-2xl border border-emerald-200 dark:border-emerald-900/50
+                                       bg-emerald-50 dark:bg-emerald-900/10 p-5 text-left
+                                       hover:-translate-y-1.5 hover:shadow-glow-emerald
+                                       transition-all duration-200">
+                            <div class="w-12 h-12 rounded-2xl bg-emerald-600 text-white
+                                        flex items-center justify-center text-lg mb-3
+                                        group-hover:scale-110 transition-transform">
+                                <i class="fa-solid fa-file-csv"></i>
+                            </div>
+                            <h4 class="font-bold text-sm text-slate-900 dark:text-slate-100">
+                                Exporter CSV
+                            </h4>
+                            <p class="text-xs text-slate-400 mt-1">
+                                Compatible Excel, Power BI, Tableau
+                            </p>
+                        </button>
+
+                        <!-- Excel -->
+                        <button id="btnExportXlsx"
+                                class="group rounded-2xl border border-green-200 dark:border-green-900/50
+                                       bg-green-50 dark:bg-green-900/10 p-5 text-left
+                                       hover:-translate-y-1.5 hover:shadow-glow-emerald
+                                       transition-all duration-200">
+                            <div class="w-12 h-12 rounded-2xl bg-green-700 text-white
+                                        flex items-center justify-center text-lg mb-3
+                                        group-hover:scale-110 transition-transform">
+                                <i class="fa-solid fa-file-excel"></i>
+                            </div>
+                            <h4 class="font-bold text-sm text-slate-900 dark:text-slate-100">
+                                Exporter Excel
+                            </h4>
+                            <p class="text-xs text-slate-400 mt-1">
+                                Fichier XLSX natif, colonnes formatées
+                            </p>
+                        </button>
+
+                        <!-- Print -->
+                        <button id="btnPrint"
+                                class="group rounded-2xl border border-slate-200 dark:border-slate-700
+                                       bg-slate-50 dark:bg-slate-800/40 p-5 text-left
+                                       hover:-translate-y-1.5 hover:shadow-soft
+                                       transition-all duration-200">
+                            <div class="w-12 h-12 rounded-2xl bg-slate-700 text-white
+                                        flex items-center justify-center text-lg mb-3
+                                        group-hover:scale-110 transition-transform">
+                                <i class="fa-solid fa-print"></i>
+                            </div>
+                            <h4 class="font-bold text-sm text-slate-900 dark:text-slate-100">
+                                Imprimer / PDF
+                            </h4>
+                            <p class="text-xs text-slate-400 mt-1">
+                                Vue optimisée impression A4
+                            </p>
+                        </button>
+                    </div>
+
+                    <!-- Résumé exécutif -->
+                    <div class="mt-6 rounded-2xl bg-slate-50 dark:bg-slate-800/40
+                                border border-slate-200 dark:border-slate-800 p-5">
+                        <h4 class="font-bold text-sm text-slate-700 dark:text-slate-300 mb-4
+                                   flex items-center gap-2">
+                            <i class="fa-solid fa-file-lines text-brand-500"></i>
+                            Résumé exécutif
+                        </h4>
+                        <div id="reportSummary"
+                             class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+                    </div>
+                </div>
+
+                <!-- Infos système -->
+                <div class="bg-white dark:bg-slate-900 border border-slate-200/80
+                            dark:border-slate-800 rounded-3xl p-6 shadow-card flex flex-col gap-5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-cyan-500/10 flex items-center
+                                    justify-center text-cyan-600">
+                            <i class="fa-solid fa-circle-info text-sm"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-900 dark:text-slate-100">
+                            Informations système
+                        </h3>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center py-2 border-b
+                                    border-slate-100 dark:border-slate-800">
+                            <span class="text-xs text-slate-400 font-medium">Version</span>
+                            <span class="text-xs font-bold text-slate-900 dark:text-slate-100
+                                         bg-brand-500/10 text-brand-700 dark:text-brand-300
+                                         px-2 py-0.5 rounded-lg">Enterprise 3.0</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b
+                                    border-slate-100 dark:border-slate-800">
+                            <span class="text-xs text-slate-400 font-medium">Source active</span>
+                            <span id="reportSource"
+                                  class="text-xs font-bold text-slate-700 dark:text-slate-300">—</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b
+                                    border-slate-100 dark:border-slate-800">
+                            <span class="text-xs text-slate-400 font-medium">Lignes filtrées</span>
+                            <span id="reportRows"
+                                  class="text-xs font-bold text-slate-700 dark:text-slate-300">0</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b
+                                    border-slate-100 dark:border-slate-800">
+                            <span class="text-xs text-slate-400 font-medium">Total brut</span>
+                            <span id="reportTotal"
+                                  class="text-xs font-bold text-slate-700 dark:text-slate-300">0</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2">
+                            <span class="text-xs text-slate-400 font-medium">Dernière synchro</span>
+                            <span id="reportLastSync"
+                                  class="text-xs font-bold text-slate-700 dark:text-slate-300">—</span>
+                        </div>
+                    </div>
+
+                    <!-- Fault tolerance card -->
+                    <div class="rounded-2xl p-5 bg-gradient-to-br from-brand-700 via-blue-700
+                                to-cyan-600 text-white mt-auto">
+                        <div class="flex items-center gap-2 mb-2">
+                            <i class="fa-solid fa-shield-halved text-cyan-200"></i>
+                            <p class="text-[10px] uppercase tracking-[0.18em] font-bold
+                                      text-blue-100">
+                                Mode zéro coupure
+                            </p>
+                        </div>
+                        <h4 class="text-base font-extrabold leading-tight">
+                            Fallback automatique activé
+                        </h4>
+                        <p class="mt-2 text-xs text-blue-100/85 leading-relaxed">
+                            Si l'API locale est indisponible, 120 interventions de démonstration
+                            ultra-réalistes prennent automatiquement le relais.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Résumé techniciens -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800
+                        rounded-3xl shadow-card overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                    <h3 class="font-bold text-slate-900 dark:text-slate-100
+                               flex items-center gap-2.5">
+                        <span class="w-1.5 h-6 rounded-full bg-cyan-500 block"></span>
+                        Synthèse par technicien
+                    </h3>
+                </div>
+                <div class="table-scroll">
+                    <table class="w-full min-w-[860px] text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50/90 dark:bg-slate-800/50 text-[10px]
+                                       uppercase tracking-[0.15em] text-slate-400 font-extrabold">
+                                <th class="px-6 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    Technicien
+                                </th>
+                                <th class="px-6 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    Total
+                                </th>
+                                <th class="px-6 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    Terminées
+                                </th>
+                                <th class="px-6 py-3.5 border-b border-slate-100 dark:border-slate-800 w-52">
+                                    Taux résolution
+                                </th>
+                                <th class="px-6 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    Attente moy.
+                                </th>
+                                <th class="px-6 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    Réparation moy.
+                                </th>
+                                <th class="px-6 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    Score perf.
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="techSummaryBody"
+                               class="text-sm divide-y divide-slate-50 dark:divide-slate-800/80">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </div><!-- /content -->
+</main>
+
+<!-- ══════════════════════════════════════════
+     TOAST CONTAINER
+═══════════════════════════════════════════ -->
+<div id="toastContainer"
+     class="fixed bottom-5 right-5 z-[500] flex flex-col gap-2.5 no-print
+            max-w-[380px] w-full"></div>
+
+
+<!-- ══════════════════════════════════════════
+     JAVASCRIPT — Architecture IIFE/Module
+═══════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ════════════════════════════════════════════════════════════
+   CONFIGURATION
+════════════════════════════════════════════════════════════ */
+const CFG = {
+    API_BASE: 'http://localhost:3000',
+    REFRESH_INTERVAL: 60000, // auto-refresh toutes les 60 s
+};
+
+/* ════════════════════════════════════════════════════════════
+   ÉTAT GLOBAL
+════════════════════════════════════════════════════════════ */
+const STATE = {
+    allData: [],          // données brutes depuis /api/historique
+    filteredData: [],     // après application des filtres
+    stats: {},            // données depuis /api/stats
+    currentTab: 'dashboard',
+    currentPage: 1,
+    perPage: 25,
+    sortKey: '',
+    sortAsc: true,
+    activeStatus: 'all',
+    searchQuery: '',
+    machineFilter: 'all',
+    technicianFilter: 'all',
+    dateRangeFilter: 'all',
+    isLiveMode: false,
+    lastSync: null,
+    charts: {},
+};
+
+/* ════════════════════════════════════════════════════════════
+   DONNÉES DE DÉMONSTRATION (fallback si API indisponible)
+════════════════════════════════════════════════════════════ */
+const DEMO_DATA = (function generateDemo() {
+    const machines   = ['Machine-01','Machine-02','Machine-03','Machine-04','Machine-05','Machine-06'];
+    const ateliers   = ['Atelier A','Atelier B','Atelier C','Atelier Principal'];
+    const statuses   = ['Pending','Terminé','En réparation','En attente','Arrêt'];
+    const techs      = ['Issam','Admin Manager','Karim','Fatima','Youssef','Non assigné'];
+    const criticites = ['Critique','Majeure','Modérée','Faible'];
+    const pieces     = ['Roulement SKF','Courroie V','Capteur T°','Joint hydraulique','Moteur 5.5kW','—','Filtre à huile'];
+    const rows = [];
+    const now = new Date();
+    for (let i = 1; i <= 120; i++) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - Math.floor(Math.random() * 90));
+        const st  = statuses[Math.floor(Math.random() * statuses.length)];
+        const dur = Math.floor(Math.random() * 120);
+        rows.push({
+            id: i,
+            machine: machines[Math.floor(Math.random() * machines.length)],
+            atelier: ateliers[Math.floor(Math.random() * ateliers.length)],
+            status: st,
+            jour: d.toISOString().split('T')[0],
+            start_time: `${String(Math.floor(Math.random()*24)).padStart(2,'0')}:${String(Math.floor(Math.random()*60)).padStart(2,'0')}`,
+            heure_arret_technicien: `${String(Math.floor(Math.random()*24)).padStart(2,'0')}:${String(Math.floor(Math.random()*60)).padStart(2,'0')}`,
+            temps_attente: Math.floor(Math.random() * 60),
+            temps_reparation: dur,
+            duration: dur,
+            criticite: criticites[Math.floor(Math.random() * criticites.length)],
+            technician: techs[Math.floor(Math.random() * techs.length)],
+            technicien: techs[Math.floor(Math.random() * techs.length)],
+            piece_observation: pieces[Math.floor(Math.random() * pieces.length)],
+        });
+    }
+    return rows;
+})();
+
+/* ════════════════════════════════════════════════════════════
+   UTILITAIRES
+════════════════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+const fmtMin = v => (v != null && v !== '' && v !== '—') ? `${v} min` : '—';
+
+function toast(msg, type = 'info', duration = 4000) {
+    const icons = { success:'fa-circle-check text-emerald-400', error:'fa-circle-xmark text-red-400', info:'fa-circle-info text-brand-400', warn:'fa-triangle-exclamation text-amber-400' };
+    const el = document.createElement('div');
+    el.className = `toast-item flex items-start gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl px-4 py-3`;
+    el.innerHTML = `<i class="fa-solid ${icons[type]||icons.info} mt-0.5 shrink-0"></i><p class="text-sm font-medium text-slate-700 dark:text-slate-300 flex-1">${msg}</p><button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-600 ml-1 shrink-0"><i class="fa-solid fa-xmark text-xs"></i></button>`;
+    $('toastContainer').prepend(el);
+    setTimeout(() => { el.classList.add('toast-exit'); setTimeout(() => el.remove(), 300); }, duration);
+}
+
+function showLoading(show) {
+    const el = $('globalLoading');
+    if (show) { el.classList.remove('hidden'); el.classList.add('flex'); }
+    else       { el.classList.remove('flex');  el.classList.add('hidden'); }
+}
+
+function setApiStatus(ok, source) {
+    const dot  = $('apiStatusDot');
+    const text = $('apiStatusText');
+    const lbl  = $('dataSourceLabel');
+    const sync = $('lastSyncLabel');
+    const rep  = $('reportSource');
+    const rs   = $('reportLastSync');
+    const now  = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    if (ok) {
+        dot.className  = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+        text.textContent = 'API connectée';
+        text.className = 'text-sm font-semibold text-emerald-400';
+    } else {
+        dot.className  = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+        text.textContent = 'Mode démonstration';
+        text.className = 'text-sm font-semibold text-amber-400';
+    }
+    if (lbl)  lbl.textContent  = source || '—';
+    if (sync) sync.textContent = now;
+    if (rep)  rep.textContent  = source || '—';
+    if (rs)   rs.textContent   = now;
+    STATE.lastSync = now;
+}
+
+/* ════════════════════════════════════════════════════════════
+   HORLOGE TEMPS RÉEL
+════════════════════════════════════════════════════════════ */
+function startClock() {
+    function tick() {
+        const now  = new Date();
+        const date = now.toLocaleDateString('fr-FR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+        const time = now.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+        const dEl  = $('currentDate'); const tEl = $('currentTime');
+        if (dEl) dEl.textContent = date.charAt(0).toUpperCase() + date.slice(1);
+        if (tEl) tEl.textContent = time;
+    }
+    tick();
+    setInterval(tick, 1000);
+}
+
+/* ════════════════════════════════════════════════════════════
+   NORMALISATION DES DONNÉES API → format interne commun
+   La BD utilise : machine, status (ex 'Pending'), duration, technician
+════════════════════════════════════════════════════════════ */
+function normalizeRow(raw) {
+    return {
+        id:                   raw.id,
+        machine:              raw.machine || '—',
+        atelier:              raw.atelier || raw.workshop || 'Atelier Principal',
+        status:               raw.status  || raw.statut   || '—',
+        jour:                 raw.jour    || raw.start_time?.split('T')[0] || raw.date || raw.created_at?.split('T')[0] || '—',
+        heure_declaration:    raw.heure_declaration || raw.start_time?.split('T')[1]?.slice(0,5) || raw.heure || '—',
+        heure_arret_technicien: raw.heure_arret_technicien || raw.arret_tech || '—',
+        temps_attente:        raw.temps_attente   ?? raw.wait_time    ?? null,
+        temps_reparation:     raw.temps_reparation ?? raw.duration    ?? null,
+        duration:             raw.duration        ?? raw.temps_reparation ?? null,
+        criticite:            raw.criticite       || raw.criticality  || '—',
+        technicien:           raw.technicien      || raw.technician   || '—',
+        technician:           raw.technician      || raw.technicien   || '—',
+        piece_observation:    raw.piece_observation || raw.piece || raw.observation || '—',
+    };
+}
+
+/* ════════════════════════════════════════════════════════════
+   NORMALISATION DU STATUT pour le matching des chips
+   La BD peut avoir : 'Pending', 'Terminé', 'En réparation', 'En attente', 'Arrêt'
+════════════════════════════════════════════════════════════ */
+function normalizeStatus(s) {
+    if (!s) return '';
+    const lower = s.toLowerCase().replace(/[éèê]/g,'e').replace(/î/g,'i');
+    if (lower.includes('termin') || lower.includes('resolv') || lower.includes('clotur') || lower.includes('done') || lower.includes('closed')) return 'termine';
+    if (lower.includes('reparat') || lower.includes('repair') || lower.includes('cours') || lower.includes('progress')) return 'en_reparation';
+    if (lower.includes('attente') || lower.includes('wait') || lower.includes('pending')) return 'en_attente';
+    if (lower.includes('arret') || lower.includes('stop') || lower.includes('down')) return 'arret';
+    return lower.replace(/\s+/g, '_');
+}
+
+/* ════════════════════════════════════════════════════════════
+   BADGE STATUT (pilule colorée)
+════════════════════════════════════════════════════════════ */
+function statusBadge(rawStatus) {
+    const norm = normalizeStatus(rawStatus);
+    const classMap = {
+        termine:        's-termine',
+        en_reparation:  's-en_reparation',
+        en_attente:     's-en_attente',
+        arret:          's-arret',
+    };
+    const cls = classMap[norm] || 's-pending';
+    return `<span class="status-pill ${cls}">${rawStatus || '—'}</span>`;
+}
+
+/* ════════════════════════════════════════════════════════════
+   BADGE CRITICITÉ
+════════════════════════════════════════════════════════════ */
+function critBadge(c) {
+    if (!c || c === '—') return '<span class="text-slate-400">—</span>';
+    const lower = c.toLowerCase().replace(/[éèê]/g,'e');
+    let cls = 'crit-moderee';
+    if (lower.includes('critiqu')) cls = 'crit-critique';
+    else if (lower.includes('majeur')) cls = 'crit-majeure';
+    else if (lower.includes('faible') || lower.includes('minor')) cls = 'crit-faible';
+    return `<span class="crit-badge ${cls}">${c}</span>`;
+}
+
+/* ════════════════════════════════════════════════════════════
+   FETCH /api/stats  — Statistiques KPI
+════════════════════════════════════════════════════════════ */
+async function fetchStats() {
+    try {
+        const res = await fetch(`${CFG.API_BASE}/api/stats`, { signal: AbortSignal.timeout(5000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        return json.data || json.stats || json;
+    } catch (e) {
+        console.warn('⚠️ /api/stats indisponible :', e.message);
+        return null;
+    }
+}
+
+/* ════════════════════════════════════════════════════════════
+   FETCH /api/historique  — Données tableau
+════════════════════════════════════════════════════════════ */
+async function fetchHistorique() {
+    try {
+        const res = await fetch(`${CFG.API_BASE}/api/historique`, { signal: AbortSignal.timeout(8000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const raw = Array.isArray(json) ? json : (json.data || json.logs || json.results || []);
+        return raw.map(normalizeRow);
+    } catch (e) {
+        console.warn('⚠️ /api/historique indisponible :', e.message);
+        return null;
+    }
+}
+
+/* ════════════════════════════════════════════════════════════
+   CALCUL KPI depuis les données locales (fallback)
+════════════════════════════════════════════════════════════ */
+function computeStatsFromData(data) {
+    const total = data.length;
+    // Machines UNIQUES avec statut "Pending" (status BD = 'Pending')
+    const uniqueMachinesPending = new Set(
+        data.filter(r => r.status && r.status.toLowerCase() === 'pending').map(r => r.machine)
+    ).size;
+
+    const resolved = data.filter(r => normalizeStatus(r.status) === 'termine').length;
+    const durations = data.map(r => Number(r.duration || r.temps_reparation)).filter(v => !isNaN(v) && v > 0);
+    const avgDur = durations.length ? Math.round(durations.reduce((a,b)=>a+b,0) / durations.length) : 0;
+    const uniqueTechs = new Set(data.map(r => r.technicien || r.technician).filter(Boolean)).size;
+    const availability = total ? ((resolved / total) * 100).toFixed(1) + '%' : '—';
+    return {
+        totalInterventions: total,
+        machinesEnPanne: uniqueMachinesPending,
+        avgDuration: avgDur,
+        uniqueTechs,
+        availability,
+        mttr: avgDur ? `${avgDur} min` : '—',
+    };
+}
+
+/* ════════════════════════════════════════════════════════════
+   RENDU KPI CARDS
+════════════════════════════════════════════════════════════ */
+function renderKPICards(stats, dataStats) {
+    const container = $('kpiContainer');
+    if (!container) return;
+
+    // Priorité : stats API → stats calculées depuis données locales
+    const totalInterventions = stats?.totalInterventions ?? stats?.total_interventions ?? stats?.count ?? dataStats.totalInterventions;
+    // ⭐ MACHINES EN PANNE = machines UNIQUES avec status 'Pending'
+    const machinesEnPanne    = stats?.machinesEnPanne    ?? stats?.machines_en_panne  ?? dataStats.machinesEnPanne;
+    const mttr               = stats?.mttr               ?? dataStats.mttr;
+    const uniqueTechs        = stats?.uniqueTechs        ?? stats?.techniciens         ?? dataStats.uniqueTechs;
+    const availability       = stats?.availability       ?? stats?.disponibilite       ?? dataStats.availability;
+
+    // Mise à jour hero banner
+    const heroA = $('heroAvailability'); if (heroA) heroA.textContent = availability || '—';
+    const heroM = $('heroMTTR');        if (heroM) heroM.textContent = mttr || '—';
+    const heroI = $('heroInterventions'); if (heroI) heroI.textContent = totalInterventions ?? '—';
+    const heroT = $('heroTechs');       if (heroT) heroT.textContent = uniqueTechs ?? '—';
+
+    // Alertes actives = machines en panne
+    const alertCount = $('sidebarAlertCount'); if (alertCount) alertCount.textContent = machinesEnPanne ?? 0;
+    const notifBadge = $('notifBadge');
+    if (notifBadge) {
+        notifBadge.textContent = machinesEnPanne ?? 0;
+        if ((machinesEnPanne ?? 0) > 0) {
+            notifBadge.classList.remove('hidden');
+            notifBadge.classList.add('flex');
+        } else {
+            notifBadge.classList.add('hidden');
+            notifBadge.classList.remove('flex');
+        }
+    }
+
+    const cards = [
+        {
+            icon: 'fa-list-check',
+            iconBg: 'bg-brand-500/10',
+            iconColor: 'text-brand-600',
+            label: 'Total interventions',
+            value: totalInterventions ?? '—',
+            sub: 'Enregistrées dans la base',
+            accent: 'from-brand-500/5 to-brand-600/10',
+            border: 'border-brand-500/20',
+            valueClass: 'text-brand-700 dark:text-brand-300',
+        },
+        {
+            icon: 'fa-triangle-exclamation',
+            iconBg: 'bg-red-500/10',
+            iconColor: 'text-red-600',
+            label: 'Machines en panne',
+            value: machinesEnPanne ?? '—',
+            sub: 'Machines uniques (statut Pending)',
+            accent: 'from-red-500/5 to-red-600/10',
+            border: 'border-red-500/20',
+            valueClass: 'text-red-600 dark:text-red-400',
+        },
+        {
+            icon: 'fa-clock-rotate-left',
+            iconBg: 'bg-amber-500/10',
+            iconColor: 'text-amber-600',
+            label: 'MTTR moyen',
+            value: mttr || '—',
+            sub: 'Durée moyenne de réparation',
+            accent: 'from-amber-500/5 to-amber-600/10',
+            border: 'border-amber-500/20',
+            valueClass: 'text-amber-700 dark:text-amber-300',
+        },
+        {
+            icon: 'fa-users-gear',
+            iconBg: 'bg-emerald-500/10',
+            iconColor: 'text-emerald-600',
+            label: 'Techniciens actifs',
+            value: uniqueTechs ?? '—',
+            sub: 'Intervenants distincts',
+            accent: 'from-emerald-500/5 to-emerald-600/10',
+            border: 'border-emerald-500/20',
+            valueClass: 'text-emerald-700 dark:text-emerald-300',
+        },
+    ];
+
+    container.innerHTML = cards.map(c => `
+        <div class="kpi-card relative overflow-hidden rounded-3xl border ${c.border}
+                    bg-gradient-to-br ${c.accent} p-6 shadow-card
+                    bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800">
+            <div class="flex items-start justify-between mb-4">
+                <div class="w-11 h-11 rounded-2xl ${c.iconBg} flex items-center justify-center">
+                    <i class="fa-solid ${c.icon} ${c.iconColor} text-base"></i>
+                </div>
+            </div>
+            <p class="text-[11px] uppercase tracking-[0.18em] text-slate-400 font-bold mb-1">
+                ${c.label}
+            </p>
+            <p class="text-4xl font-display font-semibold ${c.valueClass} leading-none">
+                ${c.value}
+            </p>
+            <p class="mt-2 text-xs text-slate-400">${c.sub}</p>
+        </div>
+    `).join('');
+}
+
+/* ════════════════════════════════════════════════════════════
+   FILTRAGE DES DONNÉES
+════════════════════════════════════════════════════════════ */
+function applyFilters() {
+    let data = [...STATE.allData];
+
+    // Filtre statut (chip)
+    if (STATE.activeStatus !== 'all') {
+        data = data.filter(r => normalizeStatus(r.status) === STATE.activeStatus);
+    }
+
+    // Filtre recherche
+    if (STATE.searchQuery) {
+        const q = STATE.searchQuery.toLowerCase();
+        data = data.filter(r =>
+            (r.machine||'').toLowerCase().includes(q) ||
+            (r.technicien||r.technician||'').toLowerCase().includes(q) ||
+            (r.atelier||'').toLowerCase().includes(q) ||
+            (r.piece_observation||'').toLowerCase().includes(q) ||
+            (r.status||'').toLowerCase().includes(q)
+        );
+    }
+
+    // Filtre machine
+    if (STATE.machineFilter !== 'all') {
+        data = data.filter(r => r.machine === STATE.machineFilter);
+    }
+
+    // Filtre technicien
+    if (STATE.technicianFilter !== 'all') {
+        data = data.filter(r => (r.technicien||r.technician) === STATE.technicianFilter);
+    }
+
+    // Filtre période
+if (STATE.dateRangeFilter !== 'all') {
+    const now = new Date();
+    data = data.filter(r => {
+        // كنقلبو على السمية ديال الخانة لي فيها التاريخ الحقيقي (يقدر يكون timestamp, date, ولا jour)
+        const dateString = r.timestamp || r.date || r.createdAt || r.jour;
+        
+        if (!dateString || dateString === '—') return false;
+        
+        let d = new Date(dateString);
+        
+        // إيلا كان التاريخ غير صالح (مثلا فيه غير الوقت "15:55:32")
+        if (isNaN(d)) {
+            // كنفترضوا أنه ديال اليوم بما أنه تسجل غير بالوقت
+            if (typeof dateString === 'string' && dateString.includes(':')) {
+                d = new Date(); 
+            } else {
+                return false;
+            }
+        }
+        
+        if (STATE.dateRangeFilter === 'today') {
+            return d.toDateString() === now.toDateString();
+        }
+        if (STATE.dateRangeFilter === 'week') {
+            const startOfWeek = new Date(now);
+            startOfWeek.setDate(now.getDate() - now.getDay());
+            startOfWeek.setHours(0,0,0,0);
+            return d >= startOfWeek;
+        }
+        if (STATE.dateRangeFilter === 'month') {
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        }
+        if (STATE.dateRangeFilter === 'year') {
+            return d.getFullYear() === now.getFullYear();
+        }
+        return true;
+    });
+}
+    // Tri
+    if (STATE.sortKey) {
+        data.sort((a, b) => {
+            let va = a[STATE.sortKey] ?? '';
+            let vb = b[STATE.sortKey] ?? '';
+            if (typeof va === 'number' && typeof vb === 'number') {
+                return STATE.sortAsc ? va - vb : vb - va;
+            }
+            va = String(va).toLowerCase();
+            vb = String(vb).toLowerCase();
+            return STATE.sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+        });
+    }
+
+    STATE.filteredData = data;
+    STATE.currentPage  = 1;
+    renderTable();
+    updateReportPanel();
+}
+
+/* ════════════════════════════════════════════════════════════
+   RENDU DU TABLEAU
+════════════════════════════════════════════════════════════ */
+function renderTable() {
+    const tbody = $('dataTableBody');
+    const rowCount = $('rowCount');
+    const paginInfo = $('paginationInfo');
+    const pagDiv    = $('pagination');
+    if (!tbody) return;
+
+    const total   = STATE.filteredData.length;
+    const perPage = STATE.perPage;
+    const pages   = Math.max(1, Math.ceil(total / perPage));
+    if (STATE.currentPage > pages) STATE.currentPage = pages;
+    const start = (STATE.currentPage - 1) * perPage;
+    const slice = STATE.filteredData.slice(start, start + perPage);
+
+    // Compteur
+    if (rowCount) rowCount.textContent = `${total} entrée${total > 1 ? 's' : ''}`;
+
+    // Mode badge
+    const modeBadge = $('modeBadge');
+    if (modeBadge) {
+        if (STATE.isLiveMode) {
+            modeBadge.textContent  = 'Mode Live';
+            modeBadge.className    = 'px-3 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/25 dark:text-emerald-300';
+        } else {
+            modeBadge.textContent  = 'Mode Démo';
+            modeBadge.className    = 'px-3 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/25 dark:text-amber-300';
+        }
+    }
+
+   // Tableau vide
+if (slice.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="12" class="px-5 py-12 text-center text-slate-400 text-sm">
+        <i class="fa-solid fa-database mr-2 opacity-40"></i>Aucune intervention trouvée avec ces filtres.
+    </td></tr>`;
+    if (paginInfo) paginInfo.textContent = '—';
+    if (pagDiv)    pagDiv.innerHTML = '';
+    return;
+}
+
+// Lignes
+tbody.innerHTML = slice.map((r, idx) => {
+    const rowNum = start + idx + 1;
+    return `
+    <tr class="table-row-hover transition-colors">
+        <td class="px-5 py-4 text-slate-400 text-xs font-mono">${rowNum}</td>
+        <td class="px-5 py-4">
+            <span class="font-bold text-slate-800 dark:text-slate-200">${r.machine}</span>
+        </td>
+        <td class="px-5 py-4 text-slate-500 dark:text-slate-400">${r.atelier}</td>
+        <td class="px-5 py-4">${statusBadge(r.status)}</td>
+        <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs">${r.jour}</td>
+<td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs">${r.start_time || '—'}</td>        <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs">${r.heure_arret_technicien}</td>
+        <td class="px-5 py-4 text-xs font-semibold text-amber-600 dark:text-amber-400">${fmtMin(r.temps_attente)}</td>
+        <td class="px-5 py-4 text-xs font-semibold text-blue-600 dark:text-blue-400">${fmtMin(r.temps_reparation ?? r.duration)}</td>
+        <td class="px-5 py-4">${critBadge(r.criticite)}</td>
+        <td class="px-5 py-4 font-medium text-slate-700 dark:text-slate-300">${r.technicien || r.technician || '—'}</td>
+        <td class="px-5 py-4 text-slate-400 text-xs max-w-[180px] truncate" title="${r.piece_observation}">${r.piece_observation}</td>
+    </tr>`;
+}).join('');
+
+// Pagination info
+const endIdx = Math.min(start + perPage, total);
+if (paginInfo) paginInfo.textContent = `Affichage ${start+1}–${endIdx} sur ${total} entrées`;
+
+// Boutons pagination
+if (pagDiv) {
+    const btnBase = 'min-w-[36px] h-9 px-2 rounded-xl text-xs font-bold transition-all';
+    const btnActive = `${btnBase} bg-brand-600 text-white shadow-glow`;
+    const btnInactive = `${btnBase} border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800`;
+    let html = '';
+    // Prev
+    html += `<button class="${STATE.currentPage === 1 ? btnInactive+' opacity-40 cursor-not-allowed' : btnInactive}" ${STATE.currentPage===1?'disabled':''} onclick="APP.goPage(${STATE.currentPage-1})"><i class="fa-solid fa-chevron-left text-[10px]"></i></button>`;
+    // Pages
+    const range = buildPageRange(STATE.currentPage, pages);
+    range.forEach(p => {
+        if (p === '…') {
+            html += `<span class="px-1 text-slate-400">…</span>`;
+        } else {
+            html += `<button class="${p === STATE.currentPage ? btnActive : btnInactive}" onclick="APP.goPage(${p})">${p}</button>`;
+        }
+    });
+    // Next
+    html += `<button class="${STATE.currentPage === pages ? btnInactive+' opacity-40 cursor-not-allowed' : btnInactive}" ${STATE.currentPage===pages?'disabled':''} onclick="APP.goPage(${STATE.currentPage+1})"><i class="fa-solid fa-chevron-right text-[10px]"></i></button>`;
+    pagDiv.innerHTML = html;
+}
+} // <--- هاد اللامة هي لي كانت ناقصة وكتسد الفونكسيون كاملة
+function buildPageRange(current, total) {
+    if (total <= 7) return Array.from({length:total},(_,i)=>i+1);
+    const pages = [1];
+    if (current > 3) pages.push('…');
+    for (let i = Math.max(2, current-1); i <= Math.min(total-1, current+1); i++) pages.push(i);
+    if (current < total-2) pages.push('…');
+    pages.push(total);
+    return pages;
+}
+
+/* ════════════════════════════════════════════════════════════
+   POPULATE FILTER DROPDOWNS
+════════════════════════════════════════════════════════════ */
+function populateDropdowns(data) {
+    const machines  = [...new Set(data.map(r => r.machine).filter(Boolean))].sort();
+    const techs     = [...new Set(data.map(r => r.technicien||r.technician).filter(v=>v&&v!=='—'))].sort();
+
+    const mSel = $('machineFilter');
+    if (mSel) {
+        const prev = mSel.value;
+        mSel.innerHTML = '<option value="all">Toutes les machines</option>' +
+            machines.map(m => `<option value="${m}">${m}</option>`).join('');
+        if (machines.includes(prev)) mSel.value = prev;
+    }
+
+    const tSel = $('technicianFilter');
+    if (tSel) {
+        const prev = tSel.value;
+        tSel.innerHTML = '<option value="all">Tous les techniciens</option>' +
+            techs.map(t => `<option value="${t}">${t}</option>`).join('');
+        if (techs.includes(prev)) tSel.value = prev;
+    }
+}
+
+/* ════════════════════════════════════════════════════════════
+   PANEL RAPPORTS
+════════════════════════════════════════════════════════════ */
+function updateReportPanel() {
+    const data    = STATE.filteredData;
+    const allData = STATE.allData;
+    const el_rows = $('reportRows');  if (el_rows) el_rows.textContent = data.length;
+    const el_tot  = $('reportTotal'); if (el_tot)  el_tot.textContent  = allData.length;
+
+    // Résumé exécutif
+    const summary = $('reportSummary');
+    if (summary) {
+        const resolved  = data.filter(r => normalizeStatus(r.status) === 'termine').length;
+        const pending   = data.filter(r => normalizeStatus(r.status) === 'en_attente' || r.status?.toLowerCase() === 'pending').length;
+        const durations = data.map(r=>Number(r.duration||r.temps_reparation)).filter(v=>!isNaN(v)&&v>0);
+        const avgDur    = durations.length ? Math.round(durations.reduce((a,b)=>a+b,0)/durations.length) : 0;
+        const rate      = data.length ? Math.round((resolved/data.length)*100) : 0;
+        summary.innerHTML = [
+            { label:'Terminées', value: resolved, cls:'text-emerald-600' },
+            { label:'En attente/Pending', value: pending, cls:'text-amber-600' },
+            { label:'MTTR moyen', value: avgDur ? `${avgDur} min` : '—', cls:'text-blue-600' },
+            { label:'Taux résolution', value: `${rate}%`, cls:'text-brand-600' },
+        ].map(s => `
+            <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3">
+                <p class="text-[10px] uppercase tracking-[0.18em] text-slate-400 font-bold">${s.label}</p>
+                <p class="mt-1 text-xl font-display ${s.cls}">${s.value}</p>
+            </div>
+        `).join('');
+    }
+
+    // Synthèse techniciens
+    const techBody = $('techSummaryBody');
+    if (techBody) {
+        const techMap = {};
+        data.forEach(r => {
+            const t = r.technicien || r.technician || '—';
+            if (!techMap[t]) techMap[t] = { total:0, done:0, waits:[], reps:[] };
+            techMap[t].total++;
+            if (normalizeStatus(r.status) === 'termine') techMap[t].done++;
+            const w = Number(r.temps_attente);   if (!isNaN(w) && w >= 0) techMap[t].waits.push(w);
+            const rp = Number(r.temps_reparation ?? r.duration); if (!isNaN(rp) && rp > 0) techMap[t].reps.push(rp);
+        });
+        const rows = Object.entries(techMap).sort((a,b)=>b[1].total-a[1].total);
+        if (rows.length === 0) {
+            techBody.innerHTML = `<tr><td colspan="7" class="px-6 py-8 text-center text-slate-400 text-sm">Aucune donnée disponible.</td></tr>`;
+            return;
+        }
+        techBody.innerHTML = rows.map(([name, d]) => {
+            const rate = d.total ? Math.round((d.done/d.total)*100) : 0;
+            const avgW = d.waits.length ? Math.round(d.waits.reduce((a,b)=>a+b,0)/d.waits.length) : null;
+            const avgR = d.reps.length  ? Math.round(d.reps.reduce((a,b)=>a+b,0)/d.reps.length)  : null;
+            const score = Math.min(100, Math.round(rate * 0.7 + (avgR ? Math.max(0, 100-avgR) * 0.3 : 0)));
+            return `
+            <tr class="table-row-hover transition-colors">
+                <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${name}</td>
+                <td class="px-6 py-4 text-slate-600 dark:text-slate-400">${d.total}</td>
+                <td class="px-6 py-4 text-emerald-600 dark:text-emerald-400 font-medium">${d.done}</td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                            <div class="h-full rounded-full progress-bar ${rate>=80?'bg-emerald-500':rate>=50?'bg-amber-500':'bg-red-500'}"
+                                 style="width:${rate}%"></div>
+                        </div>
+                        <span class="text-xs font-bold text-slate-600 dark:text-slate-400 w-10 text-right">${rate}%</span>
+                    </div>
+                </td>
+                <td class="px-6 py-4 text-amber-600 dark:text-amber-400 text-xs font-semibold">${avgW!=null?fmtMin(avgW):'—'}</td>
+                <td class="px-6 py-4 text-blue-600 dark:text-blue-400 text-xs font-semibold">${avgR!=null?fmtMin(avgR):'—'}</td>
+                <td class="px-6 py-4">
+                    <span class="font-bold text-sm ${score>=80?'text-emerald-600':score>=50?'text-amber-600':'text-red-600'}">${score}</span>
+                    <span class="text-xs text-slate-400">/100</span>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+}
+
+/* ════════════════════════════════════════════════════════════
+   GRAPHIQUES ANALYTICS
+════════════════════════════════════════════════════════════ */
+function buildCharts(data) {
+    // Détruire les anciens graphiques si nécessaire
+    Object.values(STATE.charts).forEach(c => { try { c.destroy(); } catch(_){} });
+    STATE.charts = {};
+
+    const isDark = document.documentElement.classList.contains('dark');
+    const textColor = isDark ? '#94a3b8' : '#64748b';
+    const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+    Chart.defaults.color = textColor;
+    Chart.defaults.font.family = 'Inter, sans-serif';
+
+    /* --- 1. Fréquence par machine --- */
+    const machCount = {};
+    data.forEach(r => { machCount[r.machine] = (machCount[r.machine]||0) + 1; });
+    const machSorted = Object.entries(machCount).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const ctxMach = document.getElementById('chartMachines')?.getContext('2d');
+    if (ctxMach) {
+        STATE.charts.machines = new Chart(ctxMach, {
+            type: 'bar',
+            data: {
+                labels: machSorted.map(([k])=>k),
+                datasets: [{ label:'Interventions', data: machSorted.map(([,v])=>v),
+                    backgroundColor: 'rgba(37,99,235,0.75)', borderRadius: 8,
+                    borderSkipped: false }]
+            },
+            options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} },
+                scales:{ x:{grid:{color:gridColor}}, y:{grid:{color:gridColor}, beginAtZero:true, ticks:{stepSize:1}} } }
+        });
+    }
+
+    /* --- 2. Répartition par statut (doughnut) --- */
+    const statCount = {};
+    data.forEach(r => { statCount[r.status||'—'] = (statCount[r.status||'—']||0) + 1; });
+    const statColors = { 'Terminé':'#10b981','Pending':'#f59e0b','En réparation':'#f59e0b','En attente':'#94a3b8','Arrêt':'#ef4444','—':'#cbd5e1' };
+    const statLabels = Object.keys(statCount);
+    const statVals   = Object.values(statCount);
+    const statBgs    = statLabels.map(l => statColors[l] || `hsl(${Math.random()*360},60%,55%)`);
+
+    // Légende custom
+    const legendEl = $('statusLegend');
+    if (legendEl) {
+        legendEl.innerHTML = statLabels.map((l,i) =>
+            `<div class="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
+                <span class="w-3 h-3 rounded-full inline-block" style="background:${statBgs[i]}"></span>${l} (${statVals[i]})
+            </div>`
+        ).join('');
+    }
+    const ctxStat = document.getElementById('chartStatus')?.getContext('2d');
+    if (ctxStat) {
+        STATE.charts.status = new Chart(ctxStat, {
+            type: 'doughnut',
+            data: { labels: statLabels, datasets: [{ data: statVals, backgroundColor: statBgs, borderWidth:2, borderColor: isDark?'#0f172a':'#fff', hoverOffset:6 }] },
+            options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} } }
+        });
+    }
+
+    /* --- 3. Évolution mensuelle --- */
+    const monthMap = {};
+    data.forEach(r => {
+        if (!r.jour || r.jour==='—') return;
+        const d = new Date(r.jour); if (isNaN(d)) return;
+        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        if (!monthMap[key]) monthMap[key] = { waits:[], reps:[] };
+        const w = Number(r.temps_attente); if (!isNaN(w)&&w>=0) monthMap[key].waits.push(w);
+        const rp = Number(r.temps_reparation??r.duration); if (!isNaN(rp)&&rp>0) monthMap[key].reps.push(rp);
+    });
+    const months = Object.keys(monthMap).sort();
+    const avgWaits = months.map(m => monthMap[m].waits.length ? Math.round(monthMap[m].waits.reduce((a,b)=>a+b,0)/monthMap[m].waits.length) : 0);
+    const avgReps  = months.map(m => monthMap[m].reps.length  ? Math.round(monthMap[m].reps.reduce((a,b)=>a+b,0)/monthMap[m].reps.length)  : 0);
+    const ctxTrend = document.getElementById('chartTrend')?.getContext('2d');
+    if (ctxTrend) {
+        STATE.charts.trend = new Chart(ctxTrend, {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [
+                    { label:'Attente moy. (min)', data:avgWaits, borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.1)', tension:0.4, fill:true, pointRadius:4 },
+                    { label:'Réparation moy. (min)', data:avgReps, borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,0.1)', tension:0.4, fill:true, pointRadius:4 },
+                ]
+            },
+            options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'top'} },
+                scales:{ x:{grid:{color:gridColor}}, y:{grid:{color:gridColor}, beginAtZero:true} } }
+        });
+    }
+
+    /* --- 4. Charge techniciens --- */
+    const techCount = {};
+    data.forEach(r => { const t=r.technicien||r.technician||'—'; techCount[t]=(techCount[t]||0)+1; });
+    const techSorted = Object.entries(techCount).sort((a,b)=>b[1]-a[1]);
+    const ctxTech = document.getElementById('chartTechs')?.getContext('2d');
+    if (ctxTech) {
+        STATE.charts.techs = new Chart(ctxTech, {
+            type: 'bar',
+            data: {
+                labels: techSorted.map(([k])=>k),
+                datasets: [{ label:'Interventions', data:techSorted.map(([,v])=>v),
+                    backgroundColor:'rgba(6,182,212,0.75)', borderRadius:8, borderSkipped:false }]
+            },
+            options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+                scales:{ x:{grid:{color:gridColor}, beginAtZero:true, ticks:{stepSize:1}}, y:{grid:{color:gridColor}} } }
+        });
+    }
+
+    /* --- 5. Pannes par jour de semaine --- */
+    const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+    const dayCount = [0,0,0,0,0,0,0];
+    data.forEach(r => {
+        if (!r.jour||r.jour==='—') return;
+        const d = new Date(r.jour); if (isNaN(d)) return;
+        dayCount[d.getDay()]++;
+    });
+    const ctxDay = document.getElementById('chartWeekday')?.getContext('2d');
+    if (ctxDay) {
+        STATE.charts.weekday = new Chart(ctxDay, {
+            type: 'bar',
+            data: {
+                labels: days,
+                datasets: [{ label:'Pannes', data:dayCount,
+                    backgroundColor: ['#60a5fa','#34d399','#fbbf24','#f87171','#a78bfa','#fb923c','#22d3ee'],
+                    borderRadius:8, borderSkipped:false }]
+            },
+            options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+                scales:{ x:{grid:{color:gridColor}}, y:{grid:{color:gridColor}, beginAtZero:true, ticks:{stepSize:1}} } }
+        });
+    }
+
+    /* --- 6. Criticité (doughnut) --- */
+    const critCount = {};
+    data.forEach(r => { const c=r.criticite||'—'; critCount[c]=(critCount[c]||0)+1; });
+    const critLabels = Object.keys(critCount);
+    const critVals   = Object.values(critCount);
+    const critColors = {'Critique':'#ef4444','Majeure':'#f59e0b','Modérée':'#3b82f6','Faible':'#10b981','—':'#94a3b8'};
+    const ctxCrit = document.getElementById('chartCriticality')?.getContext('2d');
+    if (ctxCrit) {
+        STATE.charts.criticality = new Chart(ctxCrit, {
+            type: 'doughnut',
+            data: { labels:critLabels, datasets:[{ data:critVals,
+                backgroundColor:critLabels.map(l=>critColors[l]||'#94a3b8'),
+                borderWidth:2, borderColor:isDark?'#0f172a':'#fff', hoverOffset:6 }] },
+            options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} }
+        });
+    }
+
+    /* --- 7. Atelier (bar) --- */
+    const atCount = {};
+    data.forEach(r => { const a=r.atelier||'—'; atCount[a]=(atCount[a]||0)+1; });
+    const atSorted = Object.entries(atCount).sort((a,b)=>b[1]-a[1]);
+    const ctxAt = document.getElementById('chartAtelier')?.getContext('2d');
+    if (ctxAt) {
+        STATE.charts.atelier = new Chart(ctxAt, {
+            type: 'bar',
+            data: {
+                labels: atSorted.map(([k])=>k),
+                datasets:[{ label:'Pannes', data:atSorted.map(([,v])=>v),
+                    backgroundColor:'rgba(168,85,247,0.75)', borderRadius:8, borderSkipped:false }]
+            },
+            options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+                scales:{ x:{grid:{color:gridColor}, beginAtZero:true, ticks:{stepSize:1}}, y:{grid:{color:gridColor}} } }
+        });
+    }
+}
+
+/* ════════════════════════════════════════════════════════════
+   EXPORT CSV
+════════════════════════════════════════════════════════════ */
+function exportCSV() {
+    const data = STATE.filteredData;
+    if (!data.length) { toast('Aucune donnée à exporter.', 'warn'); return; }
+    const headers = ['#','Machine','Atelier','Statut','Date','Déclaration','Arr. Tech.','Attente (min)','Réparation (min)','Criticité','Technicien','Pièce/Observation'];
+    const rows = data.map((r,i) => [
+        i+1, r.machine, r.atelier, r.status, r.jour, r.heure_declaration,
+        r.heure_arret_technicien, r.temps_attente??'', r.temps_reparation??r.duration??'',
+        r.criticite, r.technicien||r.technician, r.piece_observation
+    ]);
+    const csvContent = [headers, ...rows].map(r => r.map(v => `"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\ufeff'+csvContent], { type:'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `interventions_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+    toast(`Export CSV — ${data.length} lignes exportées.`, 'success');
+}
+
+/* ════════════════════════════════════════════════════════════
+   EXPORT EXCEL (XLSX)
+════════════════════════════════════════════════════════════ */
+function exportXLSX() {
+    if (typeof XLSX === 'undefined') { toast('Bibliothèque XLSX non chargée.', 'error'); return; }
+    const data = STATE.filteredData;
+    if (!data.length) { toast('Aucune donnée à exporter.', 'warn'); return; }
+    const headers = ['#','Machine','Atelier','Statut','Date','Déclaration','Arr. Tech.','Attente (min)','Réparation (min)','Criticité','Technicien','Pièce/Observation'];
+    const rows = data.map((r,i) => [
+    i+1, r.machine, r.atelier, r.status, r.jour, r.start_time || '',
+    r.heure_arret_technicien, r.temps_attente??'', r.temps_reparation??r.duration??'',
+    r.criticite, r.technicien||r.technician, r.piece_observation
+]);
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Interventions');
+    XLSX.writeFile(wb, `interventions_${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast(`Export Excel — ${data.length} lignes exportées.`, 'success');
+}
+
+/* ════════════════════════════════════════════════════════════
+   HEALTH CHECK
+════════════════════════════════════════════════════════════ */
+async function doHealthCheck() {
+    toast('Vérification de la connectivité API…', 'info', 2000);
+    try {
+        const t0  = Date.now();
+        const res = await fetch(`${CFG.API_BASE}/api/stats`, { signal:AbortSignal.timeout(5000) });
+        const ms  = Date.now() - t0;
+        if (res.ok) {
+            toast(`✅ API opérationnelle — réponse en ${ms} ms`, 'success');
+        } else {
+            toast(`⚠️ API réponse HTTP ${res.status}`, 'warn');
+        }
+    } catch(e) {
+        toast(`❌ API injoignable : ${e.message}`, 'error');
+    }
+}
+
+/* ════════════════════════════════════════════════════════════
+   CHARGEMENT PRINCIPAL
+════════════════════════════════════════════════════════════ */
+async function loadAll(silent = false) {
+    if (!silent) showLoading(true);
+
+    // Récupérer stats et historique en parallèle
+    const [statsRaw, historique] = await Promise.all([fetchStats(), fetchHistorique()]);
+
+    let data;
+    let isLive = false;
+
+    if (historique && historique.length > 0) {
+        data   = historique;
+        isLive = true;
+        setApiStatus(true, 'API localhost:3000');
+        if (!silent) toast('Données chargées depuis l\'API backend.', 'success', 3000);
+    } else {
+        data   = DEMO_DATA;
+        isLive = false;
+        setApiStatus(false, 'Données de démonstration');
+        if (!silent) toast('Backend indisponible — affichage des données de démonstration.', 'warn', 5000);
+    }
+
+    STATE.allData    = data;
+    STATE.isLiveMode = isLive;
+
+    // Calculer stats locales depuis les données (fallback)
+    const dataStats = computeStatsFromData(data);
+
+    // Rendu KPI — merge stats API (si dispo) + stats calculées
+    renderKPICards(statsRaw, dataStats);
+
+    // Peupler les dropdowns
+    populateDropdowns(data);
+
+    // Appliquer filtres et rendu tableau
+    applyFilters();
+
+    // Graphiques (sur onglet analytics)
+    buildCharts(data);
+
+    // Rapport
+    updateReportPanel();
+
+    if (!silent) showLoading(false);
+}
+
+/* ════════════════════════════════════════════════════════════
+   OBJET APP PUBLIC (référencé depuis le HTML)
+════════════════════════════════════════════════════════════ */
+const APP = {
+    switchTab(tab) {
+        STATE.currentTab = tab;
+        // Cacher tous les panneaux
+        ['dashboard','analytics','reports'].forEach(t => {
+            const el = document.getElementById(`tab-${t}`);
+            if (el) el.classList.add('hidden');
+        });
+        const active = document.getElementById(`tab-${tab}`);
+        if (active) { active.classList.remove('hidden'); }
+
+        // Titres header
+        const titles = { dashboard:'Tableau de bord maintenance', analytics:'Analyses & Tendances', reports:'Rapports & Exports' };
+        const eyebrows = { dashboard:'Dashboard', analytics:'Analytique', reports:'Rapports' };
+        const ht = $('headerTitle'); if(ht) ht.textContent = titles[tab] || tab;
+        const he = $('headerEyebrow'); if(he) he.textContent = eyebrows[tab] || tab;
+
+        // Active state nav
+        document.querySelectorAll('.nav-item').forEach(btn => {
+            const t = btn.dataset.tab;
+            btn.className = btn.className
+                .replace('nav-item-active','nav-item-inactive')
+                .replace('nav-item-inactive','nav-item-inactive');
+            if (t === tab) {
+                btn.classList.remove('nav-item-inactive');
+                btn.classList.add('nav-item-active');
+            }
+        });
+
+        // Reconstruire graphiques si on arrive sur analytics
+        if (tab === 'analytics') buildCharts(STATE.allData);
+    },
+
+    goPage(p) {
+        STATE.currentPage = p;
+        renderTable();
+        window.scrollTo({ top: document.getElementById('dataTableBody')?.offsetTop - 100 || 0, behavior: 'smooth' });
+    },
+
+    refresh() { return loadAll(false); },
+};
+
+/* ════════════════════════════════════════════════════════════
+   EVENT LISTENERS
+════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+
+    // Horloge
+    startClock();
+
+    // Thème
+    const btnTheme = $('btnTheme');
+    if (btnTheme) {
+        btnTheme.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            const isDark = document.documentElement.classList.contains('dark');
+            btnTheme.querySelector('i').className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+            // Reconstruire les graphiques avec le bon thème
+            if (STATE.allData.length) buildCharts(STATE.allData);
+        });
+    }
+
+    // Bouton hamburger sidebar mobile
+    const btnSidebar = $('btnSidebar');
+    const sidebar    = $('sidebar');
+    const overlay    = $('sidebarOverlay');
+    if (btnSidebar && sidebar) {
+        btnSidebar.addEventListener('click', () => {
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        });
+    }
+    if (overlay) {
+        overlay.addEventListener('click', () => {
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('hidden');
+        });
+    }
+
+    // Boutons Actualiser (header + filtre bar)
+    [$('btnRefreshHeader'), $('btnRefresh')].forEach(btn => {
+        if (btn) btn.addEventListener('click', () => APP.refresh());
+    });
+
+    // Health Check
+    const btnHC = $('btnHealthCheck');
+    if (btnHC) btnHC.addEventListener('click', doHealthCheck);
+
+    // Clavier Ctrl+R
+    document.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'r') { e.preventDefault(); APP.refresh(); }
+    });
+
+    // Notifications (clic → afficher alertes)
+    const btnNotif = $('btnNotifications');
+    if (btnNotif) {
+        btnNotif.addEventListener('click', () => {
+            const pending = STATE.allData.filter(r => r.status && r.status.toLowerCase() === 'pending').length;
+            const uniq    = new Set(STATE.allData.filter(r => r.status && r.status.toLowerCase() === 'pending').map(r=>r.machine)).size;
+            toast(`🔔 ${pending} interventions Pending — ${uniq} machine(s) unique(s) en panne.`, pending > 0 ? 'warn' : 'info', 5000);
+        });
+    }
+
+    // Chips de statut
+    const chips = document.querySelectorAll('#statusChips .filter-chip');
+    chips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            chips.forEach(c => c.classList.remove('chip-active'));
+            chip.classList.add('chip-active');
+            STATE.activeStatus = chip.dataset.status || 'all';
+            STATE.currentPage  = 1;
+            applyFilters();
+        });
+    });
+
+    // Recherche (debounce 300ms)
+    const searchInput = $('searchFilter');
+    if (searchInput) {
+        let debounce;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(debounce);
+            debounce = setTimeout(() => {
+                STATE.searchQuery  = searchInput.value.trim();
+                STATE.currentPage  = 1;
+                applyFilters();
+            }, 300);
+        });
+    }
+
+    // Filtres selects
+    const dateRange = $('dateRangeFilter');
+    if (dateRange) dateRange.addEventListener('change', () => {
+        STATE.dateRangeFilter = dateRange.value;
+        STATE.currentPage = 1;
+        applyFilters();
+    });
+
+    const machSel = $('machineFilter');
+    if (machSel) machSel.addEventListener('change', () => {
+        STATE.machineFilter = machSel.value;
+        STATE.currentPage   = 1;
+        applyFilters();
+    });
+
+    const techSel = $('technicianFilter');
+    if (techSel) techSel.addEventListener('change', () => {
+        STATE.technicianFilter = techSel.value;
+        STATE.currentPage      = 1;
+        applyFilters();
+    });
+
+    const perPage = $('perPageFilter');
+    if (perPage) perPage.addEventListener('change', () => {
+        STATE.perPage     = parseInt(perPage.value) || 25;
+        STATE.currentPage = 1;
+        applyFilters();
+    });
+
+    // Reset filtres
+    const btnReset = $('btnResetFilters');
+    if (btnReset) {
+        btnReset.addEventListener('click', () => {
+            STATE.activeStatus     = 'all';
+            STATE.searchQuery      = '';
+            STATE.machineFilter    = 'all';
+            STATE.technicianFilter = 'all';
+            STATE.dateRangeFilter  = 'all';
+            STATE.currentPage      = 1;
+            STATE.sortKey          = '';
+            STATE.sortAsc          = true;
+            // Reset UI
+            chips.forEach(c => { c.classList.remove('chip-active'); if(c.dataset.status==='all') c.classList.add('chip-active'); });
+            if (searchInput) searchInput.value = '';
+            if (dateRange)   dateRange.value   = 'all';
+            if (machSel)     machSel.value      = 'all';
+            if (techSel)     techSel.value      = 'all';
+            if (perPage)     perPage.value      = '25';
+            document.querySelectorAll('th[data-sort]').forEach(th => { th.classList.remove('sort-active','sort-asc','sort-desc'); });
+            applyFilters();
+            toast('Filtres réinitialisés.', 'info', 2000);
+        });
+    }
+
+    // Tri colonnes
+    document.querySelectorAll('th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+            const key = th.dataset.sort;
+            if (STATE.sortKey === key) {
+                STATE.sortAsc = !STATE.sortAsc;
+            } else {
+                STATE.sortKey = key;
+                STATE.sortAsc = true;
+            }
+            document.querySelectorAll('th[data-sort]').forEach(t => {
+                t.classList.remove('sort-active','sort-asc','sort-desc');
+            });
+            th.classList.add('sort-active');
+            th.classList.toggle('sort-asc', STATE.sortAsc);
+            th.classList.toggle('sort-desc', !STATE.sortAsc);
+            applyFilters();
+        });
+    });
+
+    // Export boutons — tous les 4
+    const csvAction  = () => exportCSV();
+    const xlsxAction = () => exportXLSX();
+
+    [$('btnExportCsvTop'), $('btnExportCsv')].forEach(b => { if(b) b.addEventListener('click', csvAction); });
+    [$('btnExportXlsxTop'), $('btnExportXlsx')].forEach(b => { if(b) b.addEventListener('click', xlsxAction); });
+
+    // Impression
+    const btnPrint = $('btnPrint');
+    if (btnPrint) btnPrint.addEventListener('click', () => {
+        toast('Préparation de l\'impression…', 'info', 2000);
+        setTimeout(() => window.print(), 500);
+    });
+
+    // ── Chargement initial ──
+    loadAll(false);
+
+    // ── Auto-refresh ──
+    setInterval(() => loadAll(true), CFG.REFRESH_INTERVAL);
+});
+</script> <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+<script>
+    // كنتكونيكطاو مع السيرفر
+    const socket = io('http://localhost:3000'); 
+
+    // غير يوصل سينيال ديال التحديث، كانديرو التحديث للجدول
+    socket.on('panne_mise_a_jour', (data) => {
+        console.log("🔄 [لايف] سينيال جا من السيرفر! الـ ID لي تبدل هو:", data.id);
+        
+        // كنجربو نعيطو للفانكشن لي كتعمر الجدول عندك فـ الداشبورد
+        if (typeof fetchLogs === 'function') {
+            fetchLogs(); 
+        } else if (typeof loadLogs === 'function') {
+            loadLogs();
+        } else {
+            // إيلا ماعرفناش سمية الفانكشن، غانديرو ريفريش للصفحة بالزربة
+            window.location.reload(); 
+        }
+    });
+</script>
+
+</body>
+</html>
