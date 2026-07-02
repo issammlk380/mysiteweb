@@ -1419,6 +1419,22 @@
     </div>
 
     <script>
+        // ==================== GLOBAL FETCH INTERCEPTOR (Ngrok Bypass) ====================
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            let [resource, config] = args;
+            if (!config) config = {};
+            if (!config.headers) config.headers = {};
+            
+            if (config.headers instanceof Headers) {
+                config.headers.set('ngrok-skip-browser-warning', '69420');
+            } else if (typeof config.headers === 'object') {
+                config.headers['ngrok-skip-browser-warning'] = '69420';
+            }
+            
+            return originalFetch(resource, config);
+        };
+
         // ==================== LOCALSTORAGE MANAGEMENT ====================
         class StorageManager {
             static KEYS = {
@@ -1684,7 +1700,7 @@
        // ==================== MACHINE INITIALIZATION ====================
 async function initializeMachines() {
     try {
-        const response = await fetch('http://localhost:3000/api/historique');
+        const response = await fetch('https://marauding-departed-chaplain.ngrok-free.dev/api/historique');
         const realLogs = await response.json();
 
         for (const [zone, config] of Object.entries(appState.zoneConfig)) {
@@ -1723,10 +1739,10 @@ async function initializeMachines() {
                     
                     const currentStatus = log.status ? log.status.trim().toLowerCase() : '';
                     
-                    if (currentStatus === 'pending' || currentStatus === 'downtime') {
+                    if (currentStatus === 'pending' || currentStatus === 'downtime' || currentStatus === 'en attente' || currentStatus === 'en panne') {
                         if (appState.machines[id]) {
                             appState.machines[id].status = 'downtime';
-                            appState.machines[id].alertType = 'Panne Générale';
+                            appState.machines[id].alertType = log.alert_type || log.piece_observation || 'Panne Générale';
                             appState.machines[id].assignedTech = log.technician !== 'Unassigned' ? log.technician : null;
                         }
                     }
@@ -1734,7 +1750,9 @@ async function initializeMachines() {
             }
         });
 
-      //  updateDashboardUI();
+        renderAllMachines();
+        updateKPIs();
+        if (typeof ChartOptimizer !== 'undefined') ChartOptimizer.debouncedChartUpdate();
 
     } catch (error) {
         console.error("Error fetching data from API:", error);
@@ -1992,15 +2010,16 @@ async function assignTechnician() {
     if(typeof showNotification === 'function') showNotification(`✓ ${randomTech.name} assigned to ${machineID}`, 'success');
 }
 
-// ==================== 2. RESOLVE ALERT ====================
+/// ==================== 2. RESOLVE ALERT ====================
 async function resolveAlert() { 
+    // Récupérer l'ID de la machine actuellement sélectionnée (ex: 'KA01')
     const machineID = appState.currentSelectedMachine;
     if (!machineID) return;
     
     const machine = appState.machines[machineID];
     if (!machine) return;
 
-    // حماية الوقت باش ما يعطيش إيرور NaN للسيرفور
+    // Protection du temps pour éviter l'erreur NaN sur le serveur
     const startTime = machine.statusChangeTime || Date.now();
     let downtimeMinutes = Math.floor((Date.now() - startTime) / 60000);
     if (isNaN(downtimeMinutes) || downtimeMinutes < 0) downtimeMinutes = 0;
@@ -2008,10 +2027,36 @@ async function resolveAlert() {
     machine.totalDowntimeMinutes += downtimeMinutes;
     const techName = (machine.assignedTech && machine.assignedTech.name) ? machine.assignedTech.name : 'Unassigned';
 
+    // ⬇️ Envoi des données au serveur et synchronisation PGAdmin ⬇️
     try {
+        // 1. Envoi du log historique (Votre code existant)
         await sendLogToServer(machineID, 'Resolved', techName, downtimeMinutes);
-    } catch(e) { console.error("Error sending to DB:", e); }
 
+        // 2. NOUVEAU : Synchronisation immédiate du statut dans PGAdmin via le Backend
+       const response = await fetch('https://marauding-departed-chaplain.ngrok-free.dev/api/machines/update-status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                code: machineID,
+                status: 'Operational', // Devient opérationnelle dans la base de données
+                type_erreur: null       // Plus d'erreur
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            console.log(`✅ [PGAdmin] Synchro réussie. Machine ${machineID} est maintenant opérationnelle.`);
+        } else {
+            console.warn(`⚠️ [PGAdmin] Échec de la synchro pour ${machineID}:`, data.message);
+        }
+
+    } catch(e) { 
+        console.error("❌ Erreur lors de l'envoi à la base de données :", e); 
+    }
+
+    // Mise à jour de l'état local de l'application
     machine.status = 'operational';
     machine.alertType = null;
     machine.assignedTech = null;
@@ -2019,6 +2064,7 @@ async function resolveAlert() {
     machine.isEscalated = false;
     machine.downtimeCount += 1;
 
+    // Mise à jour du log local dans l'interface
     const logEntry = appState.logs.find(l => l.machineID === machineID && (l.status === 'In Progress' || l.status === 'Escalated'));
     if (logEntry) {
         logEntry.status = 'Resolved';
@@ -2026,9 +2072,11 @@ async function resolveAlert() {
         logEntry.duration = downtimeMinutes;
     }
 
+    // Actualisation de l'interface graphique
     closeMachineModal();
     renderAllMachines();
     renderLogs();
+    
     if(typeof updateKPIs === 'function') updateKPIs();
     if(typeof ChartOptimizer !== 'undefined') ChartOptimizer.debouncedChartUpdate();
     
@@ -2361,11 +2409,13 @@ function renderLogs() {
         }
 
         // ==================== SIMULATION ENGINE ====================
-        function simulateFactoryActivity() {
+       // L'ajout du mot-clé "async" permet d'utiliser "await fetch" à l'intérieur de la fonction
+       async function simulateFactoryActivity() {
             if (!appState.simulationRunning) return;
 
             updateAllMachineTimers();
 
+            // Une probabilité de 0.95 (5% de chance) qu'une machine tombe en panne aléatoirement
             if (Math.random() > 0.95) {
                 const machineKeys = Object.keys(appState.machines);
                 const randomMachine = machineKeys[Math.floor(Math.random() * machineKeys.length)];
@@ -2378,6 +2428,7 @@ function renderLogs() {
                     machine.statusChangeTime = Date.now();
                     machine.isEscalated = false;
 
+                    // 1. Mise à jour de l'interface utilisateur en local (Front-end)
                     addLog(randomMachine, machine.alertType, 'Pending', 'Unassigned');
                     SoundSystem.playAlertSequence();
                     showAlert(`⚠️ ALERT: Machine ${randomMachine} has entered downtime (${machine.alertType}). Technician assignment required.`);
@@ -2389,6 +2440,34 @@ function renderLogs() {
                     
                     StorageManager.saveMachines();
                     StorageManager.saveLogs();
+
+                  // ==================== 🔴 2. Création automatique de la panne dans pgAdmin ====================
+try {
+    // 1️⃣ هنا كنجبدو السمية لي معزولة ف اللحظة الحالية من الليستة
+    const selectOperateur = document.getElementById('operateurSelect'); // 💡 بدل 'operateurSelect' بالـ id الحقيقي لي عندك ف الـ HTML
+    const nomOperateur = selectOperateur ? selectOperateur.value : 'Unassigned';
+
+   await fetch('https://marauding-departed-chaplain.ngrok-free.dev/api/logs', { 
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+            machine: randomMachine,
+            alertType: machine.alertType,
+            startTime: new Date().toLocaleTimeString('fr-FR'), // L'heure actuelle
+            duration: 0,
+            technician: nomOperateur, // 👈 هنا عوضنا القيمة القديمة بالمتغير الجديد لي فيه السمية!
+            status: 'Pending'
+        })
+
+    });
+    console.log(`✅ [PostgreSQL] Nouvelle panne enregistrée avec succès pour la machine ${randomMachine} !`);
+} catch(err) {
+    console.log("❌ [Erreur] Impossible d'envoyer la panne au serveur. Vérifiez que votre serveur Node.js est bien allumé.");
+}
+// ==============================================================================================
+                    // ==============================================================================================
                 }
             }
 
@@ -2397,7 +2476,6 @@ function renderLogs() {
                 updateModalButtons();
             }
         }
-
         // ==================== EVENT LISTENERS ====================
         document.getElementById('soundToggle').addEventListener('click', function() {
             appState.soundEnabled = !appState.soundEnabled;
@@ -2419,12 +2497,12 @@ function renderLogs() {
         document.getElementById('searchInput').addEventListener('input', renderLogs);
         document.getElementById('filterType').addEventListener('change', renderLogs);
 
+       // ==================== GESTIONNAIRE DU MODAL ====================
         document.getElementById('machineModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeMachineModal();
             }
         });
-
         // ==================== LIVE TIME UPDATE ====================
         setInterval(() => {
             const now = new Date();
@@ -2500,7 +2578,7 @@ function renderLogs() {
         } else {
             initializeApplication();
         }
-        function sendLogToBackend(logId, machine, alertType, startTime, duration, technician, status) {
+        async function sendLogToBackend(logId, machine, alertType, startTime, duration, technician, status) {
     const logData = {
         logId: logId,
         machine: machine,
@@ -2511,22 +2589,26 @@ function renderLogs() {
         status: status
     };
 
-    fetch('http://localhost:3000/api/logs', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(logData)
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('Success:', data);
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
-}
+    try {
+        // زدنا await هنا، و درنا كولشي وسط try/catch باش نشدو الأخطاء
+const response = await fetch('https://marauding-departed-chaplain.ngrok-free.dev/api/logs', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(logData)
+});
 
+        // كنتسناو الرد يرجع على شكل JSON
+        const data = await response.json();
+        
+        console.log('✅ Success:', data);
+        
+    } catch (error) {
+        // هادي غاتشد أي خطأ وقع فـ السيرفر ولا فـ الكونيكسيون
+        console.error('❌ Error:', error);
+    }
+}
         // ══════════════════════════════════════════════════════════════════
         // MODIFICATION ULTRA-CIBLÉE — Carte "Machines en panne"
         // ──────────────────────────────────────────────────────────────────
@@ -2540,50 +2622,36 @@ function renderLogs() {
         //   4. Injection dans l'élément #kpiMachinesEnPanne
         //   5. Ré-appel toutes les 30 secondes (même cadence que l'auto-save)
         //   6. En cas d'erreur API → le chiffre reste inchangé (pas d'écrasement)
-        // ══════════════════════════════════════════════════════════════════
         async function fetchUniqueMachinesEnPanne() {
-            const el = document.getElementById('kpiMachinesEnPanne');
-            if (!el) return;
-
-            try {
-                const response = await fetch('http://localhost:3000/api/historique', {
-                    // Timeout de 5 s pour ne pas bloquer l'interface
-                    signal: AbortSignal.timeout(5000)
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const payload = await response.json();
-
-                // L'API peut retourner directement un tableau ou un objet { data: [...] }
-                const rows = Array.isArray(payload)
-                    ? payload
-                    : (payload.data || payload.logs || payload.results || []);
-
-                // ⭐ Compter les machines UNIQUES avec status === 'Pending'
-                // (valeur exacte telle qu'elle est stockée dans la colonne `status` de downtime_logs)
-                const uniqueMachinesEnPanne = new Set(
-                    rows
-                        .filter(row => row.status === 'Pending')
-                        .map(row => row.machine)
-                ).size;
-
-                // Injection dans la carte — chiffre dynamique et réaliste
-                el.textContent = uniqueMachinesEnPanne;
-
-                console.log(
-                    `✓ Machines en panne (uniques·Pending) : ${uniqueMachinesEnPanne}`
-                );
-
-            } catch (err) {
-                // En cas d'échec (API hors ligne, timeout, erreur réseau) :
-                // on affiche '—' pour signaler l'indisponibilité sans bloquer le reste
-                el.textContent = '—';
-                console.warn('⚠️ fetchUniqueMachinesEnPanne :', err.message);
-            }
+    try {
+        const reponse = await fetch('https://marauding-departed-chaplain.ngrok-free.dev/api/historique');
+        
+        if (!reponse.ok) {
+            throw new Error(`HTTP ${reponse.status}`);
         }
+        
+        const data = await reponse.json();
+        
+        // Count unique machines with non-resolved status
+        const pendingSet = new Set();
+        data.forEach(log => {
+            const status = (log.status || '').toString().trim().toLowerCase();
+            if (status === 'pending' || status === 'escalated' || status === 'en attente' || status === 'en panne') {
+                if (log.machine) pendingSet.add(log.machine.trim().toUpperCase());
+            }
+        });
+        
+        const count = pendingSet.size;
+        const kpiEl = document.getElementById('kpiMachinesEnPanne');
+        if (kpiEl) kpiEl.textContent = count;
+        
+        return data;
+        
+    } catch (erreur) {
+        console.warn("⚠️ [GMAO] fetchUniqueMachinesEnPanne :", erreur.message);
+        return [];
+    }
+}
 
         // Rafraîchissement automatique toutes les 30 secondes
         // (synchronisé avec la cadence de l'auto-save existant)
@@ -2591,42 +2659,152 @@ function renderLogs() {
         // ═════════════════════════════════════════════════════════════════
 async function sendLogToServer(machineID, status, technician, duration = 0) {
     try {
-        // نجيبو نوع العطب أوتوماتيك من الداتا ديال الماكينة
         let currentAlertType = 'N/A';
         if (typeof appState !== 'undefined' && appState.machines && appState.machines[machineID]) {
             currentAlertType = appState.machines[machineID].alertType || 'N/A';
         }
 
+        // 1️⃣ Récupération dynamique du nom de l'opérateur sélectionné dans la liste HTML
+        const selectOperateur = document.getElementById('operateurSelect'); // 💡 Assure-toi que cet ID correspond bien à ton <select> HTML
+        const realTechnician = selectOperateur && selectOperateur.value ? selectOperateur.value : (technician || 'Unassigned');
+
+        // Préparation des données à envoyer (Payload)
         const payload = {
             machine: machineID,
             status: status, 
-            technician: technician || 'Unassigned',
+            technician: realTechnician, // Le nom sélectionné est envoyé ici
             startTime: new Date().toLocaleTimeString('fr-FR'), 
             duration: duration,
-            alert_type: currentAlertType // 👈 هادي لي كان كيبكي عليها السيرفور
+            alert_type: currentAlertType
         };
 
-        const response = await fetch('http://localhost:3000/api/logs', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
-
+        // 2️⃣ Envoi des données vers le serveur local (compatible PC et Téléphone via Point d'accès)
+       const response = await fetch('https://marauding-departed-chaplain.ngrok-free.dev/api/logs', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+});
         if (response.ok) {
-            console.log(`✅ [SUCCESS] État de la machine ${machineID} envoyé avec succès !`);
+            console.log(`✅ [SUCCESS] État de la machine ${machineID} synchronisé avec succès sur le serveur local !`);
             if (typeof initializeMachines === 'function') {
                 initializeMachines(); 
             }
         } else {
             const errorDetails = await response.text();
-            console.error(`❌ [ERROR 400] السيرفور رفض الطلب، السبب هو:`, errorDetails);
+            console.error(`❌ [ERROR] Le serveur a refusé la requête. Détails :`, errorDetails);
         }
     } catch (error) {
-        console.error("❌ [API ERROR]:", error);
+        console.error("❌ [API ERROR]: Impossible de joindre le serveur local.", error);
     }
 }
    </script>
+   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+<script>
+    // ===================================================================
+    // 1️⃣ Socket.io Client v4.7.5 — Connexion temps réel avec Ngrok
+    // ===================================================================
+    const socket = io("https://marauding-departed-chaplain.ngrok-free.dev", {
+        transports: ['polling', 'websocket'],
+        extraHeaders: {
+            "ngrok-skip-browser-warning": "69420"
+        }
+    });
+
+    // ===================================================================
+    // 2️⃣ Gestionnaires d'événements Socket.io
+    // ===================================================================
+    socket.on("connect", () => {
+        console.log("⚡ [GMAO] Connecté au serveur Real-time via Socket.io!");
+    });
+
+    socket.on("connect_error", (error) => {
+        console.error("❌ [GMAO] Erreur Socket.io:", error);
+    });
+
+    socket.on("updateMachines", (payload) => {
+        console.log("=== [GMAO] Données temps réel reçues ===", payload);
+        
+        // Normalize payload to array
+        const machinesEnPanne = Array.isArray(payload) ? payload : (payload ? [payload] : []);
+        
+        // Reset all machines to operational first
+        for (const id in appState.machines) {
+            if (appState.machines.hasOwnProperty(id)) {
+                appState.machines[id].status = 'operational';
+                appState.machines[id].alertType = null;
+                appState.machines[id].isEscalated = false;
+                appState.machines[id].assignedTech = null;
+            }
+        }
+        
+        // Apply panne states from server
+        const panneSet = new Set();
+        machinesEnPanne.forEach(m => {
+            const code = (m.code || m.machine || m.id || '').toString().trim().toUpperCase();
+            if (!code || !appState.machines[code]) return;
+            panneSet.add(code);
+            
+            appState.machines[code].status = 'downtime';
+            appState.machines[code].alertType = m.type_erreur || m.alert_type || m.piece_observation || 'Panne';
+            if (m.status === 'escalated' || m.criticite === 'Haute' || m.isEscalated) {
+                appState.machines[code].isEscalated = true;
+            }
+            appState.machines[code].statusChangeTime = Date.now();
+        });
+        
+        // Update KPI "Machines en panne"
+        const kpiEl = document.getElementById('kpiMachinesEnPanne');
+        if (kpiEl) kpiEl.textContent = panneSet.size;
+        
+        // Update sidebar active alerts
+        const sidebarAlerts = document.getElementById('sidebarActiveAlerts');
+        if (sidebarAlerts) sidebarAlerts.textContent = panneSet.size;
+        
+        // Render UI
+        renderAllMachines();
+        updateKPIs();
+        if (typeof ChartOptimizer !== 'undefined') ChartOptimizer.debouncedChartUpdate();
+        
+        // Persist to localStorage
+        if (typeof StorageManager !== 'undefined') StorageManager.saveMachines();
+    });
+
+    socket.on("panne_mise_a_jour", (data) => {
+        console.log("📢 [GMAO] Mise à jour panne reçue:", data);
+        initializeMachines();
+    });
+
+    // ===================================================================
+    // 3️⃣ PGAdmin Sync — Mise à jour statut machine depuis l'interface
+    // ===================================================================
+    function modifierStatutDepuisInterface(codeMachine, nouveauStatut, typeErreur = null) {
+        fetch('https://marauding-departed-chaplain.ngrok-free.dev/api/machines/update-status', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                code: codeMachine,
+                status: nouveauStatut,
+                type_erreur: typeErreur
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log(`✅ Machine ${codeMachine} synchronisée dans PGAdmin.`);
+                if (typeof closeMachineModal === "function") {
+                    closeMachineModal(); 
+                }
+            } else {
+                console.warn(`⚠️ Échec sync PGAdmin pour ${codeMachine}:`, data.message);
+            }
+        })
+        .catch(erreur => console.error("❌ Erreur sync PGAdmin:", erreur));
+    }
+</script>
 </body>
 </html>

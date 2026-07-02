@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr" class="h-full">
 <head>
+<link rel="manifest" href="manifest.json">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GMAO — Hub Technicien</title>
@@ -1387,26 +1388,55 @@
         version:      'GMAO v3.2.1'
       };
 
-      /* ── 5. Console.log propre ── */
+ /* ── 5. Console.log propre ── */
       console.group('[GMAO] 📋 Rapport d\'Intervention');
       console.log('%c Données envoyées ', 'background:#4f46e5;color:#fff;padding:2px 8px;border-radius:4px;font-weight:bold;');
       console.log(JSON.stringify(payload, null, 2));
       console.groupEnd();
 
-      /* ── 6. State : chargement ── */
-      Btn.setLoading();
-
-      // Toast de démarrage
-      Toast.show('info', 'Enregistrement en cours…',
-        'Transmission au serveur GMAO sécurisé.', 1800);
-
+      /* ── 5. NOUVEAU : Envoi des données au serveur (Backend & PGAdmin) ── */
+      // Nous envoyons le payload directement à la route du serveur
+    fetch('https://marauding-departed-chaplain.ngrok-free.dev/api/intervention', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true' // هاد السطر زدناه باش ندوزو الصفحة ديال التحذير
+    },
+    body: JSON.stringify(payload)
+})
+      .then(response => response.json())
+      .then(data => {
+          if (data.success) {
+              console.log("✅ [PGAdmin] Intervention enregistrée et synchronisée avec succès !", data);
+              
+              // Affichage d'un Toast de succès si disponible
+              if (typeof Toast !== 'undefined') {
+                  Toast.show('success', 'Succès', 'Intervention bien enregistrée dans la base de données !', 3000);
+              }
+              
+              // Optionnel : Tu peux vider le formulaire ici ou rediriger l'utilisateur
+          } else {
+              console.error("⚠️ [PGAdmin] Le serveur a renvoyé une erreur :", data.message);
+              if (typeof Toast !== 'undefined') {
+                  Toast.show('error', 'Erreur Serveur', data.message || 'Échec de la synchronisation.', 4000);
+              }
+          }
+      })
+      .catch(erreur => {
+          console.error("❌ Erreur réseau lors de l'envoi de l'intervention :", erreur);
+          if (typeof Toast !== 'undefined') {
+              Toast.show('error', 'Erreur Réseau', 'Impossible de contacter le serveur backend.', 4000);
+          }
+      });
+}
       /* ── 7. Envoi réel des données au serveur via Fetch API ── */
-     fetch('http://localhost:3000/api/intervention', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+fetch('https://marauding-departed-chaplain.ngrok-free.dev/api/intervention', {    
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true' // هاد السطر ديما معانا باش Ngrok ما يبلblockيش الداتا
+    },
+      body: JSON.stringify({
           id: payload.idPanne,
           criticite: payload.criticiteRaw,
           heure: payload.heureIntervention,
@@ -1488,9 +1518,48 @@
           5000
         );
       });
-    }
+    
 
   </script>
-
+  <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('✅ App prête à être installée !'))
+        .catch(err => console.error('❌ Erreur :', err));
+    });
+  }
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+      .then(() => console.log("Service Worker ناضي!"))
+      .catch((err) => console.log("كاين مشكل فـ Service Worker:", err));
+  }
+  function modifierStatutDepuisInterface(codeMachine, nouveauStatut, typeErreur = null) {
+    fetch('https://marauding-departed-chaplain.ngrok-free.dev/api/machines/update-status', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true' // هاد السطر ضروري باش الداتا تدوز نيشان
+        },
+        body: JSON.stringify({
+            code: codeMachine,
+            status: nouveauStatut,
+            type_erreur: typeErreur
+        })
+    })
+  
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log(`✅ Synchro réussie pour ${codeMachine} dans PGAdmin.`);
+                    // إغلاق الـ Modal تلقائياً بعد التحديث
+                    if (typeof closeMachineModal === "function") closeMachineModal(); 
+                }
+            })
+            .catch(erreur => console.error("❌ Erreur de synchro Web -> PGAdmin:", erreur));
+        }
+</script>
 </body>
 </html>

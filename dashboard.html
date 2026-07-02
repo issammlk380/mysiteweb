@@ -4,7 +4,44 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SMI | Système de Maintenance Industrielle — Console Enterprise v3.0</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 
+    <style>
+    /* =========================================================================
+       MW = "Maintenance Widget" 
+       ========================================================================= */
+    .mw-scope {
+      --mw-bg: #f8fafc;
+      --mw-surface: #ffffff;
+      --mw-border: rgba(15, 23, 42, 0.06);
+      --mw-text-primary: #0f172a;
+      --mw-text-secondary: #64748b;
+      --mw-brand: #4f46e5;   
+      --mw-brand-soft: #eef2ff;
+      --mw-amber: #d97706;      
+      --mw-amber-soft: #fffbeb;
+      --mw-radius-card: 16px;
+      --mw-shadow-card: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -8px rgba(15,23,42,0.10);
+      color: var(--mw-text-primary);
+    }
+    .mw-scope[data-theme="dark"] {
+      --mw-bg: #0b1220;
+      --mw-surface: #0f172a;
+      --mw-border: rgba(255, 255, 255, 0.06);
+      --mw-text-primary: #e2e8f0;
+      --mw-text-secondary: #94a3b8;
+    }
+    .mw-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 20px; width: 100%; }
+    .mw-card { background: var(--mw-surface); border: 1px solid var(--mw-border); border-radius: var(--mw-radius-card); padding: 24px; box-shadow: var(--mw-shadow-card); display: flex; flex-direction: column; gap: 20px; }
+    .mw-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .mw-card__heading { display: flex; align-items: center; gap: 10px; }
+    .mw-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+    .mw-icon--brand { background: var(--mw-brand-soft); color: var(--mw-brand); }
+    .mw-icon--amber { background: var(--mw-amber-soft); color: var(--mw-amber); }
+    .mw-card__title { font-size: 15px; font-weight: 700; }
+    .mw-card__subtitle { font-size: 12.5px; color: var(--mw-text-secondary); margin-top: 2px; }
+    .mw-chart { position: relative; width: 100%; height: 240px; }
+    </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
@@ -641,7 +678,7 @@
         <section id="tab-dashboard" class="tab-panel space-y-6">
 
             <!-- KPI Cards -->
-            <div id="kpiContainer"
+           <div id="kpiContainer"
                  class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
                 <div class="skeleton h-40 rounded-3xl"></div>
                 <div class="skeleton h-40 rounded-3xl"></div>
@@ -649,6 +686,41 @@
                 <div class="skeleton h-40 rounded-3xl"></div>
             </div>
 
+<div class="mw-scope" id="mwScope" style="margin-top: 24px;">
+  <div class="mw-grid">
+    
+    <section class="mw-card">
+      <header class="mw-card__head">
+        <div class="mw-card__heading">
+          <span class="mw-icon mw-icon--brand"><i class="fa-solid fa-industry"></i></span>
+          <div>
+            <h3 class="mw-card__title">Machines les plus en panne</h3>
+            <p class="mw-card__subtitle">Historique des arrêts (Temps Réel)</p>
+          </div>
+        </div>
+      </header>
+      <div class="mw-chart">
+        <canvas id="machinesChart"></canvas>
+      </div>
+    </section>
+
+    <section class="mw-card">
+      <header class="mw-card__head">
+        <div class="mw-card__heading">
+          <span class="mw-icon mw-icon--amber"><i class="fa-solid fa-triangle-exclamation"></i></span>
+          <div>
+            <h3 class="mw-card__title">Types de pannes fréquents</h3>
+            <p class="mw-card__subtitle">Répartition depuis pgAdmin</p>
+          </div>
+        </div>
+      </header>
+      <div class="mw-chart">
+        <canvas id="pannesChart"></canvas>
+      </div>
+    </section>
+
+  </div>
+</div>
             <!-- Filters Bar -->
             <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800
                         rounded-3xl p-5 shadow-card no-print">
@@ -1355,7 +1427,7 @@
    CONFIGURATION
 ════════════════════════════════════════════════════════════ */
 const CFG = {
-    API_BASE: 'http://localhost:3000',
+    API_BASE: 'https://pluwxkgopjhdyygtzthh.supabase.co/functions/v1/api',
     REFRESH_INTERVAL: 60000, // auto-refresh toutes les 60 s
 };
 
@@ -1382,42 +1454,73 @@ const STATE = {
 };
 
 /* ════════════════════════════════════════════════════════════
-   DONNÉES DE DÉMONSTRATION (fallback si API indisponible)
+   🌐 DONNÉES RÉELLES (Depuis l'API Supabase)
 ════════════════════════════════════════════════════════════ */
-const DEMO_DATA = (function generateDemo() {
-    const machines   = ['Machine-01','Machine-02','Machine-03','Machine-04','Machine-05','Machine-06'];
-    const ateliers   = ['Atelier A','Atelier B','Atelier C','Atelier Principal'];
-    const statuses   = ['Pending','Terminé','En réparation','En attente','Arrêt'];
-    const techs      = ['Issam','Admin Manager','Karim','Fatima','Youssef','Non assigné'];
-    const criticites = ['Critique','Majeure','Modérée','Faible'];
-    const pieces     = ['Roulement SKF','Courroie V','Capteur T°','Joint hydraulique','Moteur 5.5kW','—','Filtre à huile'];
-    const rows = [];
-    const now = new Date();
-    for (let i = 1; i <= 120; i++) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - Math.floor(Math.random() * 90));
-        const st  = statuses[Math.floor(Math.random() * statuses.length)];
-        const dur = Math.floor(Math.random() * 120);
-        rows.push({
-            id: i,
-            machine: machines[Math.floor(Math.random() * machines.length)],
-            atelier: ateliers[Math.floor(Math.random() * ateliers.length)],
-            status: st,
-            jour: d.toISOString().split('T')[0],
-            start_time: `${String(Math.floor(Math.random()*24)).padStart(2,'0')}:${String(Math.floor(Math.random()*60)).padStart(2,'0')}`,
-            heure_arret_technicien: `${String(Math.floor(Math.random()*24)).padStart(2,'0')}:${String(Math.floor(Math.random()*60)).padStart(2,'0')}`,
-            temps_attente: Math.floor(Math.random() * 60),
-            temps_reparation: dur,
-            duration: dur,
-            criticite: criticites[Math.floor(Math.random() * criticites.length)],
-            technician: techs[Math.floor(Math.random() * techs.length)],
-            technicien: techs[Math.floor(Math.random() * techs.length)],
-            piece_observation: pieces[Math.floor(Math.random() * pieces.length)],
-        });
-    }
-    return rows;
-})();
+// Utilisation de 'let' au lieu de 'const' pour pouvoir injecter les données du serveur
+let DEMO_DATA = []; 
 
+const API_URL = 'https://pluwxkgopjhdyygtzthh.supabase.co/functions/v1/api/logs';
+
+async function fetchRealData() {
+    try {
+       const response = await fetch('https://marauding-departed-chaplain.ngrok-free.dev/api/logs');
+        if (!response.ok) throw new Error("Erreur lors de la récupération des données depuis l'API");
+        
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            // Formatage des données pour correspondre exactement à la structure attendue par le design
+          let tableData = Array.isArray(result) ? result : (result.data || result.logs || []);
+let finalData = [];
+if (Array.isArray(result)) {
+    finalData = result;
+} else if (result && Array.isArray(result.data)) {
+    finalData = result.data;
+} else if (result && Array.isArray(result.logs)) {
+    finalData = result.logs;
+}
+
+DEMO_DATA = finalData.map(row => ({
+    id: row.log_id || row.id,
+    machine: row.machine || 'Inconnue',
+    atelier: 'Atelier Principal',
+    status: row.status || 'Pending',
+    jour: new Date().toISOString().split('T')[0],
+    start_time: row.start_time || '--:--',
+    heure_arret_technicien: row.heure_arret_technicien || '--:--',
+    temps_attente: 0,
+    temps_reparation: parseInt(row.duration) || 0,
+    duration: parseInt(row.duration) || 0,
+    criticite: row.criticite || 'Non définie',
+    technician: row.technician || 'Non assigné',
+    technicien: row.technician || 'Non assigné',
+    piece_observation: row.piece_observation || '—',
+}));
+            console.log("✅ Données réelles chargées avec succès :", DEMO_DATA);
+
+            // Appel de la fonction responsable de l'affichage du tableau
+            if (typeof initDashboard === "function") initDashboard();
+            else if (typeof renderTable === "function") renderTable(DEMO_DATA);
+            
+            // Mise à jour de l'interface : passage du Mode Démo au Mode Live
+            const statusText = document.querySelector('.text-yellow-400');
+            if (statusText) {
+                statusText.innerText = "Mode Production (Live)";
+                statusText.classList.replace('text-yellow-400', 'text-green-400');
+            }
+            
+            const sourceElements = document.querySelectorAll('.text-slate-300');
+            sourceElements.forEach(el => {
+                if(el.innerText.includes('Données de démonstr')) el.innerText = "Base de données Supabase";
+            });
+        }
+    } catch (error) {
+        console.error("❌ Erreur de connexion au serveur :", error);
+    }
+}
+
+// Déclenchement de la récupération des données au chargement de la page
+fetchRealData();
 /* ════════════════════════════════════════════════════════════
    UTILITAIRES
 ════════════════════════════════════════════════════════════ */
@@ -1549,9 +1652,7 @@ function critBadge(c) {
 ════════════════════════════════════════════════════════════ */
 async function fetchStats() {
     try {
-        const res = await fetch(`${CFG.API_BASE}/api/stats`, { signal: AbortSignal.timeout(5000) });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
+const res = await fetch('https://marauding-departed-chaplain.ngrok-free.dev/api/stats', { signal: AbortSignal.timeout(5000) });        const json = await res.json();
         return json.data || json.stats || json;
     } catch (e) {
         console.warn('⚠️ /api/stats indisponible :', e.message);
@@ -1564,8 +1665,7 @@ async function fetchStats() {
 ════════════════════════════════════════════════════════════ */
 async function fetchHistorique() {
     try {
-        const res = await fetch(`${CFG.API_BASE}/api/historique`, { signal: AbortSignal.timeout(8000) });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+const res = await fetch('https://marauding-departed-chaplain.ngrok-free.dev/api/historique', { signal: AbortSignal.timeout(8000) });        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const raw = Array.isArray(json) ? json : (json.data || json.logs || json.results || []);
         return raw.map(normalizeRow);
@@ -1701,7 +1801,36 @@ function renderKPICards(stats, dataStats) {
         </div>
     `).join('');
 }
+let machinesChartInstance = null;
+let pannesChartInstance = null;
+function actualiserDonneesGraphiques(interventions) {
+    if (!machinesChartInstance || !pannesChartInstance) return;
+    if (!interventions || !Array.isArray(interventions)) return;
 
+    const machineCounts = {};
+    const panneCounts = {};
+
+    interventions.forEach(log => {
+        if (log.machine) {
+            machineCounts[log.machine] = (machineCounts[log.machine] || 0) + 1;
+        }
+        const alertType = log.alert_type || log.alertType || 'Inconnu';
+        if (alertType !== 'N/A') {
+            panneCounts[alertType] = (panneCounts[alertType] || 0) + 1;
+        }
+    });
+
+    const topMachines = Object.entries(machineCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const topPannes = Object.entries(panneCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+    machinesChartInstance.data.labels = topMachines.map(m => m[0]);
+    machinesChartInstance.data.datasets[0].data = topMachines.map(m => m[1]);
+    machinesChartInstance.update();
+
+    pannesChartInstance.data.labels = topPannes.map(p => p[0]);
+    pannesChartInstance.data.datasets[0].data = topPannes.map(p => p[1]);
+    pannesChartInstance.update();
+}
 /* ════════════════════════════════════════════════════════════
    FILTRAGE DES DONNÉES
 ════════════════════════════════════════════════════════════ */
@@ -1792,6 +1921,7 @@ if (STATE.dateRangeFilter !== 'all') {
     STATE.currentPage  = 1;
     renderTable();
     updateReportPanel();
+    actualiserDonneesGraphiques(STATE.filteredData || STATE.allData);
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -2486,6 +2616,91 @@ document.addEventListener('DOMContentLoaded', () => {
         toast('Préparation de l\'impression…', 'info', 2000);
         setTimeout(() => window.print(), 500);
     });
+// 📊 ── CONFIGURATION DES GRAPHIPHES DE MAINTENANCE (Chart.js) ──
+let machinesChartInstance = null;
+let pannesChartInstance = null;
+
+async function chargerStatistiques() {
+    try {
+        // 1. Récupération des données depuis l'API
+        const response = await fetch('https://marauding-departed-chaplain.ngrok-free.dev/api/logs', {
+            headers: {
+                'ngrok-skip-browser-warning': 'true' // ها السطر السحري فين كيتزاد
+            }
+        }); 
+        if (!response.ok) throw new Error("Erreur de récupération des données");
+        
+        const logs = await response.json();
+        // 2. Traitement et comptage des données
+        const machineCounts = {};
+        const panneCounts = {};
+
+        logs.forEach(log => {
+            // Comptage des pannes par machine
+            if (log.machine) {
+                machineCounts[log.machine] = (machineCounts[log.machine] || 0) + 1;
+            }
+            // Comptage par type d'alerte / panne
+            const alertType = log.alert_type || log.alertType || 'Inconnu';
+            if (alertType !== 'N/A') {
+                panneCounts[alertType] = (panneCounts[alertType] || 0) + 1;
+            }
+        });
+
+        // Extraction du Top 5 pour éviter de surcharger les graphiques
+        const topMachines = Object.entries(machineCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        const topPannes = Object.entries(panneCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+        // 3. Génération du graphique des machines (Bar Chart)
+        const ctxMachines = document.getElementById('machinesChart').getContext('2d');
+        if (machinesChartInstance) machinesChartInstance.destroy();
+        
+        machinesChartInstance = new Chart(ctxMachines, {
+            type: 'bar',
+            data: {
+                labels: topMachines.map(m => m[0]),
+                datasets: [{
+                    label: 'Nombre de pannes',
+                    data: topMachines.map(m => m[1]),
+                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                    borderRadius: 6
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false 
+            }
+        });
+
+        // 4. Génération du graphique des types de pannes (Doughnut Chart)
+        const ctxPannes = document.getElementById('pannesChart').getContext('2d');
+        if (pannesChartInstance) pannesChartInstance.destroy();
+
+        pannesChartInstance = new Chart(ctxPannes, {
+            type: 'doughnut',
+            data: {
+                labels: topPannes.map(p => p[0]),
+                datasets: [{
+                    data: topPannes.map(p => p[1]),
+                    backgroundColor: [
+                        '#ef4444', // Rouge
+                        '#f59e0b', // Orange
+                        '#3b82f6', // Bleu
+                        '#10b981', // Vert
+                        '#8b5cf6'  // Violet
+                    ]
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false 
+            }
+        });
+
+    } catch (error) {
+        console.error("❌ Impossible de charger les statistiques :", error);
+    }
+}
 
     // ── Chargement initial ──
     loadAll(false);
@@ -2493,27 +2708,38 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── Auto-refresh ──
     setInterval(() => loadAll(true), CFG.REFRESH_INTERVAL);
 });
-</script> <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</script> 
+</script> 
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
 <script>
-    // كنتكونيكطاو مع السيرفر
-    const socket = io('http://localhost:3000'); 
+    // 🚀 Connexion au serveur avec contournement de la protection Ngrok gratuite
+    const socket = io('https://marauding-departed-chaplain.ngrok-free.dev', {
+        extraHeaders: {
+            "ngrok-skip-browser-warning": "69420"
+        }
+    }); 
 
-    // غير يوصل سينيال ديال التحديث، كانديرو التحديث للجدول
+    // ✅ Confirmation de la connexion réussie dans la console
+    socket.on('connect', () => {
+        console.log("⚡ [Live] Connexion au serveur réussie via Ngrok !");
+    });
+
     socket.on('panne_mise_a_jour', (data) => {
-        console.log("🔄 [لايف] سينيال جا من السيرفر! الـ ID لي تبدل هو:", data.id);
+        console.log("🔄 [Live] Signal reçu du serveur ! L'ID modifié est :", data.id);
         
-        // كنجربو نعيطو للفانكشن لي كتعمر الجدول عندك فـ الداشبورد
         if (typeof fetchLogs === 'function') {
             fetchLogs(); 
         } else if (typeof loadLogs === 'function') {
             loadLogs();
         } else {
-            // إيلا ماعرفناش سمية الفانكشن، غانديرو ريفريش للصفحة بالزربة
             window.location.reload(); 
         }
     });
-</script>
 
+    socket.on('connect_error', (err) => {
+        console.error("❌ [Live] Problème de connexion Socket :", err);
+    });
+</script>
 </body>
 </html>
