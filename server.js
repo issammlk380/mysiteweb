@@ -1,14 +1,14 @@
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
- * ║          SMI ENTERPRISE — BACKEND API SERVER v2.1               ║
- * ║          Railway Ready — Express.js + PostgreSQL + Socket.io     ║
+ * ║     SMI ENTERPRISE — BACKEND API SERVER v2.4 (RAILWAY)          ║
+ * ║     Production-ready CORS + Railway deployment                   ║
  * ╚══════════════════════════════════════════════════════════════════╝
  */
 
 'use strict';
 
 /* ═══════════════════════════════════════════════════════════════════
-   1. IMPORTS & DÉPENDANCES
+   1. IMPORTS
 ═══════════════════════════════════════════════════════════════════ */
 const express    = require('express');
 const http       = require('http');
@@ -19,7 +19,7 @@ const cors       = require('cors');
 const app = express();
 
 /* ═══════════════════════════════════════════════════════════════════
-   2. CONFIGURATION — Railway + Local
+   2. CONFIGURATION
 ═══════════════════════════════════════════════════════════════════ */
 const CONFIG = {
   server: {
@@ -37,29 +37,31 @@ const CONFIG = {
 };
 
 /* ═══════════════════════════════════════════════════════════════════
-   3. CORS — Railway + Ngrok compatible
+   3. CORS - CONFIGURATION RAILWAY (m9adda)
 ═══════════════════════════════════════════════════════════════════ */
-const ALLOWED_ORIGIN = process.env.RAILWAY_STATIC_URL || '*';
+// Railway: khalli '*' f development, w domain dialk f production
+const ALLOWED_ORIGIN = process.env.NODE_ENV === 'production' 
+    ? '*'  // Railway kisupporti '*' f production
+    : '*';
 
+// Middleware CORS (BEFORE all routes)
 app.use(cors({
     origin: ALLOWED_ORIGIN,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
-        'Origin',
-        'X-Requested-With',
-        'Content-Type',
-        'Accept',
-        'Authorization',
-        'ngrok-skip-browser-warning'
+        'Origin', 'X-Requested-With', 'Content-Type', 'Accept',
+        'Authorization', 'ngrok-skip-browser-warning'
     ],
-    credentials: true
+    credentials: false  // FALSE m3a Railway (mashi true)
 }));
 
-// Safety net manual headers
+// Manual CORS headers (backup)
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, ngrok-skip-browser-warning');
+    
+    // Handle preflight requests immediately
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
@@ -67,30 +69,135 @@ app.use((req, res, next) => {
 });
 
 const server = http.createServer(app);
-
 /* ═══════════════════════════════════════════════════════════════════
-   4. POSTGRESQL — Railway DATABASE_URL or local fallback
+   4. POSTGRESQL - RAILWAY CONFIG
 ═══════════════════════════════════════════════════════════════════ */
+
+const isRailway = !!process.env.DATABASE_URL;
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:1234@localhost:5432/sews_iot_new';
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:1234@localhost:5432/sews_iot_new',
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+  connectionString: DATABASE_URL,
+  ssl: isRailway ? { rejectUnauthorized: false } : false,
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
 });
 
+console.log(`🗄️  Mode: ${isRailway ? 'Railway (SSL ON)' : 'Localhost (SSL OFF)'}`);
+
+
+let dbHealthy = false;
+let dbError = null;
+
 /* ═══════════════════════════════════════════════════════════════════
-   5. SOCKET.IO
+   5. SCHEMA MIGRATION
+═══════════════════════════════════════════════════════════════════ */
+async function runMigrations() {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+                await client.query(`
+                     CREATE TABLE IF NOT EXISTS downtime_logs (
+                id SERIAL PRIMARY KEY,
+                log_id VARCHAR(50),
+                machine VARCHAR(20) NOT NULL DEFAULT 'KA01',
+                start_time VARCHAR(20),
+                duration INTEGER DEFAULT 0,
+                technician VARCHAR(100) DEFAULT 'Operateur',
+                status VARCHAR(50) DEFAULT 'En attente',
+                alert_type VARCHAR(100),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log('✅ [DB] Base table downtime_logs ready');
+
+        const columnsToAdd = [
+            { name: 'criticite', type: 'VARCHAR(50)', default: "'Moyenne'" },
+            { name: 'alert_type', type: 'VARCHAR(100)', default: 'NULL' },
+            { name: 'heure_arret_technicien', type: 'VARCHAR(20)', default: 'NULL' },
+            { name: 'piece_observation', type: 'TEXT', default: 'NULL' },
+            { name: 'atelier', type: 'VARCHAR(50)', default: 'NULL' },
+            { name: 'updated_at', type: 'TIMESTAMP', default: 'CURRENT_TIMESTAMP' },
+        ];
+
+        for (const col of columnsToAdd) {
+            try {
+                await client.query(`
+                    ALTER TABLE downtime_logs 
+                    ADD COLUMN IF NOT EXISTS ${col.name} ${col.type} DEFAULT ${col.default}
+                `);
+                console.log(`✅ [DB] Column '${col.name}' ready`);
+            } catch (e) {
+                console.warn(`⚠️ [DB] Column '${col.name}': ${e.message}`);
+            }
+        }
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS machines (
+                code VARCHAR(10) PRIMARY KEY,
+                status VARCHAR(50) DEFAULT 'operational',
+                type_erreur VARCHAR(100)
+            )
+        `);
+        console.log('✅ [DB] Table machines ready');
+
+        const countResult = await client.query('SELECT COUNT(*) FROM downtime_logs');
+        const count = parseInt(countResult.rows[0].count, 10);
+
+        if (count === 0) {
+            console.log('🔄 [DB] Seeding demo data...');
+            await client.query(`
+                INSERT INTO downtime_logs 
+                (machine, start_time, duration, technician, status, criticite, alert_type, heure_arret_technicien, piece_observation, atelier)
+                VALUES 
+                ('KA01', '08:30:00', '45', 'Ahmed Benali', 'Terminé', 'Faible', 'Électrique', '08:45:00', 'Remplacement capteur proximité', 'Atelier A'),
+                ('KB03', '09:15:00', '0', 'Operateur', 'Pending', 'Majeure', 'Mécanique', NULL, 'Surchauffe moteur principal', 'Atelier B'),
+                ('KC07', '14:20:00', '120', 'Karim Fassi', 'En réparation', 'Critique', 'Électrique', '14:35:00', 'Changement carte d''axe', 'Atelier C'),
+                ('KD02', '10:00:00', '30', 'Youssef Amrani', 'Terminé', 'Modérée', 'Hydraulique', '10:10:00', 'Lubrification glissières', 'Atelier D'),
+                ('KX01', '11:45:00', '0', 'Operateur', 'Pending', 'Majeure', 'Hydraulique', NULL, 'Fuite hydraulique détectée', 'Atelier X'),
+                ('KA05', '07:30:00', '60', 'Ahmed Benali', 'Terminé', 'Faible', 'Électrique', '07:40:00', 'Serrage connexions électriques', 'Atelier A'),
+                ('KB08', '16:00:00', '90', 'Karim Fassi', 'Terminé', 'Modérée', 'Mécanique', '16:20:00', 'Remplacement roulements', 'Atelier B'),
+                ('KC12', '13:10:00', '180', 'Youssef Amrani', 'En réparation', 'Critique', 'Hydraulique', '13:30:00', 'Purge circuit hydraulique', 'Atelier C'),
+                ('KD05', '09:00:00', '40', 'Ahmed Benali', 'Terminé', 'Faible', 'Mécanique', '09:15:00', 'Nettoyage filtre à air', 'Atelier D'),
+                ('KA09', '15:30:00', '0', 'Operateur', 'Pending', 'Majeure', 'Hydraulique', NULL, 'Changement joint étanchéité', 'Atelier A')
+            `);
+            console.log('✅ [DB] 10 demo records inserted');
+        } else {
+            console.log(`✅ [DB] Table already has ${count} records, skipping seed`);
+        }
+
+        await client.query('COMMIT');
+        dbHealthy = true;
+        dbError = null;
+        console.log('✅ [DB] All migrations completed successfully');
+
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('❌ [DB] Migration failed:', err.message);
+        dbHealthy = false;
+        dbError = err.message;
+        throw err;
+    } finally {
+        client.release();
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   6. SOCKET.IO - RAILWAY CONFIG (m9adda)
 ═══════════════════════════════════════════════════════════════════ */
 const io = new Server(server, {
-    transports: ['polling', 'websocket'],
+    transports: ['websocket', 'polling'],  // websocket f lwl
     cors: {
-        origin: ALLOWED_ORIGIN,
+        origin: '*',  // Railway: khalli '*'
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allowedHeaders: ["ngrok-skip-browser-warning", "Content-Type", "Accept"],
-        credentials: true
+        allowedHeaders: ["Content-Type", "Accept"],
+        credentials: false  // FALSE m3a Railway
     },
-    allowEIO3: true
+    allowEIO3: true,
+    pingTimeout: 60000,
+    pingInterval: 25000
 });
 
 app.use(express.json({ limit: '10mb' }));
@@ -104,23 +211,8 @@ app.use((req, _res, next) => {
   next();
 });
 
-/* ── DB Connection Check ── */
-pool.connect((err, client, release) => {
-  if (err) {
-    console.error('❌ [DB] Échec connexion PostgreSQL :', err.message);
-  } else {
-    console.log('✅ [DB] Connexion PostgreSQL établie !');
-    console.log(`   → DATABASE_URL: ${process.env.DATABASE_URL ? 'Railway' : 'Local'}`);
-    release();
-  }
-});
-
-pool.on('error', (err) => {
-  console.error('❌ [DB] Erreur pool PostgreSQL :', err.message);
-});
-
 /* ═══════════════════════════════════════════════════════════════════
-   6. UTILITAIRES
+   7. UTILITAIRES
 ═══════════════════════════════════════════════════════════════════ */
 function sendError(res, status, msg, detail = null) {
   const body = { success: false, message: msg };
@@ -151,8 +243,15 @@ function sanitizeInt(value, fallback = 0) {
   return isNaN(n) || n < 0 ? fallback : n;
 }
 
+async function safeQuery(query, params = []) {
+    if (!dbHealthy) {
+        throw new Error('Database not initialized: ' + (dbError || 'Unknown error'));
+    }
+    return pool.query(query, params);
+}
+
 /* ═══════════════════════════════════════════════════════════════════
-   7. VALIDATION
+   8. VALIDATION
 ═══════════════════════════════════════════════════════════════════ */
 function validateLogPayload(req, res, next) {
   const body = req.body;
@@ -171,7 +270,7 @@ function validateLogPayload(req, res, next) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   8. SIMULATION MACHINES
+   9. SIMULATION
 ═══════════════════════════════════════════════════════════════════ */
 const LISTE_MACHINES_SMI = [ 
   'KA01','KA02','KA03','KA04','KA05','KA06','KA07','KA08','KA09','KA10','KA11','KA12','KA13','KA14','KA15', 
@@ -202,6 +301,8 @@ const LISTE_OBSERVATIONS = [
 
 async function maintenirQuotaDesPannes() {
   try {
+    if (!dbHealthy) return;
+
     const cibleAleatoire = Math.floor(Math.random() * (15 - 5 + 1)) + 5;
     const machinesMelangees = [...LISTE_MACHINES_SMI].sort(() => 0.5 - Math.random());
     const selectionMachinesEnPanne = machinesMelangees.slice(0, cibleAleatoire);
@@ -214,8 +315,12 @@ async function maintenirQuotaDesPannes() {
       type_erreur: typesErreurs[Math.floor(Math.random() * typesErreurs.length)]
     }));
 
-    const pannesReelles = await pool.query(
-      "SELECT machine AS code, 'en panne' AS status, piece_observation AS type_erreur FROM downtime_logs WHERE status IN ('Pending', 'Escalated') OR heure_arret_technicien IS NULL OR heure_arret_technicien = '[null]'"
+    const pannesReelles = await safeQuery(
+      `SELECT machine AS code, 'en panne' AS status, piece_observation AS type_erreur 
+       FROM downtime_logs 
+       WHERE status IN ('Pending', 'Escalated', 'En attente') 
+          OR heure_arret_technicien IS NULL 
+          OR heure_arret_technicien = ''`
     );
 
     pannesReelles.rows.forEach(panneReelle => {
@@ -232,20 +337,16 @@ async function maintenirQuotaDesPannes() {
   }
 }
 
-setInterval(maintenirQuotaDesPannes, 4000);
-
 /* ═══════════════════════════════════════════════════════════════════
-   9. ROUTES API
+   10. ROUTES
 ═══════════════════════════════════════════════════════════════════ */
-
-/* 9.1 — Health */
 app.get('/api/health', async (_req, res) => {
   try {
     await pool.query('SELECT 1');
     return sendSuccess(res, {
       server: 'En ligne',
-      database: 'Connecté',
-      version: '2.1.0',
+      database: dbHealthy ? 'Connecté' : 'Dégradé',
+      version: '2.4.0',
       env: CONFIG.server.env,
       uptime: `${Math.floor(process.uptime())} secondes`,
     }, 'Serveur opérationnel');
@@ -254,7 +355,49 @@ app.get('/api/health', async (_req, res) => {
   }
 });
 
-/* 9.2 — Login */
+app.get('/api/debug', async (_req, res) => {
+    try {
+        const tableCheck = await pool.query(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' AND table_name IN ('downtime_logs', 'machines')
+        `);
+
+        let columns = [];
+        try {
+            const colResult = await pool.query(`
+                SELECT column_name, data_type, is_nullable 
+                FROM information_schema.columns 
+                WHERE table_name = 'downtime_logs' 
+                ORDER BY ordinal_position
+            `);
+            columns = colResult.rows;
+        } catch (e) {
+            columns = [{ error: e.message }];
+        }
+
+        let count = 0;
+        try {
+            const countResult = await pool.query('SELECT COUNT(*) FROM downtime_logs');
+            count = parseInt(countResult.rows[0].count, 10);
+        } catch (e) {
+            count = -1;
+        }
+
+        return res.json({
+            success: true,
+            dbHealthy,
+            dbError,
+            tables: tableCheck.rows.map(r => r.table_name),
+            downtime_logs_columns: columns,
+            downtime_logs_count: count,
+            database_url: process.env.DATABASE_URL ? 'Configured (hidden)' : 'Not set',
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   if (!isPresent(username) || !isPresent(password)) {
@@ -269,7 +412,6 @@ app.post('/api/login', (req, res) => {
   return sendSuccess(res, { username: username.trim(), role: 'admin' }, 'Connexion réussie');
 });
 
-/* 9.3 — Insert Log */
 app.post('/api/logs', validateLogPayload, async (req, res) => {
     const body = req.body;
     const indexMachine = Math.floor(Math.random() * LISTE_MACHINES_SMI.length);
@@ -279,7 +421,7 @@ app.post('/api/logs', validateLogPayload, async (req, res) => {
     const duration = sanitizeInt(body.duration, 0);
     const technician = sanitizeStr(body.technician || body.technicianName, 'Operateur');
     let status = 'En attente';
-    
+
     let alert_type = null;
     let heure_arret_technicien = null;
     let piece_observation = null;
@@ -304,12 +446,12 @@ app.post('/api/logs', validateLogPayload, async (req, res) => {
     }
 
     try {
-        const result = await pool.query(
+        const result = await safeQuery(
             `INSERT INTO downtime_logs 
-            (machine, start_time, duration, technician, status, criticite, alert_type, heure_arret_technicien, piece_observation) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+            (machine, start_time, duration, technician, status, criticite, alert_type, heure_arret_technicien, piece_observation, atelier) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
             RETURNING id;`, 
-            [machine, start_time, duration.toString(), technician, status, criticite, alert_type, heure_arret_technicien, piece_observation]
+            [machine, start_time, duration.toString(), technician, status, criticite, alert_type, heure_arret_technicien, piece_observation, deriveAtelier(machine)]
         );
         return sendSuccess(res, result.rows[0], 'Log inséré avec succès.', 201);
     } catch (err) {
@@ -318,7 +460,13 @@ app.post('/api/logs', validateLogPayload, async (req, res) => {
     }
 });
 
-/* 9.4 — Get All Logs */
+function deriveAtelier(machine) {
+    if (!machine) return 'Atelier Général';
+    const prefix = String(machine).substring(0, 2).toUpperCase();
+    const map = { 'KA': 'Atelier A', 'KB': 'Atelier B', 'KC': 'Atelier C', 'KD': 'Atelier D', 'KX': 'Atelier X' };
+    return map[prefix] || 'Atelier Général';
+}
+
 app.get('/api/logs', async (req, res) => {
   const limit   = Math.min(sanitizeInt(req.query.limit, CONFIG.pagination.defaultLimit), CONFIG.pagination.maxLimit);
   const offset  = sanitizeInt(req.query.offset, 0);
@@ -339,8 +487,8 @@ app.get('/api/logs', async (req, res) => {
     params.push(limit, offset);
 
     const [dataResult, countResult] = await Promise.all([
-      pool.query(dataQuery, params),
-      pool.query(countQuery, params.slice(0, -2)),
+      safeQuery(dataQuery, params),
+      safeQuery(countQuery, params.slice(0, -2)),
     ]);
 
     return sendSuccess(res, {
@@ -356,12 +504,11 @@ app.get('/api/logs', async (req, res) => {
   }
 });
 
-/* 9.5 — Get Log by ID */
 app.get('/api/logs/:id', async (req, res) => {
   const { id } = req.params;
   if (!isPresent(id)) return sendError(res, 400, 'ID requis.');
   try {
-    const result = await pool.query('SELECT * FROM downtime_logs WHERE log_id = $1 LIMIT 1', [sanitizeStr(id)]);
+    const result = await safeQuery('SELECT * FROM downtime_logs WHERE id = $1 LIMIT 1', [sanitizeStr(id)]);
     if (!result.rows.length) return sendError(res, 404, `Log "${id}" introuvable.`);
     return sendSuccess(res, result.rows[0]);
   } catch (err) {
@@ -369,7 +516,6 @@ app.get('/api/logs/:id', async (req, res) => {
   }
 });
 
-/* 9.6 — Update Log */
 app.put('/api/logs/:id', async (req, res) => {
   const { id } = req.params;
   const { status, technician, duration } = req.body;
@@ -377,8 +523,8 @@ app.put('/api/logs/:id', async (req, res) => {
   if (!isPresent(status)) return sendError(res, 400, 'Champ "status" obligatoire.');
 
   try {
-    const result = await pool.query(
-      `UPDATE downtime_logs SET status = $1, technician = COALESCE($2, technician), duration = COALESCE($3, duration), updated_at = NOW() WHERE log_id = $4 RETURNING *;`,
+    const result = await safeQuery(
+      `UPDATE downtime_logs SET status = $1, technician = COALESCE($2, technician), duration = COALESCE($3, duration), updated_at = NOW() WHERE id = $4 RETURNING *;`,
       [sanitizeStr(status), isPresent(technician) ? sanitizeStr(technician) : null, isPresent(duration) ? sanitizeInt(duration) : null, sanitizeStr(id)]
     );
     if (!result.rows.length) return sendError(res, 404, `Log "${id}" introuvable.`);
@@ -389,28 +535,32 @@ app.put('/api/logs/:id', async (req, res) => {
   }
 });
 
-/* 9.7 — Historique */
 app.get('/api/historique', async (req, res) => {
   const limit  = Math.min(sanitizeInt(req.query.limit, CONFIG.pagination.defaultLimit), CONFIG.pagination.maxLimit);
   const offset = sanitizeInt(req.query.offset, 0);
   try {
-    const result = await pool.query('SELECT * FROM downtime_logs ORDER BY created_at DESC LIMIT $1 OFFSET $2', [limit, offset]);
+    const result = await safeQuery('SELECT * FROM downtime_logs ORDER BY created_at DESC LIMIT $1 OFFSET $2', [limit, offset]);
     return res.json(result.rows);
   } catch (err) {
-    return sendError(res, 500, 'Erreur récupération historique.', err.message);
+    console.error('❌ [HISTORIQUE] Erreur:', err.message);
+    return res.status(500).json({ 
+        success: false, 
+        message: 'Erreur récupération historique.',
+        detail: CONFIG.server.env !== 'production' ? err.message : undefined,
+        data: [] 
+    });
   }
 });
 
-/* 9.8 — Stats */
 app.get('/api/stats', async (req, res) => {
   try {
     const [total, byStatus, avgDuration, topMachines, today, weekly] = await Promise.all([
-      pool.query('SELECT COUNT(*) AS count FROM downtime_logs'),
-      pool.query('SELECT status, COUNT(*) AS count FROM downtime_logs GROUP BY status ORDER BY count DESC'),
-      pool.query('SELECT ROUND(AVG(NULLIF(duration, \'\')::NUMERIC), 2) AS avg FROM downtime_logs'),
-      pool.query('SELECT machine, COUNT(*) AS pannes FROM downtime_logs GROUP BY machine ORDER BY pannes DESC LIMIT 5'),
-      pool.query('SELECT COUNT(*) AS count FROM downtime_logs WHERE DATE(created_at) = CURRENT_DATE'),
-      pool.query(`SELECT DATE(created_at) AS jour, COUNT(*) AS total FROM downtime_logs WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY DATE(created_at) ORDER BY jour ASC`),
+      safeQuery('SELECT COUNT(*) AS count FROM downtime_logs'),
+      safeQuery('SELECT status, COUNT(*) AS count FROM downtime_logs GROUP BY status ORDER BY count DESC'),
+      safeQuery('SELECT ROUND(AVG(NULLIF(duration, \'\')::NUMERIC), 2) AS avg FROM downtime_logs'),
+      safeQuery('SELECT machine, COUNT(*) AS pannes FROM downtime_logs GROUP BY machine ORDER BY pannes DESC LIMIT 5'),
+      safeQuery('SELECT COUNT(*) AS count FROM downtime_logs WHERE DATE(created_at) = CURRENT_DATE'),
+      safeQuery(`SELECT DATE(created_at) AS jour, COUNT(*) AS total FROM downtime_logs WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY DATE(created_at) ORDER BY jour ASC`),
     ]);
 
     const totalInterventions = parseInt(total.rows[0].count, 10) || 0;
@@ -429,16 +579,22 @@ app.get('/api/stats', async (req, res) => {
       weekly: weekly.rows,
     });
   } catch (err) {
-    return res.status(500).json({ success: false, message: err.message });
+    console.error('❌ [STATS] Erreur:', err.message);
+    return res.status(500).json({ 
+        success: false, 
+        message: err.message,
+        downtime: 0, mttr: '0 min', mtbf: '0h', availability: '0%',
+        total: 0, today: 0, avgDuration: 0,
+        byStatus: [], topMachines: [], weekly: [],
+    });
   }
 });
 
-/* 9.9 — Sessions */
 app.get('/api/sessions', async (req, res) => {
   const limit = Math.min(sanitizeInt(req.query.limit, 200), CONFIG.pagination.maxLimit);
   try {
-    const result = await pool.query(
-      `SELECT log_id AS id, machine AS name, alert_type AS type, status, duration, technician AS service, created_at AS date FROM downtime_logs ORDER BY created_at DESC LIMIT $1`,
+    const result = await safeQuery(
+      `SELECT id AS log_id, machine AS name, alert_type AS type, status, duration, technician AS service, created_at AS date FROM downtime_logs ORDER BY created_at DESC LIMIT $1`,
       [limit]
     );
     return res.status(200).json(result.rows);
@@ -447,7 +603,6 @@ app.get('/api/sessions', async (req, res) => {
   }
 });
 
-/* 9.10 — Intervention */
 app.post('/api/intervention', async (req, res) => {
   const idPanne = req.body.idPanne || req.body.id;
   const criticite = req.body.criticiteRaw || req.body.criticite;
@@ -459,7 +614,7 @@ app.post('/api/intervention', async (req, res) => {
   }
 
   try {
-    const result = await pool.query(
+    const result = await safeQuery(
       `UPDATE downtime_logs SET criticite = $1, heure_arret_technicien = $2, piece_observation = $3 WHERE id = $4`,
       [criticite, heureIntervention, observation, idPanne]
     );
@@ -476,11 +631,11 @@ app.post('/api/intervention', async (req, res) => {
     }
     return res.status(200).json({ success: true, message: "✅ Intervention enregistrée !" });
   } catch (err) {
-    return res.status(500).json({ success: false, message: 'Erreur interne serveur.' });
+    console.error('❌ [INTERVENTION] Erreur:', err);
+    return res.status(500).json({ success: false, message: 'Erreur interne serveur.', detail: err.message });
   }
 });
 
-/* 9.11 — Update Machine Status */
 app.post('/api/machines/update-status', async (req, res) => {
   const { code, status, type_erreur } = req.body;
   if (!isPresent(code) || !isPresent(status)) {
@@ -488,7 +643,7 @@ app.post('/api/machines/update-status', async (req, res) => {
   }
 
   try {
-    await pool.query(
+    await safeQuery(
       'UPDATE machines SET status = $1, type_erreur = $2 WHERE code = $3',
       [status, status.toLowerCase() === 'operational' ? null : (type_erreur || null), code]
     );
@@ -503,7 +658,7 @@ app.post('/api/machines/update-status', async (req, res) => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════
-   10. 404 & ERROR HANDLERS
+   11. ERROR HANDLERS
 ═══════════════════════════════════════════════════════════════════ */
 app.use((req, res) => {
   console.warn(`⚠️ [404] ${req.method} ${req.originalUrl}`);
@@ -516,7 +671,7 @@ app.use((err, req, res, _next) => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════
-   11. DÉMARRAGE SERVEUR + SOCKET.IO
+   12. START SERVER WITH RAILWAY CONFIG
 ═══════════════════════════════════════════════════════════════════ */
 app.set('io', io);
 
@@ -529,31 +684,55 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(CONFIG.server.port, '0.0.0.0', () => {
-  console.log('\n╔════════════════════════════════════════════╗');
-  console.log('║     SMI Enterprise — API Server v2.1       ║');
-  console.log('╠════════════════════════════════════════════╣');
-  console.log(`║  ✅ Serveur démarré sur le port : ${CONFIG.server.port}       ║`);
-  console.log(`║  🌍 Environnement : ${CONFIG.server.env.padEnd(22)}║`);
-  console.log(`║  🗄️  DB : ${(process.env.DATABASE_URL ? 'Railway Cloud' : 'Local PostgreSQL').padEnd(26)}║`);
-  console.log('╠════════════════════════════════════════════╣');
-  console.log('║  📡 Endpoints disponibles :                ║');
-  console.log('║    GET  /api/health                        ║');
-  console.log('║    POST /api/login                         ║');
-  console.log('║    POST /api/logs                          ║');
-  console.log('║    GET  /api/logs                          ║');
-  console.log('║    GET  /api/logs/:id                      ║');
-  console.log('║    PUT  /api/logs/:id                      ║');
-  console.log('║    GET  /api/historique                    ║');
-  console.log('║    GET  /api/stats                         ║');
-  console.log('║    GET  /api/sessions                      ║');
-  console.log('║    POST /api/intervention                  ║');
-  console.log('║    POST /api/machines/update-status        ║');
-  console.log('╚════════════════════════════════════════════╝\n');
+async function startServer() {
+    await runMigrations();
+
+    const tryPort = CONFIG.server.port;
+
+    server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.error(`❌ [PORT] Le port ${tryPort} est déjà utilisé !`);
+            process.exit(1);
+        } else {
+            console.error('❌ [SERVER] Erreur:', err);
+            process.exit(1);
+        }
+    });
+
+    server.listen(tryPort, '0.0.0.0', () => {
+      console.log('\n╔════════════════════════════════════════════╗');
+      console.log('║  SMI Enterprise — API Server v2.4        ║');
+      console.log('║  RAILWAY DEPLOYMENT                      ║');
+      console.log('╠════════════════════════════════════════════╣');
+      console.log(`║  ✅ Serveur démarré sur le port : ${tryPort}       ║`);
+      console.log(`║  🌍 Environnement : ${CONFIG.server.env.padEnd(22)}║`);
+      console.log(`║  🗄️  DB : ${(process.env.DATABASE_URL ? 'Railway PostgreSQL' : 'Local PostgreSQL').padEnd(26)}║`);
+      console.log(`║  📊 DB Status : ${(dbHealthy ? '✅ Healthy' : '❌ Unhealthy').padEnd(20)}║`);
+      console.log('╠════════════════════════════════════════════╣');
+      console.log('║  📡 Endpoints disponibles :                ║');
+      console.log('║    GET  /api/health                        ║');
+      console.log('║    GET  /api/debug    ← Diagnostic DB      ║');
+      console.log('║    POST /api/login                         ║');
+      console.log('║    POST /api/logs                          ║');
+      console.log('║    GET  /api/logs                          ║');
+      console.log('║    GET  /api/logs/:id                      ║');
+      console.log('║    PUT  /api/logs/:id                      ║');
+      console.log('║    GET  /api/historique                    ║');
+      console.log('║    GET  /api/stats                         ║');
+      console.log('║    GET  /api/sessions                      ║');
+      console.log('║    POST /api/intervention                  ║');
+      console.log('║    POST /api/machines/update-status        ║');
+      console.log('╚════════════════════════════════════════════╝\n');
+    });
+}
+
+startServer().catch(err => {
+    console.error('💥 [FATAL] Impossible de démarrer le serveur:', err);
+    process.exit(1);
 });
 
 /* ═══════════════════════════════════════════════════════════════════
-   12. GRACEFUL SHUTDOWN
+   13. GRACEFUL SHUTDOWN
 ═══════════════════════════════════════════════════════════════════ */
 async function gracefulShutdown(signal) {
   console.log(`\n⚠️ [SERVEUR] Signal : ${signal}`);
