@@ -555,12 +555,26 @@ app.get('/api/historique', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// ROUTE /api/stats — FIXED: Handle empty strings in duration
+// ═══════════════════════════════════════════════════════════════════
 app.get('/api/stats', async (req, res) => {
   try {
     const [total, byStatus, avgDuration, topMachines, today, weekly] = await Promise.all([
       safeQuery('SELECT COUNT(*) AS count FROM downtime_logs'),
       safeQuery('SELECT status, COUNT(*) AS count FROM downtime_logs GROUP BY status ORDER BY count DESC'),
-      safeQuery('SELECT ROUND(AVG(NULLIF(duration, \'\')::NUMERIC), 2) AS avg FROM downtime_logs'),
+      
+      // ✅ FIXED: Handle empty strings and NULL in duration column
+      safeQuery(`
+        SELECT ROUND(AVG(
+          CASE 
+            WHEN duration IS NULL OR duration = '' THEN NULL 
+            ELSE duration::NUMERIC 
+          END
+        ), 2) AS avg 
+        FROM downtime_logs
+      `),
+      
       safeQuery('SELECT machine, COUNT(*) AS pannes FROM downtime_logs GROUP BY machine ORDER BY pannes DESC LIMIT 5'),
       safeQuery('SELECT COUNT(*) AS count FROM downtime_logs WHERE DATE(created_at) = CURRENT_DATE'),
       safeQuery(`SELECT DATE(created_at) AS jour, COUNT(*) AS total FROM downtime_logs WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY DATE(created_at) ORDER BY jour ASC`),
