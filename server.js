@@ -203,7 +203,10 @@ const io = new Server(server, {
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(__dirname, { index: 'issam.html' }));
+app.use(express.static(__dirname));
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'issam.html'));
+});
 /* ── Logger ── */
 app.use((req, _res, next) => {
   const timestamp = new Date().toLocaleString('fr-FR');
