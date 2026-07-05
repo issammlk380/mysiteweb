@@ -1,15 +1,22 @@
 {
-  "name": "GMAO Technicien",
-  "short_name": "GMAO",
-  "start_url": "technicien.html",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#4f46e5",
-  "icons": [
-    {
-      "src": "https://cdn-icons-png.flaticon.com/512/1043/1043306.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
+  "name": "andon-system",
+  "version": "2.1.0",
+  "description": "SMI Enterprise - Andon & Maintenance Dashboard - Railway Ready",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "engines": {
+    "node": "20.x"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "pg": "^8.11.0",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
 }

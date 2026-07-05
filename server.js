@@ -16,6 +16,7 @@ const { Server } = require('socket.io');
 const { Pool }   = require('pg');
 const cors       = require('cors');
 
+const path     = require('path');
 const app = express();
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -655,6 +656,30 @@ app.post('/api/machines/update-status', async (req, res) => {
   } catch (err) {
     return sendError(res, 500, 'Erreur mise à jour statut.', err.message);
   }
+});
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   10b. STATIC HTML PAGE ROUTES
+═══════════════════════════════════════════════════════════════════ */
+// Serve login.html
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+// Serve issam.html as the main page
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'issam.html'));
+});
+
+// Serve dashboard.html
+app.get('/dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
+
+// Serve technicien.html
+app.get('/technicien', (req, res) => {
+    res.sendFile(path.join(__dirname, 'technicien.html'));
 });
 
 /* ═══════════════════════════════════════════════════════════════════

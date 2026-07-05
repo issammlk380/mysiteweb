@@ -12,6 +12,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 
     <style>
+        /* [KOLL CSS DYALEK KIF MA KAYN] */
         * {
             margin: 0;
             padding: 0;
@@ -1266,7 +1267,7 @@
                     </div>
 
                     <div class="scroll-container max-h-[350px] overflow-y-auto">
-    <table class="data-table">
+   <table class="data-table">
         <thead class="sticky top-0 bg-[#0f172a] z-30 block md:table-header-group shadow-md border-b border-slate-800">
             <tr class="bg-[#0f172a]">
                 <th class="p-4 text-xs font-mono font-bold text-cyan-400 tracking-wider uppercase h-12 align-middle">Log ID</th>
@@ -1422,101 +1423,6 @@
         // ==================== BACKEND CONFIGURATION ====================
         const API_BASE_URL = 'https://mysiteweb-production.up.railway.app';
 
-        // ==================== LOCALSTORAGE MANAGEMENT ====================
-        class StorageManager {
-            static KEYS = {
-                MACHINES: 'andon_machines',
-                LOGS: 'andon_logs',
-                SETTINGS: 'andon_settings',
-                SHIFT_DATA: 'andon_shift_data'
-            };
-
-            static saveMachines() {
-                try {
-                    localStorage.setItem(this.KEYS.MACHINES, JSON.stringify(appState.machines));
-                } catch (e) {
-                    console.error('Storage quota exceeded:', e);
-                }
-            }
-
-            static loadMachines() {
-                try {
-                    const data = localStorage.getItem(this.KEYS.MACHINES);
-                    if (data) {
-                        appState.machines = JSON.parse(data);
-                        console.log('✓ Machines loaded from LocalStorage');
-                        return true;
-                    }
-                } catch (e) {
-                    console.error('Failed to load machines:', e);
-                }
-                return false;
-            }
-
-            static saveLogs() {
-                try {
-                    localStorage.setItem(this.KEYS.LOGS, JSON.stringify(appState.logs));
-                } catch (e) {
-                    console.error('Failed to save logs:', e);
-                }
-            }
-
-            static loadLogs() {
-                try {
-                    const data = localStorage.getItem(this.KEYS.LOGS);
-                    if (data) {
-                        appState.logs = JSON.parse(data);
-                        console.log(`✓ ${appState.logs.length} logs loaded from LocalStorage`);
-                        return true;
-                    }
-                } catch (e) {
-                    console.error('Failed to load logs:', e);
-                }
-                return false;
-            }
-
-            static saveSettings() {
-                try {
-                    const settings = {
-                        soundEnabled: appState.soundEnabled,
-                        currentShift: appState.currentShift,
-                        theme: appState.theme
-                    };
-                    localStorage.setItem(this.KEYS.SETTINGS, JSON.stringify(settings));
-                } catch (e) {
-                    console.error('Failed to save settings:', e);
-                }
-            }
-
-            static loadSettings() {
-                try {
-                    const data = localStorage.getItem(this.KEYS.SETTINGS);
-                    if (data) {
-                        const settings = JSON.parse(data);
-                        appState.soundEnabled = settings.soundEnabled || false;
-                        appState.currentShift = settings.currentShift || 'morning';
-                        appState.theme = settings.theme || 'dark';
-                        console.log('✓ Settings loaded from LocalStorage');
-                        return true;
-                    }
-                } catch (e) {
-                    console.error('Failed to load settings:', e);
-                }
-                return false;
-            }
-
-            static clearAllData() {
-                if (confirm('⚠️ هل أنت متأكد من حذف جميع البيانات؟ هذا لا يمكن التراجع عنه!')) {
-                    localStorage.removeItem(this.KEYS.MACHINES);
-                    localStorage.removeItem(this.KEYS.LOGS);
-                    localStorage.removeItem(this.KEYS.SETTINGS);
-                    localStorage.removeItem(this.KEYS.SHIFT_DATA);
-                    showNotification('✓ جميع البيانات تم حذفها. إعادة تحميل الصفحة...', 'success');
-                    setTimeout(() => location.reload(), 1000);
-                }
-            }
-        }
-
         // ==================== SHIFT MANAGEMENT ====================
         class ShiftManager {
             static SHIFTS = {
@@ -1550,7 +1456,6 @@
                 }
 
                 appState.currentShift = currentShift;
-                StorageManager.saveSettings();
             }
         }
 
@@ -1781,7 +1686,7 @@ setInterval(initializeMachines, 5000);
             card.id = `machine-card-${machineID}`;
             
             let additionalClass = '';
-        if (machine.status === 'downtime') {
+               if (machine.status === 'downtime') {
                 additionalClass = machine.isEscalated ? 'glow-critical' : 'glow-pulse';
             }
             
@@ -1789,7 +1694,6 @@ setInterval(initializeMachines, 5000);
                 card.classList.add(additionalClass);
             }
 
-            // 🛠️ التعديل هنا: جعل نص العطل ديناميكياً إذا كانت الماكينة في حالة downtime
             const displayStatusLabel = machine.status === 'downtime' 
                 ? `Downtime (${machine.alertType || 'Panne'})` 
                 : statusInfo.label;
@@ -1967,7 +1871,9 @@ async function assignTechnician() {
 
     try {
         await sendLogToServer(machineID, 'In Progress', randomTech.name, 0);
-    } catch(e) { console.error("Error sending to DB:", e); }
+    } catch(e) { 
+        console.error("Error sending to DB:", e); 
+    }
 
     const pendingLog = appState.logs.find(l => l.machineID === machineID && l.status === 'Pending');
     if (pendingLog) {
@@ -1989,23 +1895,19 @@ async function assignTechnician() {
     renderAllMachines();
     updateKPIs();
     renderLogs();
-    if(typeof ChartOptimizer !== 'undefined') ChartOptimizer.debouncedChartUpdate();
     
-    StorageManager.saveMachines();
-    StorageManager.saveLogs();
+    if(typeof ChartOptimizer !== 'undefined') ChartOptimizer.debouncedChartUpdate();
     if(typeof showNotification === 'function') showNotification(`✓ ${randomTech.name} assigned to ${machineID}`, 'success');
 }
 
 /// ==================== 2. RESOLVE ALERT ====================
 async function resolveAlert() { 
-    // Récupérer l'ID de la machine actuellement sélectionnée (ex: 'KA01')
     const machineID = appState.currentSelectedMachine;
     if (!machineID) return;
     
     const machine = appState.machines[machineID];
     if (!machine) return;
 
-    // Protection du temps pour éviter l'erreur NaN sur le serveur
     const startTime = machine.statusChangeTime || Date.now();
     let downtimeMinutes = Math.floor((Date.now() - startTime) / 60000);
     if (isNaN(downtimeMinutes) || downtimeMinutes < 0) downtimeMinutes = 0;
@@ -2013,21 +1915,18 @@ async function resolveAlert() {
     machine.totalDowntimeMinutes += downtimeMinutes;
     const techName = (machine.assignedTech && machine.assignedTech.name) ? machine.assignedTech.name : 'Unassigned';
 
-    // ⬇️ Envoi des données au serveur et synchronisation PGAdmin ⬇️
     try {
-        // 1. Envoi du log historique (Votre code existant)
         await sendLogToServer(machineID, 'Resolved', techName, downtimeMinutes);
 
-        // 2. NOUVEAU : Synchronisation immédiate du statut dans PGAdmin via le Backend
-       const response = await fetch('https://mysiteweb-production.up.railway.app/api/machines/update-status', {
+        const response = await fetch('https://mysiteweb-production.up.railway.app/api/machines/update-status', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 code: machineID,
-                status: 'Operational', // Devient opérationnelle dans la base de données
-                type_erreur: null       // Plus d'erreur
+                status: 'Operational',
+                type_erreur: null
             })
         });
 
@@ -2042,7 +1941,6 @@ async function resolveAlert() {
         console.error("❌ Erreur lors de l'envoi à la base de données :", e); 
     }
 
-    // Mise à jour de l'état local de l'application
     machine.status = 'operational';
     machine.alertType = null;
     machine.assignedTech = null;
@@ -2050,7 +1948,6 @@ async function resolveAlert() {
     machine.isEscalated = false;
     machine.downtimeCount += 1;
 
-    // Mise à jour du log local dans l'interface
     const logEntry = appState.logs.find(l => l.machineID === machineID && (l.status === 'In Progress' || l.status === 'Escalated'));
     if (logEntry) {
         logEntry.status = 'Resolved';
@@ -2058,7 +1955,6 @@ async function resolveAlert() {
         logEntry.duration = downtimeMinutes;
     }
 
-    // Actualisation de l'interface graphique
     closeMachineModal();
     renderAllMachines();
     renderLogs();
@@ -2067,11 +1963,6 @@ async function resolveAlert() {
     if(typeof ChartOptimizer !== 'undefined') ChartOptimizer.debouncedChartUpdate();
     
     if(typeof showAlert === 'function') showAlert(`✓ Alert resolved for ${machineID}. Machine returned to production.`);
-    
-    if(typeof StorageManager !== 'undefined') {
-        StorageManager.saveMachines();
-        StorageManager.saveLogs();
-    }
 }
 
 // ==================== 3. ESCALATE ALERT ====================
@@ -2088,7 +1979,6 @@ async function escalateAlert() {
     const techName = (machine.assignedTech && machine.assignedTech.name) ? machine.assignedTech.name : 'Unassigned';
 
     try {
-        // كنصيفطو 0 فـ الوقت حيت Escalated مازال ما تسلاتش
         await sendLogToServer(machineID, 'Escalated', techName, 0);
     } catch (err) { console.error("Error sending to DB:", err); }
 
@@ -2102,11 +1992,6 @@ async function escalateAlert() {
     if(typeof updateKPIs === 'function') updateKPIs();
     renderLogs();
     if(typeof ChartOptimizer !== 'undefined') ChartOptimizer.debouncedChartUpdate();
-    
-    if(typeof StorageManager !== 'undefined') {
-        StorageManager.saveMachines();
-        StorageManager.saveLogs();
-    }
     
     if (typeof showNotification === 'function') {
         showNotification(`⚠️ Escalation triggered for ${machineID}`, 'warning');
@@ -2391,17 +2276,16 @@ function renderLogs() {
         }
 
         function clearLocalData() {
-            StorageManager.clearAllData();
+            localStorage.clear();
+            console.log('🗑️ LocalStorage cleared');
         }
 
         // ==================== SIMULATION ENGINE ====================
-       // L'ajout du mot-clé "async" permet d'utiliser "await fetch" à l'intérieur de la fonction
        async function simulateFactoryActivity() {
             if (!appState.simulationRunning) return;
 
             updateAllMachineTimers();
 
-            // Une probabilité de 0.95 (5% de chance) qu'une machine tombe en panne aléatoirement
             if (Math.random() > 0.95) {
                 const machineKeys = Object.keys(appState.machines);
                 const randomMachine = machineKeys[Math.floor(Math.random() * machineKeys.length)];
@@ -2414,7 +2298,6 @@ function renderLogs() {
                     machine.statusChangeTime = Date.now();
                     machine.isEscalated = false;
 
-                    // 1. Mise à jour de l'interface utilisateur en local (Front-end)
                     addLog(randomMachine, machine.alertType, 'Pending', 'Unassigned');
                     SoundSystem.playAlertSequence();
                     showAlert(`⚠️ ALERT: Machine ${randomMachine} has entered downtime (${machine.alertType}). Technician assignment required.`);
@@ -2423,37 +2306,29 @@ function renderLogs() {
                     updateKPIs();
                     ChartOptimizer.debouncedChartUpdate();
                     renderLogs();
-                    
-                    StorageManager.saveMachines();
-                    StorageManager.saveLogs();
 
-                  // ==================== 🔴 2. Création automatique de la panne dans pgAdmin ====================
-try {
-    // 1️⃣ هنا كنجبدو السمية لي معزولة ف اللحظة الحالية من الليستة
-    const selectOperateur = document.getElementById('operateurSelect'); // 💡 بدل 'operateurSelect' بالـ id الحقيقي لي عندك ف الـ HTML
-    const nomOperateur = selectOperateur ? selectOperateur.value : 'Unassigned';
+                  try {
+                        const selectOperateur = document.getElementById('operateurSelect');
+                        const nomOperateur = selectOperateur ? selectOperateur.value : 'Unassigned';
 
-   await fetch('https://mysiteweb-production.up.railway.app/api/logs', { 
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-            machine: randomMachine,
-            alertType: machine.alertType,
-            startTime: new Date().toLocaleTimeString('fr-FR'), // L'heure actuelle
-            duration: 0,
-            technician: nomOperateur, // 👈 هنا عوضنا القيمة القديمة بالمتغير الجديد لي فيه السمية!
-            status: 'Pending'
-        })
-
-    });
-    console.log(`✅ [PostgreSQL] Nouvelle panne enregistrée avec succès pour la machine ${randomMachine} !`);
-} catch(err) {
-    console.log("❌ [Erreur] Impossible d'envoyer la panne au serveur. Vérifiez que votre serveur Node.js est bien allumé.");
-}
-// ==============================================================================================
-                    // ==============================================================================================
+                        await fetch('https://mysiteweb-production.up.railway.app/api/logs', { 
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ 
+                                machine: randomMachine,
+                                alertType: machine.alertType,
+                                startTime: new Date().toLocaleTimeString('fr-FR'),
+                                duration: 0,
+                                technician: nomOperateur,
+                                status: 'Pending'
+                            })
+                        });
+                        console.log(`✅ [PostgreSQL] Nouvelle panne enregistrée avec succès pour la machine ${randomMachine} !`);
+                    } catch(err) {
+                        console.log("❌ [Erreur] Impossible d'envoyer la panne au serveur.");
+                    }
                 }
             }
 
@@ -2477,13 +2352,11 @@ try {
                 toggle.style.background = 'rgba(16, 185, 129, 0.1)';
                 showNotification('🔇 Sound alerts disabled', 'success');
             }
-            StorageManager.saveSettings();
         });
 
         document.getElementById('searchInput').addEventListener('input', renderLogs);
         document.getElementById('filterType').addEventListener('change', renderLogs);
 
-       // ==================== GESTIONNAIRE DU MODAL ====================
         document.getElementById('machineModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeMachineModal();
@@ -2500,43 +2373,36 @@ try {
         setInterval(simulateFactoryActivity, 3000);
 
         // ==================== APPLICATION INITIALIZATION ====================
-        function initializeApplication() {
+        async function initializeApplication() {
             console.log('🚀 Initializing NextGen Andon & Maintenance Dashboard...');
             
-            const machinesLoaded = StorageManager.loadMachines();
-            const logsLoaded = StorageManager.loadLogs();
-            StorageManager.loadSettings();
+            initializeMachines();
+            console.log(`✓ Initialized ${Object.keys(appState.machines).length} machines across 5 zones`);
 
-            if (!machinesLoaded) {
-                initializeMachines();
-                console.log(`✓ Initialized ${Object.keys(appState.machines).length} machines across 5 zones`);
-            }
-
-            if (!logsLoaded) {
-                for (let i = 0; i < 12; i++) {
-                    const machineKeys = Object.keys(appState.machines);
-                    const randomMachine = machineKeys[Math.floor(Math.random() * machineKeys.length)];
-                    const alertType = appState.alertTypes[Math.floor(Math.random() * appState.alertTypes.length)];
-                    const tech = appState.technicians[Math.floor(Math.random() * appState.technicians.length)];
-                    const duration = Math.floor(Math.random() * 120) + 10;
-                    
-                    const logID = `LOG-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
-                    const startDate = new Date(Date.now() - Math.random() * 86400000);
-                    const endDate = new Date(startDate.getTime() + duration * 60000);
-                    
-                    appState.logs.push({
-                        id: logID,
-                        machineID: randomMachine,
-                        alertType: alertType,
-                        startTime: startDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-                        endTime: endDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-                        duration: duration,
-                        technician: tech.name,
-                        status: 'Resolved',
-                        createdAt: Date.now() - Math.random() * 86400000
-                    });
+            try {
+                const response = await fetch('https://mysiteweb-production.up.railway.app/api/historique');
+                const data = await response.json();
+                
+                if (Array.isArray(data) && data.length > 0) {
+                    appState.logs = data.map(log => ({
+                        id: log.log_id || `LOG-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
+                        machineID: log.machine,
+                        alertType: log.alert_type || 'Unknown',
+                        startTime: log.start_time,
+                        endTime: log.status === 'Resolved' ? new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-',
+                        duration: parseInt(log.duration) || 0,
+                        technician: log.technician || 'Unassigned',
+                        status: log.status,
+                        createdAt: new Date(log.created_at).getTime()
+                    }));
+                    console.log(`✓ Loaded ${appState.logs.length} logs from Railway`);
+                } else {
+                    console.log('⚠️ No logs found in Railway');
+                    appState.logs = [];
                 }
-                console.log(`✓ Loaded ${appState.logs.length} historical downtime logs`);
+            } catch (err) {
+                console.warn('⚠️ Failed to fetch logs from Railway:', err);
+                appState.logs = [];
             }
 
             renderAllMachines();
@@ -2545,18 +2411,16 @@ try {
             ChartOptimizer.lazyLoadChart();
             ShiftManager.updateShiftDisplay();
             setInterval(() => ShiftManager.updateShiftDisplay(), 60000);
-           // setupAutoSave();
 
             if (appState.soundEnabled) {
                 document.getElementById('soundToggleSwitch').classList.add('active');
             }
 
-            // ── Lance le fetch initial dès que l'app est prête ──
             fetchUniqueMachinesEnPanne();
 
             console.log('✓ Dashboard rendered successfully');
             console.log('🏭 SEWS Automotive Wiring Harness Factory - Live Monitor Active');
-            console.log('✓ All data saved to LocalStorage - Auto-save every 30 seconds');
+            console.log('✓ All data from Railway - No LocalStorage');
         }
 
         if (document.readyState === 'loading') {
@@ -2564,141 +2428,115 @@ try {
         } else {
             initializeApplication();
         }
+        
         async function sendLogToBackend(logId, machine, alertType, startTime, duration, technician, status) {
-    const logData = {
-        logId: logId,
-        machine: machine,
-        alertType: alertType,
-        startTime: startTime,
-        duration: duration,
-        technician: technician,
-        status: status
-    };
+            const logData = {
+                logId: logId,
+                machine: machine,
+                alertType: alertType,
+                startTime: startTime,
+                duration: duration,
+                technician: technician,
+                status: status
+            };
 
-    try {
-        // زدنا await هنا، و درنا كولشي وسط try/catch باش نشدو الأخطاء
-const response = await fetch('https://mysiteweb-production.up.railway.app/api/logs', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(logData)
-});
+            try {
+                const response = await fetch('https://mysiteweb-production.up.railway.app/api/logs', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(logData)
+                });
 
-        // كنتسناو الرد يرجع على شكل JSON
-        const data = await response.json();
+                const data = await response.json();
+                console.log('✅ Success:', data);
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+            }
+        }
         
-        console.log('✅ Success:', data);
-        
-    } catch (error) {
-        // هادي غاتشد أي خطأ وقع فـ السيرفر ولا فـ الكونيكسيون
-        console.error('❌ Error:', error);
-    }
-}
-        // ══════════════════════════════════════════════════════════════════
-        // MODIFICATION ULTRA-CIBLÉE — Carte "Machines en panne"
-        // ──────────────────────────────────────────────────────────────────
-        // Objectif : afficher le nombre de machines UNIQUES (distinctes)
-        // dont le statut est 'Pending' dans la table downtime_logs (BD PostgreSQL).
-        //
-        // Fonctionnement :
-        //   1. Appel GET /api/historique → tableau de lignes downtime_logs
-        //   2. Filtre sur status === 'Pending' (valeur exacte de la BD)
-        //   3. Déduplication par le champ `machine` via Set → valeur unique
-        //   4. Injection dans l'élément #kpiMachinesEnPanne
-        //   5. Ré-appel toutes les 30 secondes (même cadence que l'auto-save)
-        //   6. En cas d'erreur API → le chiffre reste inchangé (pas d'écrasement)
         async function fetchUniqueMachinesEnPanne() {
-    try {
-        const reponse = await fetch('https://mysiteweb-production.up.railway.app/api/historique');
-        
-        if (!reponse.ok) {
-            throw new Error(`HTTP ${reponse.status}`);
-        }
-        
-        const data = await reponse.json();
-        
-        // Count unique machines with non-resolved status
-        const pendingSet = new Set();
-        data.forEach(log => {
-            const status = (log.status || '').toString().trim().toLowerCase();
-            if (status === 'pending' || status === 'escalated' || status === 'en attente' || status === 'en panne') {
-                if (log.machine) pendingSet.add(log.machine.trim().toUpperCase());
+            try {
+                const reponse = await fetch('https://mysiteweb-production.up.railway.app/api/historique');
+                
+                if (!reponse.ok) {
+                    throw new Error(`HTTP ${reponse.status}`);
+                }
+                
+                const data = await reponse.json();
+                
+                const pendingSet = new Set();
+                data.forEach(log => {
+                    const status = (log.status || '').toString().trim().toLowerCase();
+                    if (status === 'pending' || status === 'escalated' || status === 'en attente' || status === 'en panne') {
+                        if (log.machine) pendingSet.add(log.machine.trim().toUpperCase());
+                    }
+                });
+                
+                const count = pendingSet.size;
+                const kpiEl = document.getElementById('kpiMachinesEnPanne');
+                if (kpiEl) kpiEl.textContent = count;
+                
+                return data;
+                
+            } catch (erreur) {
+                console.warn("⚠️ [GMAO] fetchUniqueMachinesEnPanne :", erreur.message);
+                return [];
             }
-        });
-        
-        const count = pendingSet.size;
-        const kpiEl = document.getElementById('kpiMachinesEnPanne');
-        if (kpiEl) kpiEl.textContent = count;
-        
-        return data;
-        
-    } catch (erreur) {
-        console.warn("⚠️ [GMAO] fetchUniqueMachinesEnPanne :", erreur.message);
-        return [];
-    }
-}
+        }
 
-        // Rafraîchissement automatique toutes les 30 secondes
-        // (synchronisé avec la cadence de l'auto-save existant)
         setInterval(fetchUniqueMachinesEnPanne, 30000);
-        // ═════════════════════════════════════════════════════════════════
-async function sendLogToServer(machineID, status, technician, duration = 0) {
-    try {
-        let currentAlertType = 'N/A';
-        if (typeof appState !== 'undefined' && appState.machines && appState.machines[machineID]) {
-            currentAlertType = appState.machines[machineID].alertType || 'N/A';
-        }
+        
+        async function sendLogToServer(machineID, status, technician, duration = 0) {
+            try {
+                let currentAlertType = 'N/A';
+                if (typeof appState !== 'undefined' && appState.machines && appState.machines[machineID]) {
+                    currentAlertType = appState.machines[machineID].alertType || 'N/A';
+                }
 
-        // 1️⃣ Récupération dynamique du nom de l'opérateur sélectionné dans la liste HTML
-        const selectOperateur = document.getElementById('operateurSelect'); // 💡 Assure-toi que cet ID correspond bien à ton <select> HTML
-        const realTechnician = selectOperateur && selectOperateur.value ? selectOperateur.value : (technician || 'Unassigned');
+                const selectOperateur = document.getElementById('operateurSelect');
+                const realTechnician = selectOperateur && selectOperateur.value ? selectOperateur.value : (technician || 'Unassigned');
 
-        // Préparation des données à envoyer (Payload)
-        const payload = {
-            machine: machineID,
-            status: status, 
-            technician: realTechnician, // Le nom sélectionné est envoyé ici
-            startTime: new Date().toLocaleTimeString('fr-FR'), 
-            duration: duration,
-            alert_type: currentAlertType
-        };
+                const payload = {
+                    machine: machineID,
+                    status: status, 
+                    technician: realTechnician,
+                    startTime: new Date().toLocaleTimeString('fr-FR'), 
+                    duration: duration,
+                    alert_type: currentAlertType
+                };
 
-        // 2️⃣ Envoi des données vers le serveur local (compatible PC et Téléphone via Point d'accès)
-       const response = await fetch('https://mysiteweb-production.up.railway.app/api/logs', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-});
-        if (response.ok) {
-            console.log(`✅ [SUCCESS] État de la machine ${machineID} synchronisé avec succès sur le serveur local !`);
-            if (typeof initializeMachines === 'function') {
-                initializeMachines(); 
+                const response = await fetch('https://mysiteweb-production.up.railway.app/api/logs', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (response.ok) {
+                    console.log(`✅ [SUCCESS] État de la machine ${machineID} synchronisé avec succès !`);
+                    if (typeof initializeMachines === 'function') {
+                        initializeMachines(); 
+                    }
+                } else {
+                    const errorDetails = await response.text();
+                    console.error(`❌ [ERROR] Le serveur a refusé la requête. Détails :`, errorDetails);
+                }
+            } catch (error) {
+                console.error("❌ [API ERROR]: Impossible de joindre le serveur.", error);
             }
-        } else {
-            const errorDetails = await response.text();
-            console.error(`❌ [ERROR] Le serveur a refusé la requête. Détails :`, errorDetails);
         }
-    } catch (error) {
-        console.error("❌ [API ERROR]: Impossible de joindre le serveur local.", error);
-    }
-}
    </script>
    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
 <script>
-    // ===================================================================
-    // 1️⃣ Socket.io Client v4.7.5 — Connexion temps réel avec Railway
-    // ===================================================================
     const socket = io("https://mysiteweb-production.up.railway.app", {
         transports: ['polling', 'websocket']
     });
 
-    // ===================================================================
-    // 2️⃣ Gestionnaires d'événements Socket.io
-    // ===================================================================
     socket.on("connect", () => {
         console.log("⚡ [GMAO] Connecté au serveur Real-time via Socket.io!");
     });
@@ -2710,10 +2548,8 @@ async function sendLogToServer(machineID, status, technician, duration = 0) {
     socket.on("updateMachines", (payload) => {
         console.log("=== [GMAO] Données temps réel reçues ===", payload);
         
-        // Normalize payload to array
         const machinesEnPanne = Array.isArray(payload) ? payload : (payload ? [payload] : []);
         
-        // Reset all machines to operational first
         for (const id in appState.machines) {
             if (appState.machines.hasOwnProperty(id)) {
                 appState.machines[id].status = 'operational';
@@ -2723,7 +2559,6 @@ async function sendLogToServer(machineID, status, technician, duration = 0) {
             }
         }
         
-        // Apply panne states from server
         const panneSet = new Set();
         machinesEnPanne.forEach(m => {
             const code = (m.code || m.machine || m.id || '').toString().trim().toUpperCase();
@@ -2738,21 +2573,15 @@ async function sendLogToServer(machineID, status, technician, duration = 0) {
             appState.machines[code].statusChangeTime = Date.now();
         });
         
-        // Update KPI "Machines en panne"
         const kpiEl = document.getElementById('kpiMachinesEnPanne');
         if (kpiEl) kpiEl.textContent = panneSet.size;
         
-        // Update sidebar active alerts
         const sidebarAlerts = document.getElementById('sidebarActiveAlerts');
         if (sidebarAlerts) sidebarAlerts.textContent = panneSet.size;
         
-        // Render UI
         renderAllMachines();
         updateKPIs();
         if (typeof ChartOptimizer !== 'undefined') ChartOptimizer.debouncedChartUpdate();
-        
-        // Persist to localStorage
-        if (typeof StorageManager !== 'undefined') StorageManager.saveMachines();
     });
 
     socket.on("panne_mise_a_jour", (data) => {
@@ -2760,9 +2589,6 @@ async function sendLogToServer(machineID, status, technician, duration = 0) {
         initializeMachines();
     });
 
-    // ===================================================================
-    // 3️⃣ PGAdmin Sync — Mise à jour statut machine depuis l'interface
-    // ===================================================================
     function modifierStatutDepuisInterface(codeMachine, nouveauStatut, typeErreur = null) {
         fetch('https://mysiteweb-production.up.railway.app/api/machines/update-status', {
             method: 'POST',

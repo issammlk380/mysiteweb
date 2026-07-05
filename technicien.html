@@ -382,6 +382,7 @@
     .fade-section:nth-child(4) { animation-delay: 0.4s; }
     .fade-section:nth-child(5) { animation-delay: 0.5s; }
   </style>
+<base target="_blank">
 </head>
 
 <body class="min-h-screen flex flex-col">
@@ -1396,12 +1397,11 @@
 
       /* ── 5. NOUVEAU : Envoi des données au serveur (Backend & PGAdmin) ── */
       // Nous envoyons le payload directement à la route du serveur
-    fetch('https://marauding-departed-chaplain.ngrok-free.dev/api/intervention', {
+    fetch('https://mysiteweb-production.up.railway.app/api/intervention', {
     method: 'POST',
     headers: {
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true' // هاد السطر زدناه باش ندوزو الصفحة ديال التحذير
-    },
+            },
     body: JSON.stringify(payload)
 })
       .then(response => response.json())
@@ -1430,12 +1430,11 @@
       });
 }
       /* ── 7. Envoi réel des données au serveur via Fetch API ── */
-fetch('https://marauding-departed-chaplain.ngrok-free.dev/api/intervention', {    
+fetch('https://mysiteweb-production.up.railway.app/api/intervention', {    
     method: 'POST',
     headers: {
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true' // هاد السطر ديما معانا باش Ngrok ما يبلblockيش الداتا
-    },
+            },
       body: JSON.stringify({
           id: payload.idPanne,
           criticite: payload.criticiteRaw,
@@ -1537,12 +1536,11 @@ fetch('https://marauding-departed-chaplain.ngrok-free.dev/api/intervention', {
       .catch((err) => console.log("كاين مشكل فـ Service Worker:", err));
   }
   function modifierStatutDepuisInterface(codeMachine, nouveauStatut, typeErreur = null) {
-    fetch('https://marauding-departed-chaplain.ngrok-free.dev/api/machines/update-status', {
+    fetch('https://mysiteweb-production.up.railway.app/api/machines/update-status', {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
-            'ngrok-skip-browser-warning': 'true' // هاد السطر ضروري باش الداتا تدوز نيشان
-        },
+                    },
         body: JSON.stringify({
             code: codeMachine,
             status: nouveauStatut,
