@@ -2138,7 +2138,8 @@ async function updateKPIs() {
         document.getElementById(`zone${zone}Status`).textContent = `${zones[zone]}/${zoneTotal[zone]}`;
     }
 }
-        // ==================== CHART MANAGEMENT ====================function updateBottleneckChart() {
+        // ==================== CHART MANAGEMENT ====================
+        function updateBottleneckChart() {
             const machineDowntimes = {};
             appState.logs.forEach(log => {
                 if (log.status === 'Resolved') {
