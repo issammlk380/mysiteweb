@@ -2066,79 +2066,78 @@ function renderLogs() {
         });
     }
 }
-        // ==================== KPI UPDATES ====================
-        async function updateKPIs() {
-            const totalMachines = Object.keys(appState.machines).length;
-            const activeMachines = Object.values(appState.machines).filter(m => m.status === 'operational').length;
-            const downTimeMachines = Object.values(appState.machines).filter(m => m.status === 'downtime' || m.status === 'maintenance').length;
-
-            // Fetch MTTR depuis l'API backend
-            let mttrDisplay = 'N/A';
-            let mttrColor = '#fbbf24'; // jaune
-            let mttrLabelText = 'Aucune panne résolue';
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/stats`);
-                const statsData = await response.json();
-
-                if (statsData.mttrAvailable && statsData.pannesResolues > 0) {
-                    mttrDisplay = statsData.mttr;
-                    mttrColor = '#0ea5e9'; // cyan
-                    mttrLabelText = `Moyenne (${statsData.pannesResolues} pannes)`;
-                }
-            } catch (err) {
-                console.warn('Failed to fetch MTTR:', err);
-            }
-
-            document.getElementById('kpiActive').textContent = activeMachines;
-
-            // MTTR avec couleur dynamique
-            const mttrElement = document.getElementById('kpiMTTR');
-            mttrElement.textContent = mttrDisplay;
-            mttrElement.style.color = mttrColor;
-
-            // Label dynamique
-            const mttrLabel = mttrElement.parentElement.querySelector('.kpi-trend');
-            if (mttrLabel) mttrLabel.textContent = mttrLabelText;
-
-            const oeeImpact = Math.round((downTimeMachines / totalMachines) * 25);
-            document.getElementById('kpiOEE').textContent = `${Math.max(0, 100 - oeeImpact)}%`;
-
-            document.getElementById('sidebarActiveAlerts').textContent = downTimeMachines;
-
-            const totalDowntime = appState.logs
-                .filter(l => l.status === 'Resolved')
-                .reduce((sum, l) => sum + l.duration, 0);
-            const hours = Math.floor(totalDowntime / 60);
-            const minutes = totalDowntime % 60;
-            document.getElementById('sidebarTotalDowntime').textContent = `${hours}h ${minutes}m`;
-
-            const resolvedLogs = appState.logs.filter(l => l.status === 'Resolved');
-            const avgResponse = resolvedLogs.length > 0 ? 
-                Math.round(resolvedLogs.reduce((sum, l) => sum + l.duration, 0) / resolvedLogs.length) : 0;
-            document.getElementById('sidebarAvgResponse').textContent = `${avgResponse}m`;
-
-            const zones = {
-                'KA': Object.values(appState.machines).filter(m => m.zone === 'KA' && m.status === 'operational').length,
-                'KB': Object.values(appState.machines).filter(m => m.zone === 'KB' && m.status === 'operational').length,
-                'KC': Object.values(appState.machines).filter(m => m.zone === 'KC' && m.status === 'operational').length,
-                'KD': Object.values(appState.machines).filter(m => m.zone === 'KD' && m.status === 'operational').length,
-                'KX': Object.values(appState.machines).filter(m => m.zone === 'KX' && m.status === 'operational').length,
-            };
-
-            const zoneTotal = {
-                'KA': appState.zoneConfig['KA'].count,
-                'KB': appState.zoneConfig['KB'].count,
-                'KC': appState.zoneConfig['KC'].count,
-                'KD': appState.zoneConfig['KD'].count,
-                'KX': appState.zoneConfig['KX'].count,
-            };
-
-            for (const zone in zones) {
-                document.getElementById(`zone${zone}Status`).textContent = `${zones[zone]}/${zoneTotal[zone]}`;
-            }
+// ==================== KPI UPDATES ====================
+async function updateKPIs() {
+    const totalMachines = Object.keys(appState.machines).length;
+    const activeMachines = Object.values(appState.machines).filter(m => m.status === 'operational').length;
+    const downTimeMachines = Object.values(appState.machines).filter(m => m.status === 'downtime' || m.status === 'maintenance').length;
+    
+    // Fetch MTTR depuis l'API backend
+    let mttrDisplay = 'N/A';
+    let mttrColor = '#fbbf24'; // jaune
+    let mttrLabelText = 'Aucune panne résolue';
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/stats`);
+        const statsData = await response.json();
+        
+        if (statsData.mttrAvailable && statsData.pannesResolues > 0) {
+            mttrDisplay = statsData.mttr; // "53m"
+            mttrColor = '#0ea5e9'; // cyan
+            mttrLabelText = `Moyenne (${statsData.pannesResolues} pannes)`;
         }
+    } catch (err) {
+        console.warn('⚠️ Failed to fetch MTTR:', err);
+    }
 
+    document.getElementById('kpiActive').textContent = activeMachines;
+    
+    // MTTR dynamique
+    const mttrElement = document.getElementById('kpiMTTR');
+    mttrElement.textContent = mttrDisplay;
+    mttrElement.style.color = mttrColor;
+    
+    // Label dynamique
+    const mttrLabel = mttrElement.parentElement.querySelector('.kpi-trend');
+    if (mttrLabel) mttrLabel.textContent = mttrLabelText;
+    
+    const oeeImpact = Math.round((downTimeMachines / totalMachines) * 25);
+    document.getElementById('kpiOEE').textContent = `${Math.max(0, 100 - oeeImpact)}%`;
+
+    document.getElementById('sidebarActiveAlerts').textContent = downTimeMachines;
+
+    const totalDowntime = appState.logs
+        .filter(l => l.status === 'Resolved')
+        .reduce((sum, l) => sum + l.duration, 0);
+    const hours = Math.floor(totalDowntime / 60);
+    const minutes = totalDowntime % 60;
+    document.getElementById('sidebarTotalDowntime').textContent = `${hours}h ${minutes}m`;
+
+    const resolvedLogs = appState.logs.filter(l => l.status === 'Resolved');
+    const avgResponse = resolvedLogs.length > 0 ? 
+        Math.round(resolvedLogs.reduce((sum, l) => sum + l.duration, 0) / resolvedLogs.length) : 0;
+    document.getElementById('sidebarAvgResponse').textContent = `${avgResponse}m`;
+
+    const zones = {
+        'KA': Object.values(appState.machines).filter(m => m.zone === 'KA' && m.status === 'operational').length,
+        'KB': Object.values(appState.machines).filter(m => m.zone === 'KB' && m.status === 'operational').length,
+        'KC': Object.values(appState.machines).filter(m => m.zone === 'KC' && m.status === 'operational').length,
+        'KD': Object.values(appState.machines).filter(m => m.zone === 'KD' && m.status === 'operational').length,
+        'KX': Object.values(appState.machines).filter(m => m.zone === 'KX' && m.status === 'operational').length,
+    };
+
+    const zoneTotal = {
+        'KA': appState.zoneConfig['KA'].count,
+        'KB': appState.zoneConfig['KB'].count,
+        'KC': appState.zoneConfig['KC'].count,
+        'KD': appState.zoneConfig['KD'].count,
+        'KX': appState.zoneConfig['KX'].count,
+    };
+
+    for (const zone in zones) {
+        document.getElementById(`zone${zone}Status`).textContent = `${zones[zone]}/${zoneTotal[zone]}`;
+    }
+}
         // ==================== CHART MANAGEMENT ====================function updateBottleneckChart() {
             const machineDowntimes = {};
             appState.logs.forEach(log => {
