@@ -1087,6 +1087,7 @@
 }
     </style>
 <base target="_blank">
+<base target="_blank">
 </head>
 <body class="overflow-x-hidden">
     <!-- Header -->
@@ -2066,25 +2067,44 @@ function renderLogs() {
     }
 }
         // ==================== KPI UPDATES ====================
-        function updateKPIs() {
+        async function updateKPIs() {
             const totalMachines = Object.keys(appState.machines).length;
             const activeMachines = Object.values(appState.machines).filter(m => m.status === 'operational').length;
             const downTimeMachines = Object.values(appState.machines).filter(m => m.status === 'downtime' || m.status === 'maintenance').length;
-            
-            const downtimeRate = totalMachines > 0 ? Math.round((downTimeMachines / totalMachines) * 100) : 0;
-            const activeAlerts = downTimeMachines;
-            
-            const resolvedLogs = appState.logs.filter(l => l.status === 'Resolved');
-            const mttr = resolvedLogs.length > 0 ? 
-                Math.round(resolvedLogs.reduce((sum, l) => sum + l.duration, 0) / resolvedLogs.length) : 0;
-            
-            const oeeImpact = Math.round((downTimeMachines / totalMachines) * 25);
+
+            // Fetch MTTR depuis l'API backend
+            let mttrDisplay = 'N/A';
+            let mttrColor = '#fbbf24'; // jaune
+            let mttrLabelText = 'Aucune panne résolue';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/stats`);
+                const statsData = await response.json();
+
+                if (statsData.mttrAvailable && statsData.pannesResolues > 0) {
+                    mttrDisplay = statsData.mttr;
+                    mttrColor = '#0ea5e9'; // cyan
+                    mttrLabelText = `Moyenne (${statsData.pannesResolues} pannes)`;
+                }
+            } catch (err) {
+                console.warn('Failed to fetch MTTR:', err);
+            }
 
             document.getElementById('kpiActive').textContent = activeMachines;
-            document.getElementById('kpiMTTR').textContent = `${mttr}m`;
+
+            // MTTR avec couleur dynamique
+            const mttrElement = document.getElementById('kpiMTTR');
+            mttrElement.textContent = mttrDisplay;
+            mttrElement.style.color = mttrColor;
+
+            // Label dynamique
+            const mttrLabel = mttrElement.parentElement.querySelector('.kpi-trend');
+            if (mttrLabel) mttrLabel.textContent = mttrLabelText;
+
+            const oeeImpact = Math.round((downTimeMachines / totalMachines) * 25);
             document.getElementById('kpiOEE').textContent = `${Math.max(0, 100 - oeeImpact)}%`;
 
-            document.getElementById('sidebarActiveAlerts').textContent = activeAlerts;
+            document.getElementById('sidebarActiveAlerts').textContent = downTimeMachines;
 
             const totalDowntime = appState.logs
                 .filter(l => l.status === 'Resolved')
@@ -2093,6 +2113,7 @@ function renderLogs() {
             const minutes = totalDowntime % 60;
             document.getElementById('sidebarTotalDowntime').textContent = `${hours}h ${minutes}m`;
 
+            const resolvedLogs = appState.logs.filter(l => l.status === 'Resolved');
             const avgResponse = resolvedLogs.length > 0 ? 
                 Math.round(resolvedLogs.reduce((sum, l) => sum + l.duration, 0) / resolvedLogs.length) : 0;
             document.getElementById('sidebarAvgResponse').textContent = `${avgResponse}m`;
@@ -2118,8 +2139,7 @@ function renderLogs() {
             }
         }
 
-        // ==================== CHART MANAGEMENT ====================
-        function updateBottleneckChart() {
+        // ==================== CHART MANAGEMENT ====================function updateBottleneckChart() {
             const machineDowntimes = {};
             appState.logs.forEach(log => {
                 if (log.status === 'Resolved') {
