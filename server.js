@@ -1,7 +1,7 @@
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
- * ║     SMI ENTERPRISE — BACKEND API SERVER v2.4 (RAILWAY)          ║
- * ║     Production-ready CORS + Railway deployment                   ║
+ * ║     SMI ENTERPRISE — BACKEND API SERVER v2.5 (RAILWAY)          ║
+ * ║     MTTR Fix + date_panne/date_reparation support                ║
  * ╚══════════════════════════════════════════════════════════════════╝
  */
 
@@ -38,14 +38,12 @@ const CONFIG = {
 };
 
 /* ═══════════════════════════════════════════════════════════════════
-   3. CORS - CONFIGURATION RAILWAY (m9adda)
+   3. CORS - CONFIGURATION RAILWAY
 ═══════════════════════════════════════════════════════════════════ */
-// Railway: khalli '*' f development, w domain dialk f production
 const ALLOWED_ORIGIN = process.env.NODE_ENV === 'production' 
-    ? '*'  // Railway kisupporti '*' f production
+    ? '*' 
     : '*';
 
-// Middleware CORS (BEFORE all routes)
 app.use(cors({
     origin: ALLOWED_ORIGIN,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -53,16 +51,14 @@ app.use(cors({
         'Origin', 'X-Requested-With', 'Content-Type', 'Accept',
         'Authorization', 'ngrok-skip-browser-warning'
     ],
-    credentials: false  // FALSE m3a Railway (mashi true)
+    credentials: false
 }));
 
-// Manual CORS headers (backup)
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, ngrok-skip-browser-warning');
     
-    // Handle preflight requests immediately
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
@@ -70,10 +66,10 @@ app.use((req, res, next) => {
 });
 
 const server = http.createServer(app);
+
 /* ═══════════════════════════════════════════════════════════════════
    4. POSTGRESQL - RAILWAY CONFIG
 ═══════════════════════════════════════════════════════════════════ */
-
 const isRailway = !!process.env.DATABASE_URL;
 const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:1234@localhost:5432/sews_iot_new';
 
@@ -87,20 +83,19 @@ const pool = new Pool({
 
 console.log(`🗄️  Mode: ${isRailway ? 'Railway (SSL ON)' : 'Localhost (SSL OFF)'}`);
 
-
 let dbHealthy = false;
 let dbError = null;
 
 /* ═══════════════════════════════════════════════════════════════════
-   5. SCHEMA MIGRATION
+   5. SCHEMA MIGRATION — AVEC date_panne & date_reparation
 ═══════════════════════════════════════════════════════════════════ */
 async function runMigrations() {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
-                await client.query(`
-                     CREATE TABLE IF NOT EXISTS downtime_logs (
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS downtime_logs (
                 id SERIAL PRIMARY KEY,
                 log_id VARCHAR(50),
                 machine VARCHAR(20) NOT NULL DEFAULT 'KA01',
@@ -114,6 +109,25 @@ async function runMigrations() {
         `);
         console.log('✅ [DB] Base table downtime_logs ready');
 
+        // ✅ AJOUT : Colonnes pour MTTR réel
+        const newColumns = [
+            { name: 'date_panne', type: 'TIMESTAMP', default: 'NULL' },
+            { name: 'date_reparation', type: 'TIMESTAMP', default: 'NULL' },
+        ];
+
+        for (const col of newColumns) {
+            try {
+                await client.query(`
+                    ALTER TABLE downtime_logs 
+                    ADD COLUMN IF NOT EXISTS ${col.name} ${col.type} DEFAULT ${col.default}
+                `);
+                console.log(`✅ [DB] Column '${col.name}' ready`);
+            } catch (e) {
+                console.warn(`⚠️ [DB] Column '${col.name}': ${e.message}`);
+            }
+        }
+
+        // Anciennes colonnes
         const columnsToAdd = [
             { name: 'criticite', type: 'VARCHAR(50)', default: "'Moyenne'" },
             { name: 'alert_type', type: 'VARCHAR(100)', default: 'NULL' },
@@ -144,6 +158,24 @@ async function runMigrations() {
         `);
         console.log('✅ [DB] Table machines ready');
 
+        // ✅ MIGRATION : Remplir date_panne depuis created_at (si vide)
+        await client.query(`
+            UPDATE downtime_logs 
+            SET date_panne = created_at 
+            WHERE date_panne IS NULL AND created_at IS NOT NULL
+        `);
+        console.log('✅ [DB] date_panne populated from created_at');
+
+        // ✅ MIGRATION : Remplir date_reparation pour les pannes "Terminé"
+        await client.query(`
+            UPDATE downtime_logs 
+            SET date_reparation = created_at + (duration || ' minutes')::INTERVAL
+            WHERE date_reparation IS NULL 
+              AND status = 'Terminé' 
+              AND duration > 0
+        `);
+        console.log('✅ [DB] date_reparation populated for completed pannes');
+
         const countResult = await client.query('SELECT COUNT(*) FROM downtime_logs');
         const count = parseInt(countResult.rows[0].count, 10);
 
@@ -151,20 +183,20 @@ async function runMigrations() {
             console.log('🔄 [DB] Seeding demo data...');
             await client.query(`
                 INSERT INTO downtime_logs 
-                (machine, start_time, duration, technician, status, criticite, alert_type, heure_arret_technicien, piece_observation, atelier)
+                (machine, start_time, duration, technician, status, criticite, alert_type, heure_arret_technicien, piece_observation, atelier, date_panne, date_reparation)
                 VALUES 
-                ('KA01', '08:30:00', '45', 'Ahmed Benali', 'Terminé', 'Faible', 'Électrique', '08:45:00', 'Remplacement capteur proximité', 'Atelier A'),
-                ('KB03', '09:15:00', '0', 'Operateur', 'Pending', 'Majeure', 'Mécanique', NULL, 'Surchauffe moteur principal', 'Atelier B'),
-                ('KC07', '14:20:00', '120', 'Karim Fassi', 'En réparation', 'Critique', 'Électrique', '14:35:00', 'Changement carte d''axe', 'Atelier C'),
-                ('KD02', '10:00:00', '30', 'Youssef Amrani', 'Terminé', 'Modérée', 'Hydraulique', '10:10:00', 'Lubrification glissières', 'Atelier D'),
-                ('KX01', '11:45:00', '0', 'Operateur', 'Pending', 'Majeure', 'Hydraulique', NULL, 'Fuite hydraulique détectée', 'Atelier X'),
-                ('KA05', '07:30:00', '60', 'Ahmed Benali', 'Terminé', 'Faible', 'Électrique', '07:40:00', 'Serrage connexions électriques', 'Atelier A'),
-                ('KB08', '16:00:00', '90', 'Karim Fassi', 'Terminé', 'Modérée', 'Mécanique', '16:20:00', 'Remplacement roulements', 'Atelier B'),
-                ('KC12', '13:10:00', '180', 'Youssef Amrani', 'En réparation', 'Critique', 'Hydraulique', '13:30:00', 'Purge circuit hydraulique', 'Atelier C'),
-                ('KD05', '09:00:00', '40', 'Ahmed Benali', 'Terminé', 'Faible', 'Mécanique', '09:15:00', 'Nettoyage filtre à air', 'Atelier D'),
-                ('KA09', '15:30:00', '0', 'Operateur', 'Pending', 'Majeure', 'Hydraulique', NULL, 'Changement joint étanchéité', 'Atelier A')
+                ('KA01', '08:30:00', 45, 'Ahmed Benali', 'Terminé', 'Faible', 'Électrique', '08:45:00', 'Remplacement capteur proximité', 'Atelier A', NOW() - INTERVAL '2 hours', NOW() - INTERVAL '75 minutes'),
+                ('KB03', '09:15:00', 0, 'Operateur', 'Pending', 'Majeure', 'Mécanique', NULL, 'Surchauffe moteur principal', 'Atelier B', NOW() - INTERVAL '30 minutes', NULL),
+                ('KC07', '14:20:00', 120, 'Karim Fassi', 'Terminé', 'Critique', 'Électrique', '14:35:00', 'Changement carte d''axe', 'Atelier C', NOW() - INTERVAL '5 hours', NOW() - INTERVAL '3 hours'),
+                ('KD02', '10:00:00', 30, 'Youssef Amrani', 'Terminé', 'Modérée', 'Hydraulique', '10:10:00', 'Lubrification glissières', 'Atelier D', NOW() - INTERVAL '4 hours', NOW() - INTERVAL '3.5 hours'),
+                ('KX01', '11:45:00', 0, 'Operateur', 'Pending', 'Majeure', 'Hydraulique', NULL, 'Fuite hydraulique détectée', 'Atelier X', NOW() - INTERVAL '1 hour', NULL),
+                ('KA05', '07:30:00', 60, 'Ahmed Benali', 'Terminé', 'Faible', 'Électrique', '07:40:00', 'Serrage connexions électriques', 'Atelier A', NOW() - INTERVAL '6 hours', NOW() - INTERVAL '5 hours'),
+                ('KB08', '16:00:00', 90, 'Karim Fassi', 'Terminé', 'Modérée', 'Mécanique', '16:20:00', 'Remplacement roulements', 'Atelier B', NOW() - INTERVAL '8 hours', NOW() - INTERVAL '6.5 hours'),
+                ('KC12', '13:10:00', 180, 'Youssef Amrani', 'Terminé', 'Critique', 'Hydraulique', '13:30:00', 'Purge circuit hydraulique', 'Atelier C', NOW() - INTERVAL '10 hours', NOW() - INTERVAL '7 hours'),
+                ('KD05', '09:00:00', 40, 'Ahmed Benali', 'Terminé', 'Faible', 'Mécanique', '09:15:00', 'Nettoyage filtre à air', 'Atelier D', NOW() - INTERVAL '12 hours', NOW() - INTERVAL '11.5 hours'),
+                ('KA09', '15:30:00', 0, 'Operateur', 'Pending', 'Majeure', 'Hydraulique', NULL, 'Changement joint étanchéité', 'Atelier A', NOW() - INTERVAL '20 minutes', NULL)
             `);
-            console.log('✅ [DB] 10 demo records inserted');
+            console.log('✅ [DB] 10 demo records inserted with dates');
         } else {
             console.log(`✅ [DB] Table already has ${count} records, skipping seed`);
         }
@@ -186,15 +218,15 @@ async function runMigrations() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   6. SOCKET.IO - RAILWAY CONFIG (m9adda)
+   6. SOCKET.IO - RAILWAY CONFIG
 ═══════════════════════════════════════════════════════════════════ */
 const io = new Server(server, {
-    transports: ['websocket', 'polling'],  // websocket f lwl
+    transports: ['websocket', 'polling'],
     cors: {
-        origin: '*',  // Railway: khalli '*'
+        origin: '*',
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allowedHeaders: ["Content-Type", "Accept"],
-        credentials: false  // FALSE m3a Railway
+        credentials: false
     },
     allowEIO3: true,
     pingTimeout: 60000,
@@ -204,10 +236,11 @@ const io = new Server(server, {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
+
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'issam.html'));
 });
-/* ── Logger ── */
+
 app.use((req, _res, next) => {
   const timestamp = new Date().toLocaleString('fr-FR');
   console.log(`[${timestamp}] ${req.method.padEnd(7)} ${req.path}`);
@@ -349,7 +382,7 @@ app.get('/api/health', async (_req, res) => {
     return sendSuccess(res, {
       server: 'En ligne',
       database: dbHealthy ? 'Connecté' : 'Dégradé',
-      version: '2.4.0',
+      version: '2.5.0',
       env: CONFIG.server.env,
       uptime: `${Math.floor(process.uptime())} secondes`,
     }, 'Serveur opérationnel');
@@ -415,6 +448,7 @@ app.post('/api/login', (req, res) => {
   return sendSuccess(res, { username: username.trim(), role: 'admin' }, 'Connexion réussie');
 });
 
+// ✅ MODIFIÉ : Ajout de date_panne automatique
 app.post('/api/logs', validateLogPayload, async (req, res) => {
     const body = req.body;
     const indexMachine = Math.floor(Math.random() * LISTE_MACHINES_SMI.length);
@@ -451,10 +485,10 @@ app.post('/api/logs', validateLogPayload, async (req, res) => {
     try {
         const result = await safeQuery(
             `INSERT INTO downtime_logs 
-            (machine, start_time, duration, technician, status, criticite, alert_type, heure_arret_technicien, piece_observation, atelier) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+            (machine, start_time, duration, technician, status, criticite, alert_type, heure_arret_technicien, piece_observation, atelier, date_panne) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
             RETURNING id;`, 
-            [machine, start_time, duration.toString(), technician, status, criticite, alert_type, heure_arret_technicien, piece_observation, deriveAtelier(machine)]
+            [machine, start_time, duration.toString(), technician, status, criticite, alert_type, heure_arret_technicien, piece_observation, deriveAtelier(machine), new Date()]
         );
         return sendSuccess(res, result.rows[0], 'Log inséré avec succès.', 201);
     } catch (err) {
@@ -519,6 +553,7 @@ app.get('/api/logs/:id', async (req, res) => {
   }
 });
 
+// ✅ MODIFIÉ : Mise à jour avec date_reparation quand status = Terminé
 app.put('/api/logs/:id', async (req, res) => {
   const { id } = req.params;
   const { status, technician, duration } = req.body;
@@ -526,9 +561,19 @@ app.put('/api/logs/:id', async (req, res) => {
   if (!isPresent(status)) return sendError(res, 400, 'Champ "status" obligatoire.');
 
   try {
+    // ✅ Si status = Terminé, on met date_reparation = NOW()
+    const dateReparation = status === 'Terminé' ? new Date() : null;
+    
     const result = await safeQuery(
-      `UPDATE downtime_logs SET status = $1, technician = COALESCE($2, technician), duration = COALESCE($3, duration), updated_at = NOW() WHERE id = $4 RETURNING *;`,
-      [sanitizeStr(status), isPresent(technician) ? sanitizeStr(technician) : null, isPresent(duration) ? sanitizeInt(duration) : null, sanitizeStr(id)]
+      `UPDATE downtime_logs 
+       SET status = $1, 
+           technician = COALESCE($2, technician), 
+           duration = COALESCE($3, duration),
+           date_reparation = COALESCE($4, date_reparation),
+           updated_at = NOW() 
+       WHERE id = $5 
+       RETURNING *;`,
+      [sanitizeStr(status), isPresent(technician) ? sanitizeStr(technician) : null, isPresent(duration) ? sanitizeInt(duration) : null, dateReparation, sanitizeStr(id)]
     );
     if (!result.rows.length) return sendError(res, 404, `Log "${id}" introuvable.`);
     console.log(`✏️ [LOGS] Mis à jour — ID: ${id} | Statut: "${status}"`);
@@ -556,41 +601,67 @@ app.get('/api/historique', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// ROUTE /api/stats — FIXED: Handle empty strings in duration
+// ROUTE /api/stats — ✅ CORRIGÉ : Vrai calcul MTTR avec dates
 // ═══════════════════════════════════════════════════════════════════
 app.get('/api/stats', async (req, res) => {
   try {
-    const [total, byStatus, avgDuration, topMachines, today, weekly] = await Promise.all([
+    const [total, byStatus, mttrResult, topMachines, today, weekly, pendingCount] = await Promise.all([
       safeQuery('SELECT COUNT(*) AS count FROM downtime_logs'),
       safeQuery('SELECT status, COUNT(*) AS count FROM downtime_logs GROUP BY status ORDER BY count DESC'),
       
-      // ✅ FIXED: Handle empty strings and NULL in duration column
+      // ✅ VRAI MTTR : Moyenne du temps entre date_panne et date_reparation
       safeQuery(`
-        SELECT ROUND(AVG(
-          CASE 
-            WHEN duration IS NULL OR duration = '' THEN NULL 
-            ELSE duration::NUMERIC 
-          END
-        ), 2) AS avg 
+        SELECT 
+          COALESCE(
+            ROUND(AVG(
+              EXTRACT(EPOCH FROM (date_reparation - date_panne)) / 60
+            ), 2),
+            0
+          ) AS mttr_minutes,
+          COUNT(*) AS pannes_resolues
         FROM downtime_logs
+        WHERE status = 'Terminé' 
+          AND date_panne IS NOT NULL 
+          AND date_reparation IS NOT NULL
       `),
       
       safeQuery('SELECT machine, COUNT(*) AS pannes FROM downtime_logs GROUP BY machine ORDER BY pannes DESC LIMIT 5'),
       safeQuery('SELECT COUNT(*) AS count FROM downtime_logs WHERE DATE(created_at) = CURRENT_DATE'),
       safeQuery(`SELECT DATE(created_at) AS jour, COUNT(*) AS total FROM downtime_logs WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY DATE(created_at) ORDER BY jour ASC`),
+      
+      // Nombre de pannes en cours
+      safeQuery(`SELECT COUNT(*) AS count FROM downtime_logs WHERE status IN ('Pending', 'En attente', 'En réparation')`)
     ]);
 
     const totalInterventions = parseInt(total.rows[0].count, 10) || 0;
-    const mttrValue = parseFloat(avgDuration.rows[0].avg) || 0;
+    const mttrMinutes = parseFloat(mttrResult.rows[0].mttr_minutes) || 0;
+    const pannesResolues = parseInt(mttrResult.rows[0].pannes_resolues, 10) || 0;
+    const pannesPending = parseInt(pendingCount.rows[0].count, 10) || 0;
+
+    // ✅ Format MTTR intelligent
+    let mttrDisplay;
+    if (pannesResolues === 0) {
+      mttrDisplay = 'N/A';
+    } else if (mttrMinutes >= 60) {
+      const hours = Math.floor(mttrMinutes / 60);
+      const mins = Math.round(mttrMinutes % 60);
+      mttrDisplay = `${hours}h ${mins}m`;
+    } else {
+      mttrDisplay = `${Math.round(mttrMinutes)}m`;
+    }
 
     return res.json({
       downtime: totalInterventions,
-      mttr: `${mttrValue} min`,
+      mttr: mttrDisplay,
+      mttrMinutes: mttrMinutes,
+      mttrAvailable: pannesResolues > 0,
+      pannesResolues: pannesResolues,
+      pannesPending: pannesPending,
       mtbf: '120h',
       availability: '98.5%',
       total: totalInterventions,
       today: parseInt(today.rows[0].count, 10) || 0,
-      avgDuration: mttrValue,
+      avgDuration: mttrMinutes,
       byStatus: byStatus.rows,
       topMachines: topMachines.rows,
       weekly: weekly.rows,
@@ -600,7 +671,7 @@ app.get('/api/stats', async (req, res) => {
     return res.status(500).json({ 
         success: false, 
         message: err.message,
-        downtime: 0, mttr: '0 min', mtbf: '0h', availability: '0%',
+        downtime: 0, mttr: 'Erreur', mtbf: '0h', availability: '0%',
         total: 0, today: 0, avgDuration: 0,
         byStatus: [], topMachines: [], weekly: [],
     });
@@ -674,26 +745,21 @@ app.post('/api/machines/update-status', async (req, res) => {
   }
 });
 
-
 /* ═══════════════════════════════════════════════════════════════════
    10b. STATIC HTML PAGE ROUTES
 ═══════════════════════════════════════════════════════════════════ */
-// Serve login.html
 app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'login.html'));
 });
 
-// Serve issam.html as the main page
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'issam.html'));
 });
 
-// Serve dashboard.html
 app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
 
-// Serve technicien.html
 app.get('/technicien', (req, res) => {
     res.sendFile(path.join(__dirname, 'technicien.html'));
 });
@@ -742,8 +808,8 @@ async function startServer() {
 
     server.listen(tryPort, '0.0.0.0', () => {
       console.log('\n╔════════════════════════════════════════════╗');
-      console.log('║  SMI Enterprise — API Server v2.4        ║');
-      console.log('║  RAILWAY DEPLOYMENT                      ║');
+      console.log('║  SMI Enterprise — API Server v2.5        ║');
+      console.log('║  RAILWAY DEPLOYMENT — MTTR FIX           ║');
       console.log('╠════════════════════════════════════════════╣');
       console.log(`║  ✅ Serveur démarré sur le port : ${tryPort}       ║`);
       console.log(`║  🌍 Environnement : ${CONFIG.server.env.padEnd(22)}║`);
@@ -759,7 +825,7 @@ async function startServer() {
       console.log('║    GET  /api/logs/:id                      ║');
       console.log('║    PUT  /api/logs/:id                      ║');
       console.log('║    GET  /api/historique                    ║');
-      console.log('║    GET  /api/stats                         ║');
+      console.log('║    GET  /api/stats    ← MTTR CORRIGÉ       ║');
       console.log('║    GET  /api/sessions                      ║');
       console.log('║    POST /api/intervention                  ║');
       console.log('║    POST /api/machines/update-status        ║');

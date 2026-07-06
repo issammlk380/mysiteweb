@@ -1086,6 +1086,7 @@
     z-index: 20 !important;
 }
     </style>
+<base target="_blank">
 </head>
 <body class="overflow-x-hidden">
     <!-- Header -->
@@ -2586,6 +2587,7 @@ function renderLogs() {
 
     socket.on("panne_mise_a_jour", (data) => {
         console.log("📢 [GMAO] Mise à jour panne reçue:", data);
+        // 🔄 7edded l'affichage kamel men API
         initializeMachines();
     });
 
