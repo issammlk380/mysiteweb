@@ -1552,7 +1552,6 @@ fetch('https://mysiteweb-production.up.railway.app/api/intervention', {
             .then(data => {
                 if (data.success) {
                     console.log(`✅ Synchro réussie pour ${codeMachine} dans PGAdmin.`);
-                    // إغلاق الـ Modal تلقائياً بعد التحديث
                     if (typeof closeMachineModal === "function") closeMachineModal(); 
                 }
             })
