@@ -860,8 +860,7 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' })
-          .then(registration => {
+navigator.serviceWorker.register('/sw.js', { scope: '/technicien.html' })          .then(registration => {
             console.log('✅ Service Worker enregistré:', registration.scope);
             registration.addEventListener('updatefound', () => {
               const newWorker = registration.installing;
