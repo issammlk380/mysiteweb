@@ -1,8 +1,8 @@
 {
-  "name": "NextGen Andon System - SEWS",
-  "short_name": "Andon SEWS",
-  "description": "Système Andon Industriel IoT pour SEWS Automotive",
-  "start_url": "/",
+  "name": "SEWS Technician Solutions",
+  "short_name": "Tech SEWS",
+  "description": "Application Technicien - Système Andon SEWS",
+  "start_url": "/technicien.html",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0ea5e9",
