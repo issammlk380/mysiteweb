@@ -5,14 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NextGen Industrial Andon & Maintenance Dashboard - SEWS Automotive</title>
 
-   <!-- Jdid - b extension .webmanifest -->
-<link rel="manifest" href="/site.webmanifest">
-    <meta name="theme-color" content="#0f172a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Andon SEWS">
-    <link rel="apple-touch-icon" href="/icon-192x192.png">
-
+  
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -2808,19 +2801,6 @@ async function updateKPIs() {
             } catch (error) {
                 console.error("❌ [API ERROR]: Impossible de joindre le serveur.", error);
             }
-        }
-
-        // ==================== SERVICE WORKER REGISTRATION (PWA) ====================
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                        console.log('✅ SW registered with scope:', registration.scope);
-                    })
-                    .catch(function(error) {
-                        console.log('❌ SW registration failed:', error);
-                    });
-            });
         }
    </script>
    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>

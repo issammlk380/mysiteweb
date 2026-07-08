@@ -1,8 +1,6 @@
 const CACHE_NAME = 'tech-sews-v2';
 const urlsToCache = [
     '/technicien.html',
-    '/styles.css',
-    '/app.js',
     '/site.webmanifest',
     '/icon-192x192.png',
     '/icon-512x512.png'
@@ -10,22 +8,33 @@ const urlsToCache = [
 
 // Install
 self.addEventListener('install', event => {
+    self.skipWaiting();
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
-                console.log('Cache ouvert avec succès');
+                console.log('📦 Cache ouvert:', CACHE_NAME);
                 return cache.addAll(urlsToCache);
             })
     );
 });
 
-// Fetch
+// Fetch avec stratégie Cache-First + Network fallback
 self.addEventListener('fetch', event => {
     event.respondWith(
         caches.match(event.request)
             .then(response => {
-                if (response) return response;
-                return fetch(event.request);
+                if (response) {
+                    return response;
+                }
+                return fetch(event.request)
+                    .then(networkResponse => {
+                        return networkResponse;
+                    })
+                    .catch(() => {
+                        if (event.request.mode === 'navigate') {
+                            return caches.match('/technicien.html');
+                        }
+                    });
             })
     );
 });
@@ -37,7 +46,7 @@ self.addEventListener('activate', event => {
             return Promise.all(
                 cacheNames.map(cacheName => {
                     if (cacheName !== CACHE_NAME) {
-                        console.log('Suppression de l\'ancien cache:', cacheName);
+                        console.log('🗑️ Suppression ancien cache:', cacheName);
                         return caches.delete(cacheName);
                     }
                 })

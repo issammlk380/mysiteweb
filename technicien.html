@@ -1,14 +1,19 @@
 <!DOCTYPE html>
 <html lang="fr" class="h-full">
 <head>
-<link rel="manifest" href="/site.webmanifest">
-<meta name="theme-color" content="#0f172a">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Tech SEWS">
-<link rel="apple-touch-icon" href="/icon-192x192.png"><link rel="manifest" href="manifest.json">
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+
+  <!-- ═══════════════════════════════════════════
+       PWA META TAGS — UNIQUEMENT pour technicien.html
+  ═══════════════════════════════════════════ -->
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Tech SEWS">
+  <link rel="apple-touch-icon" href="/icon-192x192.png">
+
   <title>GMAO — Hub Technicien</title>
   <script src="https://cdn.tailwindcss.com"></script>
 
@@ -17,37 +22,34 @@
        DESIGN TOKENS & VARIABLES GLOBALES
     ═══════════════════════════════════════════ */
     :root {
-      --accent:        #4f46e5; /* indigo-600  */
-      --accent-light:  #6366f1; /* indigo-500  */
+      --accent:        #4f46e5;
+      --accent-light:  #6366f1;
       --accent-glow:   rgba(79, 70, 229, 0.18);
-      --success:       #10b981; /* emerald-500 */
-      --warning:       #f59e0b; /* amber-500   */
-      --danger:        #ef4444; /* red-500     */
+      --success:       #10b981;
+      --warning:       #f59e0b;
+      --danger:        #ef4444;
       --surface:       #ffffff;
-      --surface-2:     #f8fafc; /* slate-50    */
-      --border:        #e2e8f0; /* slate-200   */
-      --text-primary:  #0f172a; /* slate-900   */
-      --text-secondary:#64748b; /* slate-500   */
+      --surface-2:     #f8fafc;
+      --border:        #e2e8f0;
+      --text-primary:  #0f172a;
+      --text-secondary:#64748b;
     }
 
-    /* ── Fond & typographie ── */
     body {
-      background-color: #f1f5f9; /* slate-100 */
+      background-color: #f1f5f9;
       background-image:
         radial-gradient(at 20% 10%, rgba(99,102,241,0.06) 0px, transparent 50%),
         radial-gradient(at 80% 80%, rgba(16,185,129,0.05) 0px, transparent 50%);
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
 
-    /* ── Scrollbar custom ── */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #f1f5f9; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
     ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-    /* ════════════════════════════════════════
-       TOP BAR
-    ════════════════════════════════════════ */
     #topBar {
       background: rgba(255,255,255,0.85);
       backdrop-filter: blur(12px);
@@ -55,9 +57,6 @@
       border-bottom: 1px solid var(--border);
     }
 
-    /* ════════════════════════════════════════
-       CARD PRINCIPALE
-    ════════════════════════════════════════ */
     .main-card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -74,19 +73,12 @@
       to   { opacity: 1; transform: translateY(0)    scale(1);    }
     }
 
-    /* ════════════════════════════════════════
-       BADGE ACCENT (en-tête card)
-    ════════════════════════════════════════ */
     .accent-bar {
       height: 3px;
-      background: linear-gradient(90deg,
-        #4f46e5 0%, #818cf8 50%, #10b981 100%);
+      background: linear-gradient(90deg, #4f46e5 0%, #818cf8 50%, #10b981 100%);
       border-radius: 20px 20px 0 0;
     }
 
-    /* ════════════════════════════════════════
-       INPUTS & SELECT — états
-    ════════════════════════════════════════ */
     .pro-input {
       width: 100%;
       border: 1.5px solid #e2e8f0;
@@ -99,17 +91,11 @@
       outline: none;
     }
     .pro-input::placeholder { color: #94a3b8; }
-
-    .pro-input:hover {
-      border-color: #cbd5e1;
-      background: #fff;
-    }
+    .pro-input:hover { border-color: #cbd5e1; background: #fff; }
     .pro-input:focus {
       border-color: var(--accent-light);
       background: #fff;
-      box-shadow:
-        0 0 0 3.5px var(--accent-glow),
-        0 1px 4px rgba(79,70,229,0.08);
+      box-shadow: 0 0 0 3.5px var(--accent-glow), 0 1px 4px rgba(79,70,229,0.08);
     }
     .pro-input.error {
       border-color: var(--danger);
@@ -121,7 +107,6 @@
       background: #f0fdf4;
     }
 
-    /* Select arrow */
     .select-wrapper { position: relative; }
     .select-wrapper select { appearance: none; cursor: pointer; }
     .select-arrow {
@@ -135,22 +120,16 @@
       color: var(--accent);
     }
 
-    /* ════════════════════════════════════════
-       LABELS
-    ════════════════════════════════════════ */
     .pro-label {
       display: block;
       font-size: 0.78rem;
       font-weight: 700;
       letter-spacing: 0.05em;
       text-transform: uppercase;
-      color: #475569; /* slate-600 */
+      color: #475569;
       margin-bottom: 6px;
     }
 
-    /* ════════════════════════════════════════
-       ID BADGE PANEL
-    ════════════════════════════════════════ */
     .id-badge-panel {
       border: 1.5px dashed #e2e8f0;
       border-radius: 12px;
@@ -166,9 +145,6 @@
       box-shadow: 0 0 0 3px var(--accent-glow);
     }
 
-    /* ════════════════════════════════════════
-       CRITICITÉ PILLS (radio visuels)
-    ════════════════════════════════════════ */
     .crit-pill input[type="radio"] { display: none; }
     .crit-pill label {
       display: flex; align-items: center; gap: 7px;
@@ -185,30 +161,20 @@
       white-space: nowrap;
     }
     .crit-pill label:hover { border-color: #cbd5e1; background: #fff; }
-
-    .crit-pill input:checked + label {
-      color: #fff;
-      border-color: transparent;
-    }
-    /* Basse */
+    .crit-pill input:checked + label { color: #fff; border-color: transparent; }
     #crit-basse:checked + label {
       background: linear-gradient(135deg, #10b981, #059669);
       box-shadow: 0 4px 12px rgba(16,185,129,0.35);
     }
-    /* Moyenne */
     #crit-moyenne:checked + label {
       background: linear-gradient(135deg, #f59e0b, #d97706);
       box-shadow: 0 4px 12px rgba(245,158,11,0.35);
     }
-    /* Haute */
     #crit-haute:checked + label {
       background: linear-gradient(135deg, #ef4444, #dc2626);
       box-shadow: 0 4px 12px rgba(239,68,68,0.35);
     }
 
-    /* ════════════════════════════════════════
-       BOUTON PRINCIPAL
-    ════════════════════════════════════════ */
     .btn-primary {
       display: flex; align-items: center; justify-content: center;
       gap: 10px; width: 100%;
@@ -219,8 +185,7 @@
       letter-spacing: 0.02em;
       color: #fff;
       background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
-      box-shadow: 0 4px 16px rgba(79,70,229,0.35),
-                  0 1px 3px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 16px rgba(79,70,229,0.35), 0 1px 3px rgba(0,0,0,0.1);
       border: none; cursor: pointer;
       transition: all 0.22s cubic-bezier(0.4,0,0.2,1);
       position: relative; overflow: hidden;
@@ -233,8 +198,7 @@
     }
     .btn-primary:hover:not(:disabled) {
       transform: translateY(-2px);
-      box-shadow: 0 8px 28px rgba(79,70,229,0.45),
-                  0 2px 6px rgba(0,0,0,0.12);
+      box-shadow: 0 8px 28px rgba(79,70,229,0.45), 0 2px 6px rgba(0,0,0,0.12);
     }
     .btn-primary:active:not(:disabled) {
       transform: translateY(0);
@@ -247,9 +211,6 @@
       background: linear-gradient(135deg, #4338ca, #4f46e5);
     }
 
-    /* ════════════════════════════════════════
-       SPINNER
-    ════════════════════════════════════════ */
     .spinner {
       width: 18px; height: 18px;
       border: 2.5px solid rgba(255,255,255,0.3);
@@ -259,9 +220,6 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ════════════════════════════════════════
-       TOASTS / NOTIFICATIONS
-    ════════════════════════════════════════ */
     #toastContainer {
       position: fixed;
       bottom: 28px; right: 28px;
@@ -295,7 +253,6 @@
       animation: toastOut 0.35s ease forwards;
     }
 
-    /* Barre de progression toast */
     .toast-bar {
       position: absolute; bottom: 0; left: 0;
       height: 3px; border-radius: 0 0 14px 14px;
@@ -312,9 +269,6 @@
       font-size: 16px; flex-shrink: 0;
     }
 
-    /* ════════════════════════════════════════
-       CHAMP ERREUR INLINE
-    ════════════════════════════════════════ */
     .inline-err {
       font-size: 0.72rem; font-weight: 600;
       color: var(--danger);
@@ -323,9 +277,6 @@
     }
     .inline-err.show { display: flex; }
 
-    /* ════════════════════════════════════════
-       SÉPARATEUR SECTION
-    ════════════════════════════════════════ */
     .section-sep {
       display: flex; align-items: center; gap: 12px;
       margin: 6px 0 18px;
@@ -339,9 +290,6 @@
       content: ''; flex: 1; height: 1px; background: #e2e8f0;
     }
 
-    /* ════════════════════════════════════════
-       ANIMATIONS DIVERSES
-    ════════════════════════════════════════ */
     @keyframes shake {
       0%,100% { transform: translateX(0); }
       15%,45%,75% { transform: translateX(-5px); }
@@ -354,14 +302,12 @@
       50%      { box-shadow: 0 0 0 6px rgba(16,185,129,0);  }
     }
 
-    /* Dot statut connexion */
     .status-dot {
       width: 8px; height: 8px; border-radius: 50%;
       background: var(--success);
       animation: pulseGreen 2s ease-in-out infinite;
     }
 
-    /* Character counter */
     .char-counter {
       font-size: 0.72rem;
       color: #94a3b8;
@@ -370,10 +316,8 @@
     .char-counter.warn  { color: var(--warning); }
     .char-counter.limit { color: var(--danger);  }
 
-    /* Textarea resize handle custom */
     textarea.pro-input { resize: vertical; min-height: 110px; }
 
-    /* ── Fade-in sections ── */
     .fade-section {
       opacity: 0; transform: translateY(10px);
       animation: fadeSec 0.4s ease forwards;
@@ -386,411 +330,167 @@
     .fade-section:nth-child(3) { animation-delay: 0.3s; }
     .fade-section:nth-child(4) { animation-delay: 0.4s; }
     .fade-section:nth-child(5) { animation-delay: 0.5s; }
+
+    /* ── Safe area pour iPhone notch ── */
+    @supports (padding-top: env(safe-area-inset-top)) {
+      body { padding-top: env(safe-area-inset-top); }
+      #topBar { padding-top: env(safe-area-inset-top); }
+    }
   </style>
 <base target="_blank">
 </head>
 
 <body class="min-h-screen flex flex-col">
 
-  <!-- ══════════════════════════════════════════════════════════
-       ① TOP BAR — Navigation & Statut Système
-  ══════════════════════════════════════════════════════════ -->
   <header id="topBar" class="sticky top-0 z-50 w-full">
     <div class="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between gap-4">
-
-      <!-- Gauche : Logo + Fil d'Ariane -->
       <div class="flex items-center gap-3">
-
-        <!-- Logo miniature -->
-        <div class="flex items-center justify-center w-8 h-8 rounded-lg
-                    bg-gradient-to-br from-indigo-600 to-indigo-500 shadow-sm">
-          <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24"
-               stroke="currentColor" stroke-width="2.5">
+        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-500 shadow-sm">
+          <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round"
-              d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877
-                 M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42
-                 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63
-                 m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0
-                 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276
-                 -3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071
-                 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25
-                 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437
-                 l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008
-                 h-.008v-.008z"/>
+              d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877 M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63 m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276 -3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008 h-.008v-.008z"/>
           </svg>
         </div>
-
-        <!-- Fil d'Ariane -->
         <nav class="flex items-center gap-1.5 text-xs font-medium">
-          <span class="text-slate-400 hover:text-slate-600 cursor-pointer
-                       transition-colors">GMAO</span>
-          <svg class="w-3 h-3 text-slate-300" fill="none" viewBox="0 0 24 24"
-               stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-          </svg>
-          <span class="text-slate-400 hover:text-slate-600 cursor-pointer
-                       transition-colors">Interventions</span>
-          <svg class="w-3 h-3 text-slate-300" fill="none" viewBox="0 0 24 24"
-               stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-          </svg>
+          <span class="text-slate-400 hover:text-slate-600 cursor-pointer transition-colors">GMAO</span>
+          <svg class="w-3 h-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          <span class="text-slate-400 hover:text-slate-600 cursor-pointer transition-colors">Interventions</span>
+          <svg class="w-3 h-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
           <span class="text-slate-700 font-semibold">Saisie Technicien</span>
         </nav>
       </div>
-
-      <!-- Droite : Statut + Horloge + User -->
       <div class="flex items-center gap-4">
-
-        <!-- Statut serveur -->
-        <div class="hidden sm:flex items-center gap-2 bg-emerald-50 border
-                    border-emerald-200 text-emerald-700 text-xs font-semibold
-                    px-3 py-1.5 rounded-full">
+        <div class="hidden sm:flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-full">
           <div class="status-dot"></div>
           <span>Serveur Connecté</span>
         </div>
-
-        <!-- Horloge live -->
-        <div class="flex items-center gap-1.5 bg-slate-100 border border-slate-200
-                    text-slate-600 text-xs font-mono font-semibold
-                    px-3 py-1.5 rounded-full">
-          <svg class="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24"
-               stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <path stroke-linecap="round" d="M12 6v6l4 2"/>
-          </svg>
+        <div class="flex items-center gap-1.5 bg-slate-100 border border-slate-200 text-slate-600 text-xs font-mono font-semibold px-3 py-1.5 rounded-full">
+          <svg class="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg>
           <span id="liveTime">--:--:--</span>
         </div>
-
-        <!-- Avatar technicien -->
         <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400
-                      to-purple-500 flex items-center justify-center
-                      text-white text-xs font-bold shadow-sm">
-            TC
-          </div>
-          <span class="hidden md:block text-xs font-semibold text-slate-600">
-            Technicien
-          </span>
+          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">TC</div>
+          <span class="hidden md:block text-xs font-semibold text-slate-600">Technicien</span>
         </div>
       </div>
     </div>
   </header>
 
-
-  <!-- ══════════════════════════════════════════════════════════
-       ② CONTENU PRINCIPAL
-  ══════════════════════════════════════════════════════════ -->
   <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 lg:py-10">
-
-    <!-- En-tête de page -->
     <div class="mb-7 fade-section">
       <div class="flex items-start justify-between">
         <div>
-          <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Rapport d'Intervention
-          </h1>
-          <p class="text-sm text-slate-500 mt-1">
-            Complétez les informations ci-dessous à la suite de votre intervention technique.
-          </p>
+          <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Rapport d'Intervention</h1>
+          <p class="text-sm text-slate-500 mt-1">Complétez les informations ci-dessous à la suite de votre intervention technique.</p>
         </div>
-        <!-- Indicateur étape -->
         <div class="hidden sm:flex items-center gap-2 mt-1">
           <div class="flex items-center gap-1.5">
-            <div class="w-6 h-6 rounded-full bg-indigo-600 text-white
-                        text-xs font-bold flex items-center justify-center">1</div>
+            <div class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center">1</div>
             <span class="text-xs font-semibold text-indigo-600">Saisie</span>
           </div>
           <div class="w-8 h-px bg-slate-300"></div>
           <div class="flex items-center gap-1.5">
-            <div class="w-6 h-6 rounded-full bg-slate-200 text-slate-400
-                        text-xs font-bold flex items-center justify-center">2</div>
+            <div class="w-6 h-6 rounded-full bg-slate-200 text-slate-400 text-xs font-bold flex items-center justify-center">2</div>
             <span class="text-xs font-semibold text-slate-400">Validation</span>
           </div>
           <div class="w-8 h-px bg-slate-300"></div>
           <div class="flex items-center gap-1.5">
-            <div class="w-6 h-6 rounded-full bg-slate-200 text-slate-400
-                        text-xs font-bold flex items-center justify-center">3</div>
+            <div class="w-6 h-6 rounded-full bg-slate-200 text-slate-400 text-xs font-bold flex items-center justify-center">3</div>
             <span class="text-xs font-semibold text-slate-400">Archivage</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ── GRILLE : Formulaire (gauche) + Panneau Info (droite) ── -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-      <!-- ══════════════════════════════════════
-           CARTE FORMULAIRE PRINCIPALE (2/3)
-      ══════════════════════════════════════ -->
       <div class="lg:col-span-2">
         <div class="main-card overflow-hidden">
-
-          <!-- Accent bar gradient -->
           <div class="accent-bar"></div>
-
-          <!-- Corps du formulaire -->
           <div class="p-6 sm:p-8">
             <form id="formIntervention" novalidate>
-
-              <!-- ╔═══════════════════════════════════╗
-                   § 1 — IDENTIFICATION DE LA PANNE
-              ╚═══════════════════════════════════╝ -->
-              <div class="section-sep fade-section">
-                <span>Identification</span>
-              </div>
-
+              <div class="section-sep fade-section"><span>Identification</span></div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6 fade-section">
-
-                <!-- ID Panne -->
                 <div>
-                  <label class="pro-label" for="idPanne">
-                    ID de la Panne
-                    <span class="text-red-500 ml-0.5 normal-case font-black">*</span>
-                  </label>
+                  <label class="pro-label" for="idPanne">ID de la Panne <span class="text-red-500 ml-0.5 normal-case font-black">*</span></label>
                   <div class="relative">
-                    <input
-                      id="idPanne"
-                      type="number"
-                      min="1"
-                      placeholder="ex : 1042"
-                      class="pro-input pr-10"
-                      autocomplete="off"
-                    />
-                    <!-- Icône hash -->
-                    <div class="absolute right-3 top-1/2 -translate-y-1/2
-                                text-slate-300 pointer-events-none">
-                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                           stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                          d="M5 8h14M5 12h14M5 16h14M9 4v16M15 4v16"/>
-                      </svg>
+                    <input id="idPanne" type="number" min="1" placeholder="ex : 1042" class="pro-input pr-10" autocomplete="off"/>
+                    <div class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 12h14M5 16h14M9 4v16M15 4v16"/></svg>
                     </div>
                   </div>
-                  <p class="inline-err" id="err-idPanne">
-                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0
-                        0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0
-                        00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                    </svg>
-                    ID invalide ou manquant
-                  </p>
+                  <p class="inline-err" id="err-idPanne"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>ID invalide ou manquant</p>
                 </div>
-
-                <!-- Heure d'intervention -->
                 <div>
-                  <label class="pro-label" for="heureIntervention">
-                    Heure d'Intervention
-                    <span class="text-red-500 ml-0.5 normal-case font-black">*</span>
-                  </label>
+                  <label class="pro-label" for="heureIntervention">Heure d'Intervention <span class="text-red-500 ml-0.5 normal-case font-black">*</span></label>
                   <div class="relative">
-                    <input
-                      id="heureIntervention"
-                      type="time"
-                      class="pro-input pr-10"
-                    />
-                    <div class="absolute right-3 top-1/2 -translate-y-1/2
-                                text-slate-300 pointer-events-none">
-                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                           stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <path stroke-linecap="round" d="M12 6v6l4 2"/>
-                      </svg>
+                    <input id="heureIntervention" type="time" class="pro-input pr-10"/>
+                    <div class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg>
                     </div>
                   </div>
-                  <p class="inline-err" id="err-heure">
-                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0
-                        0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0
-                        00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                    </svg>
-                    Heure manquante
-                  </p>
+                  <p class="inline-err" id="err-heure"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>Heure manquante</p>
                 </div>
               </div>
 
-              <!-- ╔═══════════════════════════════════╗
-                   § 2 — CRITICITÉ (Radio Pills)
-              ╚═══════════════════════════════════╝ -->
-              <div class="section-sep fade-section">
-                <span>Niveau de Criticité</span>
-              </div>
-
+              <div class="section-sep fade-section"><span>Niveau de Criticité</span></div>
               <div class="mb-6 fade-section">
-                <label class="pro-label">
-                  Criticité de la Panne
-                  <span class="text-red-500 ml-0.5 normal-case font-black">*</span>
-                </label>
-
-                <!-- Pills Radio -->
+                <label class="pro-label">Criticité de la Panne <span class="text-red-500 ml-0.5 normal-case font-black">*</span></label>
                 <div class="flex flex-wrap gap-3" id="criticiteGroup">
-                  <div class="crit-pill">
-                    <input type="radio" id="crit-basse" name="criticite" value="basse"/>
-                    <label for="crit-basse">
-                      <svg class="w-3.5 h-3.5" viewBox="0 0 12 12" fill="currentColor">
-                        <circle cx="6" cy="6" r="6"/>
-                      </svg>
-                      Basse
-                    </label>
-                  </div>
-                  <div class="crit-pill">
-                    <input type="radio" id="crit-moyenne" name="criticite" value="moyenne"/>
-                    <label for="crit-moyenne">
-                      <svg class="w-3.5 h-3.5" viewBox="0 0 12 12" fill="currentColor">
-                        <circle cx="6" cy="6" r="6"/>
-                      </svg>
-                      Moyenne
-                    </label>
-                  </div>
-                  <div class="crit-pill">
-                    <input type="radio" id="crit-haute" name="criticite" value="haute"/>
-                    <label for="crit-haute">
-                      <svg class="w-3.5 h-3.5" viewBox="0 0 12 12" fill="currentColor">
-                        <circle cx="6" cy="6" r="6"/>
-                      </svg>
-                      Haute
-                    </label>
-                  </div>
+                  <div class="crit-pill"><input type="radio" id="crit-basse" name="criticite" value="basse"/><label for="crit-basse"><svg class="w-3.5 h-3.5" viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="6" r="6"/></svg>Basse</label></div>
+                  <div class="crit-pill"><input type="radio" id="crit-moyenne" name="criticite" value="moyenne"/><label for="crit-moyenne"><svg class="w-3.5 h-3.5" viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="6" r="6"/></svg>Moyenne</label></div>
+                  <div class="crit-pill"><input type="radio" id="crit-haute" name="criticite" value="haute"/><label for="crit-haute"><svg class="w-3.5 h-3.5" viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="6" r="6"/></svg>Haute</label></div>
                 </div>
-                <p class="inline-err" id="err-criticite">
-                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0
-                      0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0
-                      00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                  </svg>
-                  Veuillez sélectionner un niveau de criticité
-                </p>
+                <p class="inline-err" id="err-criticite"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>Veuillez sélectionner un niveau de criticité</p>
               </div>
 
-              <!-- ╔═══════════════════════════════════╗
-                   § 3 — OBSERVATION / PIÈCE
-              ╚═══════════════════════════════════╝ -->
-              <div class="section-sep fade-section">
-                <span>Rapport Technique</span>
-              </div>
-
+              <div class="section-sep fade-section"><span>Rapport Technique</span></div>
               <div class="mb-7 fade-section">
-                <label class="pro-label" for="observation">
-                  Pièce Remplacée / Observation
-                  <span class="text-red-500 ml-0.5 normal-case font-black">*</span>
-                </label>
-                <textarea
-                  id="observation"
-                  rows="5"
-                  maxlength="1000"
-                  placeholder="Décrivez les actions effectuées : pièces remplacées, réglages réalisés, causes identifiées, recommandations…"
-                  class="pro-input"
-                ></textarea>
+                <label class="pro-label" for="observation">Pièce Remplacée / Observation <span class="text-red-500 ml-0.5 normal-case font-black">*</span></label>
+                <textarea id="observation" rows="5" maxlength="1000" placeholder="Décrivez les actions effectuées : pièces remplacées, réglages réalisés, causes identifiées, recommandations…" class="pro-input"></textarea>
                 <div class="flex justify-between items-center mt-1.5">
-                  <p class="inline-err" id="err-observation" style="margin-top:0;">
-                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0
-                        0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0
-                        00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                    </svg>
-                    Ce champ est obligatoire
-                  </p>
+                  <p class="inline-err" id="err-observation" style="margin-top:0;"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>Ce champ est obligatoire</p>
                   <span id="charCounter" class="char-counter ml-auto">0 / 1000</span>
                 </div>
               </div>
 
-              <!-- ╔═══════════════════════════════════╗
-                   § 4 — BOUTON SOUMISSION
-              ╚═══════════════════════════════════╝ -->
               <div class="fade-section">
-                <button
-                  type="button"
-                  id="btnSubmit"
-                  onclick="envoyerData()"
-                  class="btn-primary"
-                >
-                  <!-- Icône check -->
-                  <svg id="btnIcon" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
-                       stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                  </svg>
+                <button type="button" id="btnSubmit" onclick="envoyerData()" class="btn-primary">
+                  <svg id="btnIcon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                   <span id="btnText">Enregistrer l'Intervention</span>
                 </button>
-
-                <!-- Légende champs obligatoires -->
-                <p class="text-center text-xs text-slate-400 mt-4 flex
-                           items-center justify-center gap-1.5">
-                  <svg class="w-3.5 h-3.5 text-slate-400" fill="none"
-                       viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75
-                         11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25
-                         0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25
-                         2.25 0 002.25 2.25z"/>
-                  </svg>
+                <p class="text-center text-xs text-slate-400 mt-4 flex items-center justify-center gap-1.5">
+                  <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
                   Données chiffrées et transmises de façon sécurisée au serveur GMAO
                 </p>
               </div>
-
             </form>
-          </div><!-- fin p-6 sm:p-8 -->
-        </div><!-- fin main-card -->
+          </div>
+        </div>
       </div>
 
-
-      <!-- ══════════════════════════════════════
-           PANNEAU LATÉRAL DROITE (1/3)
-      ══════════════════════════════════════ -->
       <div class="flex flex-col gap-5">
-
-        <!-- ── Carte : Badge ID Panne ── -->
         <div class="main-card p-5 fade-section">
-          <h3 class="text-xs font-bold uppercase tracking-widest
-                     text-slate-400 mb-4">Panne Détectée</h3>
-
+          <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Panne Détectée</h3>
           <div class="id-badge-panel" id="idBadgePanel">
-            <!-- État vide -->
-            <div id="badgeEmpty" class="flex flex-col items-center justify-center
-                                        h-full text-center py-2">
-              <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center
-                          justify-center mb-2">
-                <svg class="w-5 h-5 text-slate-300" fill="none" viewBox="0 0 24 24"
-                     stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9
-                       3.75h.008v.008H12v-.008z"/>
-                </svg>
+            <div id="badgeEmpty" class="flex flex-col items-center justify-center h-full text-center py-2">
+              <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center mb-2">
+                <svg class="w-5 h-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
               </div>
-              <p class="text-xs text-slate-400 font-medium">
-                Saisissez un ID de panne
-              </p>
+              <p class="text-xs text-slate-400 font-medium">Saisissez un ID de panne</p>
             </div>
-
-            <!-- État rempli (caché par défaut) -->
             <div id="badgeFilled" class="hidden">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center
-                            justify-center shadow-sm flex-shrink-0">
-                  <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24"
-                       stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948
-                         3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949
-                         3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z
-                         M12 15.75h.007v.008H12v-.008z"/>
-                  </svg>
+                <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm flex-shrink-0">
+                  <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z M12 15.75h.007v.008H12v-.008z"/></svg>
                 </div>
                 <div>
                   <p class="text-xs text-slate-500 font-medium">ID Panne</p>
-                  <p id="badgeIdValue" class="text-xl font-extrabold
-                                               text-indigo-700 font-mono">
-                    —
-                  </p>
+                  <p id="badgeIdValue" class="text-xl font-extrabold text-indigo-700 font-mono">—</p>
                 </div>
               </div>
               <div class="mt-3 pt-3 border-t border-indigo-100">
-                <span class="inline-flex items-center gap-1.5 text-xs font-semibold
-                             text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
-                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8
-                      8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8
-                      12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                  </svg>
+                <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
+                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
                   ID Panne Détecté
                 </span>
               </div>
@@ -798,76 +498,39 @@
           </div>
         </div>
 
-        <!-- ── Carte : Récapitulatif en direct ── -->
         <div class="main-card p-5 fade-section">
-          <h3 class="text-xs font-bold uppercase tracking-widest
-                     text-slate-400 mb-4">Récapitulatif</h3>
-
+          <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Récapitulatif</h3>
           <div class="space-y-3">
-            <!-- Criticité live -->
             <div class="flex items-center justify-between">
               <span class="text-xs text-slate-500 font-medium">Criticité</span>
-              <span id="recapCriticite"
-                    class="text-xs font-semibold text-slate-300 italic">
-                Non définie
-              </span>
+              <span id="recapCriticite" class="text-xs font-semibold text-slate-300 italic">Non définie</span>
             </div>
-            <!-- Heure live -->
             <div class="flex items-center justify-between">
               <span class="text-xs text-slate-500 font-medium">Heure</span>
-              <span id="recapHeure"
-                    class="text-xs font-semibold text-slate-300 italic font-mono">
-                --:--
-              </span>
+              <span id="recapHeure" class="text-xs font-semibold text-slate-300 italic font-mono">--:--</span>
             </div>
-            <!-- Observation live -->
             <div class="flex items-start justify-between gap-2">
-              <span class="text-xs text-slate-500 font-medium flex-shrink-0">
-                Obs.
-              </span>
-              <span id="recapObs"
-                    class="text-xs font-semibold text-slate-300 italic
-                           text-right line-clamp-2">
-                Vide
-              </span>
+              <span class="text-xs text-slate-500 font-medium flex-shrink-0">Obs.</span>
+              <span id="recapObs" class="text-xs font-semibold text-slate-300 italic text-right line-clamp-2">Vide</span>
             </div>
           </div>
-
-          <!-- Barre de complétion -->
           <div class="mt-4 pt-4 border-t border-slate-100">
             <div class="flex justify-between items-center mb-1.5">
-              <span class="text-xs text-slate-500 font-medium">
-                Complétion formulaire
-              </span>
-              <span id="completionPct" class="text-xs font-bold text-indigo-600">
-                0%
-              </span>
+              <span class="text-xs text-slate-500 font-medium">Complétion formulaire</span>
+              <span id="completionPct" class="text-xs font-bold text-indigo-600">0%</span>
             </div>
             <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-              <div id="completionBar"
-                   class="h-full rounded-full bg-gradient-to-r from-indigo-500
-                          to-emerald-500 transition-all duration-500"
-                   style="width: 0%">
-              </div>
+              <div id="completionBar" class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-500" style="width: 0%"></div>
             </div>
           </div>
         </div>
 
-        <!-- ── Carte : Infos Session ── -->
         <div class="main-card p-5 fade-section">
-          <h3 class="text-xs font-bold uppercase tracking-widest
-                     text-slate-400 mb-3">Session</h3>
+          <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Session</h3>
           <div class="space-y-2.5">
             <div class="flex items-center gap-2.5">
-              <div class="w-7 h-7 rounded-lg bg-slate-100 flex items-center
-                          justify-center flex-shrink-0">
-                <svg class="w-3.5 h-3.5 text-slate-500" fill="none"
-                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z
-                       M4.501 20.118a7.5 7.5 0 0114.998 0A17.933
-                       17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
-                </svg>
+              <div class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z M4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
               </div>
               <div>
                 <p class="text-xs text-slate-400">Technicien</p>
@@ -875,121 +538,62 @@
               </div>
             </div>
             <div class="flex items-center gap-2.5">
-              <div class="w-7 h-7 rounded-lg bg-slate-100 flex items-center
-                          justify-center flex-shrink-0">
-                <svg class="w-3.5 h-3.5 text-slate-500" fill="none"
-                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25
-                       0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18
-                       0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021
-                       18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25
-                       0 0121 11.25v7.5"/>
-                </svg>
+              <div class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>
               </div>
               <div>
                 <p class="text-xs text-slate-400">Date</p>
-                <p id="sessionDate" class="text-xs font-semibold text-slate-700">
-                  —
-                </p>
+                <p id="sessionDate" class="text-xs font-semibold text-slate-700">—</p>
               </div>
             </div>
             <div class="flex items-center gap-2.5">
-              <div class="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-100
-                          flex items-center justify-center flex-shrink-0">
-                <svg class="w-3.5 h-3.5 text-emerald-500" fill="none"
-                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0
-                       013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29
-                       9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571
-                       -.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
-                </svg>
+              <div class="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
               </div>
               <div>
                 <p class="text-xs text-slate-400">Sécurité</p>
-                <p class="text-xs font-semibold text-emerald-600">
-                  Chiffrement TLS 1.3
-                </p>
+                <p class="text-xs font-semibold text-emerald-600">Chiffrement TLS 1.3</p>
               </div>
             </div>
           </div>
         </div>
-
-      </div><!-- fin col droite -->
-    </div><!-- fin grid -->
+      </div>
+    </div>
   </main>
 
-
-  <!-- ══════════════════════════════════════════════════════════
-       ③ FOOTER
-  ══════════════════════════════════════════════════════════ -->
   <footer class="border-t border-slate-200 bg-white mt-auto">
-    <div class="max-w-5xl mx-auto px-5 py-4 flex flex-col sm:flex-row
-                items-center justify-between gap-2">
-      <p class="text-xs text-slate-400">
-        © 2025 GMAO Système — v3.2.1 — Département Maintenance Industrielle
-      </p>
+    <div class="max-w-5xl mx-auto px-5 py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p class="text-xs text-slate-400">© 2025 GMAO Système — v3.2.1 — Département Maintenance Industrielle</p>
       <div class="flex items-center gap-4 text-xs text-slate-400">
-        <span class="hover:text-slate-600 cursor-pointer transition-colors">
-          Documentation
-        </span>
-        <span class="hover:text-slate-600 cursor-pointer transition-colors">
-          Support
-        </span>
-        <span class="hover:text-slate-600 cursor-pointer transition-colors">
-          Politique de confidentialité
-        </span>
+        <span class="hover:text-slate-600 cursor-pointer transition-colors">Documentation</span>
+        <span class="hover:text-slate-600 cursor-pointer transition-colors">Support</span>
+        <span class="hover:text-slate-600 cursor-pointer transition-colors">Politique de confidentialité</span>
       </div>
     </div>
   </footer>
 
-
-  <!-- ══════════════════════════════════════════════════════════
-       ④ CONTENEUR TOASTS (notifications)
-  ══════════════════════════════════════════════════════════ -->
   <div id="toastContainer" aria-live="polite"></div>
 
-
-  <!-- ══════════════════════════════════════════════════════════════════
-       ⑤ JAVASCRIPT — Logique complète de l'application
-  ══════════════════════════════════════════════════════════════════ -->
   <script>
     'use strict';
 
-    /* ═══════════════════════════════════════════════════════════
-       MODULE : HORLOGE LIVE & DATE SESSION
-    ═══════════════════════════════════════════════════════════ */
     (function initClock() {
       const el = document.getElementById('liveTime');
       const dateEl = document.getElementById('sessionDate');
-
-      // Date de session (format FR)
-      dateEl.textContent = new Date().toLocaleDateString('fr-FR', {
-        weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
-      });
-
-      // Mise à jour de l'horloge chaque seconde
+      dateEl.textContent = new Date().toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
       function tick() {
-        el.textContent = new Date().toLocaleTimeString('fr-FR', {
-          hour: '2-digit', minute: '2-digit', second: '2-digit'
-        });
+        el.textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       }
       tick();
       setInterval(tick, 1000);
     })();
 
-
-    /* ═══════════════════════════════════════════════════════════
-       MODULE : BADGE ID PANNE (mise à jour live)
-    ═══════════════════════════════════════════════════════════ */
     (function initIdBadge() {
-      const input      = document.getElementById('idPanne');
-      const panel      = document.getElementById('idBadgePanel');
+      const input = document.getElementById('idPanne');
+      const panel = document.getElementById('idBadgePanel');
       const badgeEmpty = document.getElementById('badgeEmpty');
-      const badgeFill  = document.getElementById('badgeFilled');
-      const badgeVal   = document.getElementById('badgeIdValue');
-
+      const badgeFill = document.getElementById('badgeFilled');
+      const badgeVal = document.getElementById('badgeIdValue');
       input.addEventListener('input', function () {
         const val = this.value.trim();
         if (val && Number(val) > 0) {
@@ -1007,58 +611,35 @@
       });
     })();
 
-
-    /* ═══════════════════════════════════════════════════════════
-       MODULE : RÉCAPITULATIF LIVE (panneau droit)
-    ═══════════════════════════════════════════════════════════ */
     (function initLiveRecap() {
-      const criticiteLabels = {
-        basse:   '🟢 Basse',
-        moyenne: '🟡 Moyenne',
-        haute:   '🔴 Haute'
-      };
-
-      // Criticité
-      document.querySelectorAll('input[name="criticite"]')
-        .forEach(radio => {
-          radio.addEventListener('change', function () {
-            const el = document.getElementById('recapCriticite');
-            el.textContent = criticiteLabels[this.value] || 'Non définie';
-            el.classList.remove('text-slate-300', 'italic');
-            el.classList.add('text-slate-700', 'font-bold');
-            updateCompletion();
-          });
-        });
-
-      // Heure
-      document.getElementById('heureIntervention')
-        .addEventListener('change', function () {
-          const el = document.getElementById('recapHeure');
-          el.textContent = this.value || '--:--';
+      const criticiteLabels = { basse: '🟢 Basse', moyenne: '🟡 Moyenne', haute: '🔴 Haute' };
+      document.querySelectorAll('input[name="criticite"]').forEach(radio => {
+        radio.addEventListener('change', function () {
+          const el = document.getElementById('recapCriticite');
+          el.textContent = criticiteLabels[this.value] || 'Non définie';
           el.classList.remove('text-slate-300', 'italic');
           el.classList.add('text-slate-700', 'font-bold');
           updateCompletion();
         });
-
-      // Observation
-      document.getElementById('observation')
-        .addEventListener('input', function () {
-          const el  = document.getElementById('recapObs');
-          const txt = this.value.trim();
-          el.textContent = txt
-            ? (txt.length > 50 ? txt.substring(0, 50) + '…' : txt)
-            : 'Vide';
-          el.classList.remove('text-slate-300', 'italic');
-          el.classList.add('text-slate-700');
-          updateCompletion();
-          updateCharCounter(this.value.length);
-        });
+      });
+      document.getElementById('heureIntervention').addEventListener('change', function () {
+        const el = document.getElementById('recapHeure');
+        el.textContent = this.value || '--:--';
+        el.classList.remove('text-slate-300', 'italic');
+        el.classList.add('text-slate-700', 'font-bold');
+        updateCompletion();
+      });
+      document.getElementById('observation').addEventListener('input', function () {
+        const el = document.getElementById('recapObs');
+        const txt = this.value.trim();
+        el.textContent = txt ? (txt.length > 50 ? txt.substring(0, 50) + '…' : txt) : 'Vide';
+        el.classList.remove('text-slate-300', 'italic');
+        el.classList.add('text-slate-700');
+        updateCompletion();
+        updateCharCounter(this.value.length);
+      });
     })();
 
-
-    /* ═══════════════════════════════════════════════════════════
-       MODULE : COMPTEUR DE CARACTÈRES (textarea)
-    ═══════════════════════════════════════════════════════════ */
     function updateCharCounter(len) {
       const el = document.getElementById('charCounter');
       el.textContent = `${len} / 1000`;
@@ -1067,501 +648,256 @@
       else if (len >= 700) el.classList.add('warn');
     }
 
-
-    /* ═══════════════════════════════════════════════════════════
-       MODULE : BARRE DE COMPLÉTION FORMULAIRE
-    ═══════════════════════════════════════════════════════════ */
     function updateCompletion() {
       let score = 0;
-      const idVal  = document.getElementById('idPanne').value.trim();
-      const heure  = document.getElementById('heureIntervention').value;
-      const crit   = document.querySelector('input[name="criticite"]:checked');
-      const obs    = document.getElementById('observation').value.trim();
-
+      const idVal = document.getElementById('idPanne').value.trim();
+      const heure = document.getElementById('heureIntervention').value;
+      const crit = document.querySelector('input[name="criticite"]:checked');
+      const obs = document.getElementById('observation').value.trim();
       if (idVal && Number(idVal) > 0) score++;
       if (heure) score++;
-      if (crit)  score++;
-      if (obs)   score++;
-
+      if (crit) score++;
+      if (obs) score++;
       const pct = Math.round((score / 4) * 100);
       document.getElementById('completionPct').textContent = pct + '%';
       document.getElementById('completionBar').style.width = pct + '%';
     }
 
-
-    /* ═══════════════════════════════════════════════════════════
-       MODULE : SYSTÈME DE TOASTS (notifications élégantes)
-    ═══════════════════════════════════════════════════════════ */
     const Toast = (function () {
       const container = document.getElementById('toastContainer');
-
       const CONFIGS = {
-        success: {
-          bg:      'bg-white',
-          iconBg:  'bg-emerald-50',
-          iconClr: 'text-emerald-500',
-          barClr:  'bg-emerald-500',
-          icon: `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"
-                      stroke="currentColor" stroke-width="2.5">
-                   <path stroke-linecap="round" stroke-linejoin="round"
-                     d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0
-                        0118 0z"/>
-                 </svg>`
-        },
-        error: {
-          bg:      'bg-white',
-          iconBg:  'bg-red-50',
-          iconClr: 'text-red-500',
-          barClr:  'bg-red-500',
-          icon: `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"
-                      stroke="currentColor" stroke-width="2.5">
-                   <path stroke-linecap="round" stroke-linejoin="round"
-                     d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9
-                        3.75h.008v.008H12v-.008z"/>
-                 </svg>`
-        },
-        warning: {
-          bg:      'bg-white',
-          iconBg:  'bg-amber-50',
-          iconClr: 'text-amber-500',
-          barClr:  'bg-amber-500',
-          icon: `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"
-                      stroke="currentColor" stroke-width="2.5">
-                   <path stroke-linecap="round" stroke-linejoin="round"
-                     d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948
-                        3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949
-                        3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z
-                        M12 15.75h.007v.008H12v-.008z"/>
-                 </svg>`
-        },
-        info: {
-          bg:      'bg-white',
-          iconBg:  'bg-blue-50',
-          iconClr: 'text-blue-500',
-          barClr:  'bg-blue-500',
-          icon: `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"
-                      stroke="currentColor" stroke-width="2.5">
-                   <path stroke-linecap="round" stroke-linejoin="round"
-                     d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708
-                        2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0
-                        11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/>
-                 </svg>`
-        }
+        success: { bg: 'bg-white', iconBg: 'bg-emerald-50', iconClr: 'text-emerald-500', barClr: 'bg-emerald-500', icon: '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' },
+        error:   { bg: 'bg-white', iconBg: 'bg-red-50',    iconClr: 'text-red-500',    barClr: 'bg-red-500',    icon: '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>' },
+        warning: { bg: 'bg-white', iconBg: 'bg-amber-50',  iconClr: 'text-amber-500',  barClr: 'bg-amber-500',  icon: '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z M12 15.75h.007v.008H12v-.008z"/></svg>' },
+        info:    { bg: 'bg-white', iconBg: 'bg-blue-50',   iconClr: 'text-blue-500',   barClr: 'bg-blue-500',   icon: '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>' }
       };
-
-      /**
-       * @param {'success'|'error'|'warning'|'info'} type
-       * @param {string} title
-       * @param {string} message
-       * @param {number} duration — en ms (défaut 4500)
-       */
       function show(type, title, message, duration = 4500) {
-        const cfg  = CONFIGS[type] || CONFIGS.info;
+        const cfg = CONFIGS[type] || CONFIGS.info;
         const toast = document.createElement('div');
         toast.className = `toast ${cfg.bg}`;
-
         toast.innerHTML = `
-          <!-- Icône -->
           <div class="toast-icon ${cfg.iconBg} ${cfg.iconClr}">${cfg.icon}</div>
-
-          <!-- Texte -->
           <div class="flex-1 min-w-0">
             <p class="text-sm font-bold text-slate-800 leading-snug">${title}</p>
-            ${message
-              ? `<p class="text-xs text-slate-500 mt-0.5 leading-snug">${message}</p>`
-              : ''}
+            ${message ? `<p class="text-xs text-slate-500 mt-0.5 leading-snug">${message}</p>` : ''}
           </div>
-
-          <!-- Bouton fermer -->
-          <button onclick="this.closest('.toast').remove()"
-                  class="flex-shrink-0 text-slate-300 hover:text-slate-500
-                         transition-colors ml-1 mt-0.5">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                 stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M6 18L18 6M6 6l12 12"/>
-            </svg>
+          <button onclick="this.closest('.toast').remove()" class="flex-shrink-0 text-slate-300 hover:text-slate-500 transition-colors ml-1 mt-0.5">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
-
-          <!-- Barre de progression -->
-          <div class="toast-bar ${cfg.barClr}"
-               style="animation-duration: ${duration}ms"></div>
+          <div class="toast-bar ${cfg.barClr}" style="animation-duration: ${duration}ms"></div>
         `;
-
         container.appendChild(toast);
-
-        // Auto-fermeture
         setTimeout(() => {
           toast.classList.add('hide');
           setTimeout(() => toast.remove(), 380);
         }, duration);
       }
-
       return { show };
     })();
 
-
-    /* ═══════════════════════════════════════════════════════════
-       MODULE : VALIDATION INLINE DES CHAMPS
-    ═══════════════════════════════════════════════════════════ */
-
-    /** Affiche une erreur inline sur un champ */
     function setFieldError(inputId, errId) {
       const input = document.getElementById(inputId);
-      const err   = document.getElementById(errId);
-      if (input) {
-        input.classList.add('error');
-        input.classList.remove('success-field');
-      }
+      const err = document.getElementById(errId);
+      if (input) { input.classList.add('error'); input.classList.remove('success-field'); }
       if (err) err.classList.add('show');
     }
-
-    /** Efface l'erreur inline d'un champ */
     function clearFieldError(inputId, errId) {
       const input = document.getElementById(inputId);
-      const err   = document.getElementById(errId);
-      if (input) {
-        input.classList.remove('error');
-      }
+      const err = document.getElementById(errId);
+      if (input) input.classList.remove('error');
       if (err) err.classList.remove('show');
     }
-
-    /** Marque un champ comme valide */
     function setFieldValid(inputId) {
       const input = document.getElementById(inputId);
-      if (input) {
-        input.classList.add('success-field');
-        input.classList.remove('error');
-      }
+      if (input) { input.classList.add('success-field'); input.classList.remove('error'); }
     }
 
-    // Nettoyage automatique au focus/saisie
-    document.getElementById('idPanne')
-      .addEventListener('input', () => clearFieldError('idPanne', 'err-idPanne'));
-
-    document.getElementById('heureIntervention')
-      .addEventListener('change', () => clearFieldError('heureIntervention', 'err-heure'));
-
-    document.getElementById('observation')
-      .addEventListener('input', () => clearFieldError('observation', 'err-observation'));
-
+    document.getElementById('idPanne').addEventListener('input', () => clearFieldError('idPanne', 'err-idPanne'));
+    document.getElementById('heureIntervention').addEventListener('change', () => clearFieldError('heureIntervention', 'err-heure'));
+    document.getElementById('observation').addEventListener('input', () => clearFieldError('observation', 'err-observation'));
     document.querySelectorAll('input[name="criticite"]').forEach(r => {
-      r.addEventListener('change', () => {
-        document.getElementById('err-criticite').classList.remove('show');
-      });
+      r.addEventListener('change', () => { document.getElementById('err-criticite').classList.remove('show'); });
     });
 
-
-    /* ═══════════════════════════════════════════════════════════
-       MODULE : GESTION DU BOUTON (states)
-    ═══════════════════════════════════════════════════════════ */
     const Btn = (function () {
-      const btn     = document.getElementById('btnSubmit');
+      const btn = document.getElementById('btnSubmit');
       const btnText = document.getElementById('btnText');
       const btnIcon = document.getElementById('btnIcon');
-
       function setLoading() {
         btn.disabled = true;
         btn.classList.add('loading');
-        btnIcon.outerHTML = `<div class="spinner" id="btnIcon"></div>`;
+        btnIcon.outerHTML = '<div class="spinner" id="btnIcon"></div>';
         btnText.textContent = 'Enregistrement en cours…';
       }
-
       function setSuccess() {
         const iconEl = document.getElementById('btnIcon');
         if (iconEl) {
-          iconEl.outerHTML = `
-            <svg id="btnIcon" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
-                 stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>`;
+          iconEl.outerHTML = '<svg id="btnIcon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
         }
         btnText.textContent = 'Intervention Enregistrée !';
         btn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-        btn.style.boxShadow  = '0 4px 16px rgba(16,185,129,0.4)';
+        btn.style.boxShadow = '0 4px 16px rgba(16,185,129,0.4)';
       }
-
       function reset() {
         btn.disabled = false;
         btn.classList.remove('loading');
         btn.style.background = '';
-        btn.style.boxShadow  = '';
+        btn.style.boxShadow = '';
         const iconEl = document.getElementById('btnIcon');
         if (iconEl) {
-          iconEl.outerHTML = `
-            <svg id="btnIcon" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
-                 stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>`;
+          iconEl.outerHTML = '<svg id="btnIcon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
         }
         btnText.textContent = 'Enregistrer l\'Intervention';
       }
-
       return { setLoading, setSuccess, reset };
     })();
 
-
-    /* ═══════════════════════════════════════════════════════════
-       FONCTION PRINCIPALE : envoyerData()
-       ─ Validation ─ Console.log ─ Simulation envoi ─ Toasts
-    ═══════════════════════════════════════════════════════════ */
     function envoyerData() {
-
-      /* ── 1. Récupération des valeurs ── */
-      const idPanne   = document.getElementById('idPanne').value.trim();
+      const idPanne = document.getElementById('idPanne').value.trim();
       const criticite = document.querySelector('input[name="criticite"]:checked');
-      const heure     = document.getElementById('heureIntervention').value;
-      const obs       = document.getElementById('observation').value.trim();
+      const heure = document.getElementById('heureIntervention').value;
+      const obs = document.getElementById('observation').value.trim();
 
-      /* ── 2. Validation — reset d'abord ── */
-      clearFieldError('idPanne',            'err-idPanne');
-      clearFieldError('heureIntervention',  'err-heure');
-      clearFieldError('observation',        'err-observation');
+      clearFieldError('idPanne', 'err-idPanne');
+      clearFieldError('heureIntervention', 'err-heure');
+      clearFieldError('observation', 'err-observation');
       document.getElementById('err-criticite').classList.remove('show');
 
-      let isValid  = true;
+      let isValid = true;
       let errCount = 0;
 
-      if (!idPanne || Number(idPanne) <= 0) {
-        setFieldError('idPanne', 'err-idPanne');
-        isValid = false; errCount++;
-      } else {
-        setFieldValid('idPanne');
-      }
+      if (!idPanne || Number(idPanne) <= 0) { setFieldError('idPanne', 'err-idPanne'); isValid = false; errCount++; }
+      else { setFieldValid('idPanne'); }
 
-      if (!criticite) {
-        document.getElementById('err-criticite').classList.add('show');
-        isValid = false; errCount++;
-      }
+      if (!criticite) { document.getElementById('err-criticite').classList.add('show'); isValid = false; errCount++; }
+      if (!heure) { setFieldError('heureIntervention', 'err-heure'); isValid = false; errCount++; }
+      else { setFieldValid('heureIntervention'); }
 
-      if (!heure) {
-        setFieldError('heureIntervention', 'err-heure');
-        isValid = false; errCount++;
-      } else {
-        setFieldValid('heureIntervention');
-      }
+      if (!obs) { setFieldError('observation', 'err-observation'); isValid = false; errCount++; }
+      else { setFieldValid('observation'); }
 
-      if (!obs) {
-        setFieldError('observation', 'err-observation');
-        isValid = false; errCount++;
-      } else {
-        setFieldValid('observation');
-      }
-
-      /* ── 3. Gestion des erreurs de validation ── */
       if (!isValid) {
-        // Animation shake sur le bouton
         const btn = document.getElementById('btnSubmit');
         btn.classList.add('shake');
         setTimeout(() => btn.classList.remove('shake'), 450);
-
-        // Toast d'erreur
-        Toast.show(
-          'error',
-          'Formulaire incomplet',
-          `${errCount} champ${errCount > 1 ? 's' : ''} obligatoire${errCount > 1 ? 's' : ''} manquant${errCount > 1 ? 's' : ''}.`,
-          4000
-        );
-
-        // Log de debug
-        console.warn('[GMAO] ❌ Validation échouée — Champs manquants :', {
-          idPanne:   !idPanne,
-          criticite: !criticite,
-          heure:     !heure,
-          obs:       !obs
-        });
+        Toast.show('error', 'Formulaire incomplet', `${errCount} champ${errCount > 1 ? 's' : ''} obligatoire${errCount > 1 ? 's' : ''} manquant${errCount > 1 ? 's' : ''}.`, 4000);
+        console.warn('[GMAO] ❌ Validation échouée', { idPanne: !idPanne, criticite: !criticite, heure: !heure, obs: !obs });
         return;
       }
 
-      /* ── 4. Construction du payload JSON ── */
-      const criticiteMap = {
-        basse:   '🟢 Basse',
-        moyenne: '🟡 Moyenne',
-        haute:   '🔴 Haute'
-      };
-
+      const criticiteMap = { basse: '🟢 Basse', moyenne: '🟡 Moyenne', haute: '🔴 Haute' };
       const payload = {
-        idPanne:      Number(idPanne),
-        criticite:    criticiteMap[criticite.value],
+        idPanne: Number(idPanne),
+        criticite: criticiteMap[criticite.value],
         criticiteRaw: criticite.value,
         heureIntervention: heure,
-        observation:  obs,
-        technicien:   'TC - Dupont Jean',
-        sessionDate:  new Date().toLocaleDateString('fr-FR'),
-        timestamp:    new Date().toISOString(),
-        version:      'GMAO v3.2.1'
+        observation: obs,
+        technicien: 'TC - Dupont Jean',
+        sessionDate: new Date().toLocaleDateString('fr-FR'),
+        timestamp: new Date().toISOString(),
+        version: 'GMAO v3.2.1'
       };
 
- /* ── 5. Console.log propre ── */
       console.group('[GMAO] 📋 Rapport d\'Intervention');
       console.log('%c Données envoyées ', 'background:#4f46e5;color:#fff;padding:2px 8px;border-radius:4px;font-weight:bold;');
       console.log(JSON.stringify(payload, null, 2));
       console.groupEnd();
 
-      /* ── 5. NOUVEAU : Envoi des données au serveur (Backend & PGAdmin) ── */
-      // Nous envoyons le payload directement à la route du serveur
-    fetch('https://mysiteweb-production.up.railway.app/api/intervention', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-            },
-    body: JSON.stringify(payload)
-})
-      .then(response => response.json())
+      Btn.setLoading();
+
+      fetch('https://mysiteweb-production.up.railway.app/api/intervention', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        return response.json();
+      })
       .then(data => {
-          if (data.success) {
-              console.log("✅ [PGAdmin] Intervention enregistrée et synchronisée avec succès !", data);
-              
-              // Affichage d'un Toast de succès si disponible
-              if (typeof Toast !== 'undefined') {
-                  Toast.show('success', 'Succès', 'Intervention bien enregistrée dans la base de données !', 3000);
-              }
-              
-              // Optionnel : Tu peux vider le formulaire ici ou rediriger l'utilisateur
-          } else {
-              console.error("⚠️ [PGAdmin] Le serveur a renvoyé une erreur :", data.message);
-              if (typeof Toast !== 'undefined') {
-                  Toast.show('error', 'Erreur Serveur', data.message || 'Échec de la synchronisation.', 4000);
-              }
-          }
-      })
-      .catch(erreur => {
-          console.error("❌ Erreur réseau lors de l'envoi de l'intervention :", erreur);
-          if (typeof Toast !== 'undefined') {
-              Toast.show('error', 'Erreur Réseau', 'Impossible de contacter le serveur backend.', 4000);
-          }
-      });
-}
-      /* ── 7. Envoi réel des données au serveur via Fetch API ── */
-fetch('https://mysiteweb-production.up.railway.app/api/intervention', {    
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-            },
-      body: JSON.stringify({
-          id: payload.idPanne,
-          criticite: payload.criticiteRaw,
-          heure: payload.heureIntervention,
-          observation: payload.observation
-        })
-      })
-      .then(response => response.json())
-      .then(result => {
-        if (result.success) {
-          /* ── 8. Succès de l'enregistrement ── */
+        if (data.success) {
           Btn.setSuccess();
+          Toast.show('success', 'Intervention enregistrée !', `Panne #${payload.idPanne} — ${payload.criticite} — ${payload.heureIntervention}`, 6000);
+          console.log('%c[GMAO] ✅ Succès', 'background:#10b981;color:#fff;padding:2px 8px;border-radius:4px;font-weight:bold;');
 
-          // Affichage du Toast de succès
-          Toast.show(
-            'success',
-            'Intervention enregistrée !',
-            `Panne #${payload.idPanne} — ${payload.criticite} — ${payload.heureIntervention}`,
-            6000
-          );
-
-          // Log de succès dans la console
-          console.log('%c[GMAO] ✅ Intervention enregistrée avec succès dans la base de données', 
-            'background:#10b981;color:#fff;padding:2px 8px;border-radius:4px;font-weight:bold;');
-
-          /* ── 9. Réinitialisation du formulaire après 2.5 secondes ── */
           setTimeout(() => {
             document.getElementById('formIntervention').reset();
-
-            // Réinitialisation du récapitulatif en direct
             document.getElementById('recapCriticite').textContent = 'Non définie';
             document.getElementById('recapCriticite').className = 'text-xs font-semibold text-slate-300 italic';
             document.getElementById('recapHeure').textContent = '--:--';
             document.getElementById('recapHeure').className = 'text-xs font-semibold text-slate-300 italic font-mono';
             document.getElementById('recapObs').textContent = 'Vide';
             document.getElementById('recapObs').className = 'text-xs font-semibold text-slate-300 italic text-right line-clamp-2';
-
-            // Réinitialisation des badges d'identification
             document.getElementById('badgeEmpty').classList.remove('hidden');
             document.getElementById('badgeFilled').classList.add('hidden');
             document.getElementById('idBadgePanel').classList.remove('active');
             document.getElementById('badgeIdValue').textContent = '—';
-
-            // Réinitialisation des compteurs et barres de progression
             document.getElementById('charCounter').textContent = '0 / 1000';
             document.getElementById('charCounter').className = 'char-counter';
             document.getElementById('completionBar').style.width = '0%';
             document.getElementById('completionPct').textContent = '0%';
-
-            // Réinitialisation des styles de validation des champs
             ['idPanne', 'heureIntervention', 'observation'].forEach(id => {
               const el = document.getElementById(id);
               if (el) el.classList.remove('success-field', 'error');
             });
-
-            // Réinitialisation de l'état du bouton
             Btn.reset();
-
           }, 2500);
-
         } else {
-          /* ── En cas d'erreur retournée par le serveur (ex: ID introuvable) ── */
-          Btn.reset();
-          Toast.show(
-            'error',
-            'Échec de l\'enregistrement',
-            result.message || 'Le serveur a refusé les données.',
-            5000
-          );
+          throw new Error(data.message || 'Le serveur a refusé les données.');
         }
       })
       .catch(error => {
-        /* ── En cas d'erreur de connexion réseau avec le serveur ── */
-        console.error('[GMAO] ❌ Erreur réseau lors de l\'envoi :', error);
+        console.error('[GMAO] ❌ Erreur:', error);
         Btn.reset();
-        Toast.show(
-          'error',
-          'Erreur de connexion',
-          'Impossible de joindre le serveur GMAO. Vérifiez qu\'il est bien démarré.',
-          5000
-        );
+        Toast.show('error', 'Erreur de connexion', error.message || 'Impossible de joindre le serveur GMAO.', 5000);
       });
-    
-
+    }
   </script>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       SERVICE WORKER — Enregistrement unique avec scope /
+  ═══════════════════════════════════════════════════════════ -->
   <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js')
-        .then(reg => console.log('✅ App prête à être installée !'))
-        .catch(err => console.error('❌ Erreur :', err));
-    });
-  }
-</script>
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js')
-      .then(() => console.log("Service Worker ناضي!"))
-      .catch((err) => console.log("كاين مشكل فـ Service Worker:", err));
-  }
-  function modifierStatutDepuisInterface(codeMachine, nouveauStatut, typeErreur = null) {
-    fetch('https://mysiteweb-production.up.railway.app/api/machines/update-status', {
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-                    },
-        body: JSON.stringify({
-            code: codeMachine,
-            status: nouveauStatut,
-            type_erreur: typeErreur
-        })
-    })
-  
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    console.log(`✅ Synchro réussie pour ${codeMachine} dans PGAdmin.`);
-                    if (typeof closeMachineModal === "function") closeMachineModal(); 
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+          .then(registration => {
+            console.log('✅ Service Worker enregistré:', registration.scope);
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  console.log('🔄 Nouvelle version disponible !');
                 }
-            })
-            .catch(erreur => console.error("❌ Erreur de synchro Web -> PGAdmin:", erreur));
+              });
+            });
+          })
+          .catch(err => {
+            console.error('❌ Erreur Service Worker:', err);
+          });
+      });
+    }
+  </script>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       FONCTION : Modifier statut machine
+  ═══════════════════════════════════════════════════════════ -->
+  <script>
+    function modifierStatutDepuisInterface(codeMachine, nouveauStatut, typeErreur = null) {
+      fetch('https://mysiteweb-production.up.railway.app/api/machines/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: codeMachine, status: nouveauStatut, type_erreur: typeErreur })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          console.log(`✅ Synchro réussie pour ${codeMachine}.`);
+          if (typeof closeMachineModal === "function") closeMachineModal();
         }
-</script>
+      })
+      .catch(erreur => console.error("❌ Erreur de synchro:", erreur));
+    }
+  </script>
 </body>
 </html>
