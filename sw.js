@@ -1,17 +1,21 @@
-const CACHE_NAME = 'andon-sews-v1';
+const CACHE_NAME = 'tech-sews-v2';
 const urlsToCache = [
-    '/',
-    '/issam.html',
+    '/technicien.html',
     '/styles.css',
     '/app.js',
-    '/manifest.json'
+    '/site.webmanifest',
+    '/icon-192x192.png',
+    '/icon-512x512.png'
 ];
 
 // Install
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(cache => cache.addAll(urlsToCache))
+            .then(cache => {
+                console.log('Cache ouvert avec succès');
+                return cache.addAll(urlsToCache);
+            })
     );
 });
 
@@ -33,6 +37,7 @@ self.addEventListener('activate', event => {
             return Promise.all(
                 cacheNames.map(cacheName => {
                     if (cacheName !== CACHE_NAME) {
+                        console.log('Suppression de l\'ancien cache:', cacheName);
                         return caches.delete(cacheName);
                     }
                 })
