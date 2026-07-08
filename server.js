@@ -80,8 +80,9 @@ app.use((req, res, next) => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════
-   ✅ AJOUT: MANIFEST MEN SERVER - MASHI MEN FICHIER
+   ✅ AJOUT: MANIFEST MEN SERVER - 9BEL express.static!
    (Bach PWA ykhdem s7i7, start_url w scope jdidi)
+   ⚠️  HADI KHAS TKOUN 9BEL express.static(__dirname)!
 ═══════════════════════════════════════════════════════════════════ */
 app.get('/site.webmanifest', (req, res) => {
     res.set('Content-Type', 'application/manifest+json');
@@ -282,6 +283,11 @@ const io = new Server(server, {
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// ═══════════════════════════════════════════════════════════════════
+// STATIC FILES - Ba3d manifest bach ma ytkhalech
+// ⚠️  HADI BA3D app.get('/site.webmanifest')!
+// ═══════════════════════════════════════════════════════════════════
 app.use(express.static(__dirname));
 
 app.use((req, _res, next) => {
