@@ -1,9 +1,10 @@
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
- * ║     SMI ENTERPRISE — BACKEND API SERVER v2.6 (RAILWAY)          ║
+ * ║     SMI ENTERPRISE — BACKEND API SERVER v2.7 (RAILWAY)          ║
  * ║     MTTR Fix + date_panne/date_reparation support                ║
  * ║     ✅ Status strings standardises (En attente/En cours/Termine)   ║
  * ║     ✅ Simulation retiree - actions manuelles = source de verite   ║
+ * ║     ✅ FIX ROUTING: / -> issam.html, /technicien -> technicien.html║
  * ╚══════════════════════════════════════════════════════════════════╝
  */
 
@@ -303,11 +304,33 @@ const io = new Server(server, {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+/* ═══════════════════════════════════════════════════════════════════
+   ✅ FIX ROUTING (10a) : ces routes explicites doivent etre déclarées
+   AVANT express.static, sinon express.static intercepterait "/" en
+   servant le premier fichier index-like qu'il trouve (ou le mauvais
+   fichier html) avant que nos routes ne soient atteintes.
+═══════════════════════════════════════════════════════════════════ */
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'issam.html'));
+});
+
+app.get(['/technicien', '/technicien.html'], (req, res) => {
+    res.sendFile(path.join(__dirname, 'technicien.html'));
+});
+
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+app.get('/dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
+
 // ═══════════════════════════════════════════════════════════════════
-// STATIC FILES - Ba3d manifest bach ma ytkhalech
-// ⚠️  HADI BA3D app.get('/site.webmanifest')!
+// STATIC FILES - Ba3d manifest w les routes explicites bach ma ytkhalech
+// ⚠️  HADI BA3D app.get('/site.webmanifest') w les routes HTML!
 // ═══════════════════════════════════════════════════════════════════
-app.use(express.static(__dirname));
+app.use(express.static(__dirname, { index: false }));
 
 app.use((req, _res, next) => {
   const timestamp = new Date().toLocaleString('fr-FR');
@@ -380,7 +403,7 @@ function validateLogPayload(req, res, next) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   9. ROUTES
+   9. ROUTES API
 ═══════════════════════════════════════════════════════════════════ */
 app.get('/api/health', async (_req, res) => {
   try {
@@ -388,7 +411,7 @@ app.get('/api/health', async (_req, res) => {
     return sendSuccess(res, {
       server: 'En ligne',
       database: dbHealthy ? 'Connecte' : 'Degrade',
-      version: '2.6.0',
+      version: '2.7.0',
       env: CONFIG.server.env,
       uptime: `${Math.floor(process.uptime())} secondes`,
     }, 'Serveur operationnel');
@@ -761,7 +784,7 @@ app.post('/api/intervention', async (req, res) => {
 
 /* ═══════════════════════════════════════════════════════════════════
    POST /api/machines/update-status
-   ✅ FIX : appel a maintenirQuotaDesPannes() supprime - plus de
+   ✅ FIX : plus d'appel a maintenirQuotaDesPannes() - plus de
    simulation qui ecrase les actions manuelles des operateurs/techniciens.
 ═══════════════════════════════════════════════════════════════════ */
 app.post('/api/machines/update-status', async (req, res) => {
@@ -790,29 +813,7 @@ app.post('/api/machines/update-status', async (req, res) => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════
-   10. STATIC HTML PAGE ROUTES
-═══════════════════════════════════════════════════════════════════ */
-app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'login.html'));
-});
-
-app.get('/dashboard', (req, res) => {
-    res.sendFile(path.join(__dirname, 'dashboard.html'));
-});
-
-app.get('/technicien', (req, res) => {
-    res.sendFile(path.join(__dirname, 'technicien.html'));
-});
-
-/* ═══════════════════════════════════════════════════════════════════
-   ROOT ROUTE - Redirect / → /technicien
-═══════════════════════════════════════════════════════════════════ */
-app.get('/', (req, res) => {
-    res.redirect(301, '/technicien');
-});
-
-/* ═══════════════════════════════════════════════════════════════════
-   11. ERROR HANDLERS
+   10. ERROR HANDLERS
 ═══════════════════════════════════════════════════════════════════ */
 app.use((req, res) => {
   console.warn(`[404] ${req.method} ${req.originalUrl}`);
@@ -825,8 +826,8 @@ app.use((err, req, res, _next) => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════
-   12. START SERVER WITH RAILWAY CONFIG
-   ✅ FIX : plus de maintenirQuotaDesPannes() a la connexion socket -
+   11. START SERVER WITH RAILWAY CONFIG
+   ✅ Aucun maintenirQuotaDesPannes() a la connexion socket -
    plus aucune emission automatique/concurrente ne force un statut
    aleatoire. Seules les actions operateur/technicien pilotent l'etat.
 ═══════════════════════════════════════════════════════════════════ */
@@ -858,9 +859,9 @@ async function startServer() {
     server.listen(tryPort, '0.0.0.0', () => {
       console.log('');
       console.log('========================================');
-      console.log('  SMI Enterprise - API Server v2.6');
+      console.log('  SMI Enterprise - API Server v2.7');
       console.log('  RAILWAY DEPLOYMENT - MTTR FIX');
-      console.log('  Simulation removed - manual actions only');
+      console.log('  Routing fixed: / -> issam.html');
       console.log('========================================');
       console.log(`  Serveur demarre sur le port : ${tryPort}`);
       console.log(`  Environnement : ${CONFIG.server.env}`);
@@ -868,6 +869,10 @@ async function startServer() {
       console.log(`  DB Status : ${dbHealthy ? 'Healthy' : 'Unhealthy'}`);
       console.log('========================================');
       console.log('  Endpoints disponibles :');
+      console.log('    GET  /                  <- issam.html (Andon Dashboard)');
+      console.log('    GET  /technicien(.html) <- technicien.html');
+      console.log('    GET  /login             <- login.html');
+      console.log('    GET  /dashboard         <- dashboard.html');
       console.log('    GET  /api/health');
       console.log('    GET  /api/debug');
       console.log('    POST /api/login');
@@ -880,8 +885,7 @@ async function startServer() {
       console.log('    GET  /api/sessions');
       console.log('    POST /api/intervention');
       console.log('    POST /api/machines/update-status');
-      console.log('    GET  /site.webmanifest  <- PWA FIX');
-      console.log('    GET  /                  <- ROOT REDIRECT');
+      console.log('    GET  /site.webmanifest');
       console.log('========================================');
       console.log('');
     });
@@ -893,7 +897,7 @@ startServer().catch(err => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════
-   13. GRACEFUL SHUTDOWN
+   12. GRACEFUL SHUTDOWN
 ═══════════════════════════════════════════════════════════════════ */
 async function gracefulShutdown(signal) {
   console.log(`[SERVEUR] Signal : ${signal}`);
