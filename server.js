@@ -1,8 +1,9 @@
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
- * ║     SMI ENTERPRISE — BACKEND API SERVER v2.5 (RAILWAY)          ║
+ * ║     SMI ENTERPRISE — BACKEND API SERVER v2.6 (RAILWAY)          ║
  * ║     MTTR Fix + date_panne/date_reparation support                ║
- * ║     ✅ AJOUT: PWA Manifest + No-Cache Headers                     ║
+ * ║     ✅ Status strings standardises (En attente/En cours/Termine)   ║
+ * ║     ✅ Simulation retiree - actions manuelles = source de verite   ║
  * ╚══════════════════════════════════════════════════════════════════╝
  */
 
@@ -69,7 +70,7 @@ app.use((req, res, next) => {
 const server = http.createServer(app);
 
 /* ═══════════════════════════════════════════════════════════════════
-   ✅ AJOUT: NO-CACHE HEADERS - 7ayed cache dyal koulchi
+   ✅ NO-CACHE HEADERS - 7ayed cache dyal koulchi
    (Bach PWA manifest ma ykhdemch men cache 9dim)
 ═══════════════════════════════════════════════════════════════════ */
 app.use((req, res, next) => {
@@ -80,7 +81,7 @@ app.use((req, res, next) => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════
-   ✅ AJOUT: MANIFEST MEN SERVER - 9BEL express.static!
+   ✅ MANIFEST MEN SERVER - 9BEL express.static!
    (Bach PWA ykhdem s7i7, start_url w scope jdidi)
    ⚠️  HADI KHAS TKOUN 9BEL express.static(__dirname)!
 ═══════════════════════════════════════════════════════════════════ */
@@ -149,7 +150,7 @@ async function runMigrations() {
                 machine VARCHAR(20) NOT NULL DEFAULT 'KA01',
                 start_time VARCHAR(20),
                 duration INTEGER DEFAULT 0,
-                technician VARCHAR(100) DEFAULT 'Operateur',
+                technician VARCHAR(100) DEFAULT 'Non assigne',
                 status VARCHAR(50) DEFAULT 'En attente',
                 alert_type VARCHAR(100),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -157,7 +158,7 @@ async function runMigrations() {
         `);
         console.log('[DB] Base table downtime_logs ready');
 
-        // AJOUT : Colonnes pour MTTR reel
+        // Colonnes pour MTTR reel
         const newColumns = [
             { name: 'date_panne', type: 'TIMESTAMP', default: 'NULL' },
             { name: 'date_reparation', type: 'TIMESTAMP', default: 'NULL' },
@@ -214,6 +215,24 @@ async function runMigrations() {
         `);
         console.log('[DB] date_panne populated from created_at');
 
+        // MIGRATION : Standardiser les anciens statuts vers le format FR
+        await client.query(`
+            UPDATE downtime_logs 
+            SET status = 'En attente' 
+            WHERE status IN ('Pending', 'pending', 'en panne', 'En Panne')
+        `);
+        await client.query(`
+            UPDATE downtime_logs 
+            SET status = 'En cours' 
+            WHERE status IN ('In Progress', 'in progress', 'Escalated', 'escalated', 'En reparation')
+        `);
+        await client.query(`
+            UPDATE downtime_logs 
+            SET status = 'Termine' 
+            WHERE status IN ('Completed', 'completed', 'Resolved', 'resolved', 'termine')
+        `);
+        console.log('[DB] Legacy status values normalized to FR (En attente / En cours / Termine)');
+
         // MIGRATION : Remplir date_reparation pour les pannes "Termine"
         await client.query(`
             UPDATE downtime_logs 
@@ -234,15 +253,15 @@ async function runMigrations() {
                 (machine, start_time, duration, technician, status, criticite, alert_type, heure_arret_technicien, piece_observation, atelier, date_panne, date_reparation)
                 VALUES 
                 ('KA01', '08:30:00', 45, 'Ahmed Benali', 'Termine', 'Faible', 'Electrique', '08:45:00', 'Remplacement capteur proximite', 'Atelier A', NOW() - INTERVAL '2 hours', NOW() - INTERVAL '75 minutes'),
-                ('KB03', '09:15:00', 0, 'Operateur', 'Pending', 'Majeure', 'Mecanique', NULL, 'Surchauffe moteur principal', 'Atelier B', NOW() - INTERVAL '30 minutes', NULL),
+                ('KB03', '09:15:00', 0, 'Non assigne', 'En attente', 'Majeure', 'Mecanique', NULL, 'Surchauffe moteur principal', 'Atelier B', NOW() - INTERVAL '30 minutes', NULL),
                 ('KC07', '14:20:00', 120, 'Karim Fassi', 'Termine', 'Critique', 'Electrique', '14:35:00', 'Changement carte d axe', 'Atelier C', NOW() - INTERVAL '5 hours', NOW() - INTERVAL '3 hours'),
                 ('KD02', '10:00:00', 30, 'Youssef Amrani', 'Termine', 'Moderee', 'Hydraulique', '10:10:00', 'Lubrification glissieres', 'Atelier D', NOW() - INTERVAL '4 hours', NOW() - INTERVAL '3.5 hours'),
-                ('KX01', '11:45:00', 0, 'Operateur', 'Pending', 'Majeure', 'Hydraulique', NULL, 'Fuite hydraulique detectee', 'Atelier X', NOW() - INTERVAL '1 hour', NULL),
+                ('KX01', '11:45:00', 0, 'Non assigne', 'En attente', 'Majeure', 'Hydraulique', NULL, 'Fuite hydraulique detectee', 'Atelier X', NOW() - INTERVAL '1 hour', NULL),
                 ('KA05', '07:30:00', 60, 'Ahmed Benali', 'Termine', 'Faible', 'Electrique', '07:40:00', 'Serrage connexions electriques', 'Atelier A', NOW() - INTERVAL '6 hours', NOW() - INTERVAL '5 hours'),
                 ('KB08', '16:00:00', 90, 'Karim Fassi', 'Termine', 'Moderee', 'Mecanique', '16:20:00', 'Remplacement roulements', 'Atelier B', NOW() - INTERVAL '8 hours', NOW() - INTERVAL '6.5 hours'),
                 ('KC12', '13:10:00', 180, 'Youssef Amrani', 'Termine', 'Critique', 'Hydraulique', '13:30:00', 'Purge circuit hydraulique', 'Atelier C', NOW() - INTERVAL '10 hours', NOW() - INTERVAL '7 hours'),
                 ('KD05', '09:00:00', 40, 'Ahmed Benali', 'Termine', 'Faible', 'Mecanique', '09:15:00', 'Nettoyage filtre a air', 'Atelier D', NOW() - INTERVAL '12 hours', NOW() - INTERVAL '11.5 hours'),
-                ('KA09', '15:30:00', 0, 'Operateur', 'Pending', 'Majeure', 'Hydraulique', NULL, 'Changement joint etancheite', 'Atelier A', NOW() - INTERVAL '20 minutes', NULL)
+                ('KA09', '15:30:00', 0, 'Non assigne', 'En attente', 'Majeure', 'Hydraulique', NULL, 'Changement joint etancheite', 'Atelier A', NOW() - INTERVAL '20 minutes', NULL)
             `);
             console.log('[DB] 10 demo records inserted with dates');
         } else {
@@ -328,6 +347,13 @@ function sanitizeInt(value, fallback = 0) {
   return isNaN(n) || n < 0 ? fallback : n;
 }
 
+function deriveAtelier(machine) {
+    if (!machine) return 'Atelier General';
+    const prefix = String(machine).substring(0, 2).toUpperCase();
+    const map = { 'KA': 'Atelier A', 'KB': 'Atelier B', 'KC': 'Atelier C', 'KD': 'Atelier D', 'KX': 'Atelier X' };
+    return map[prefix] || 'Atelier General';
+}
+
 async function safeQuery(query, params = []) {
     if (!dbHealthy) {
         throw new Error('Database not initialized: ' + (dbError || 'Unknown error'));
@@ -341,8 +367,7 @@ async function safeQuery(query, params = []) {
 function validateLogPayload(req, res, next) {
   const body = req.body;
   const requiredFields = {
-    machine:    body.machine    || body.machineID,
-    alert_type: body.alertType  || body.alert_type,
+    machine: body.machine || body.machineID,
   };
   const missing = Object.entries(requiredFields)
     .filter(([, v]) => !isPresent(v))
@@ -355,75 +380,7 @@ function validateLogPayload(req, res, next) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   9. SIMULATION
-═══════════════════════════════════════════════════════════════════ */
-const LISTE_MACHINES_SMI = [ 
-  'KA01','KA02','KA03','KA04','KA05','KA06','KA07','KA08','KA09','KA10','KA11','KA12','KA13','KA14','KA15', 
-  'KB01','KB02','KB03','KB04','KB05','KB06','KB07','KB08','KB09','KB10','KB11','KB12','KB13','KB14','KB15', 
-  'KC01','KC02','KC03','KC04','KC05','KC06','KC07','KC08','KC12','KC15','KC16','KC17','KC18', 
-  'KD01','KD02','KD03','KD04','KD05','KD06','KD07','KD08', 
-  'KX01','KX02','KX03','KX04','KX05' 
-];
-
-const LISTE_PANNES = ["Electrique", "Mecanique", "Surchauffe", "Hydraulique"];
-
-const LISTE_OBSERVATIONS = [
-  "Remplacement du capteur de proximite defectueux.",
-  "Changement du fusible grille sur le bloc d alimentation.",
-  "Nettoyage du filtre a air suite a une alerte de surchauffe.",
-  "Remplacement de la courroie de transmission usee.",
-  "Ajustement des parametres de pression hydraulique.",
-  "Lubrification des glissieres et axes principaux.",
-  "Serrage des connexions electriques desserrees dans l armoire.",
-  "Changement du joint d etancheite sur le verin principal.",
-  "Remplacement de la carte d axe apres court-circuit.",
-  "Mise a jour du firmware de l automate de controle.",
-  "Changement de l electrovanne de commande pneumatique.",
-  "Purge du circuit hydraulique et appoint de fluide.",
-  "Remplacement des roulements a billes de l arbre moteur.",
-  "Calibrage du capteur de temperature laser."
-];
-
-async function maintenirQuotaDesPannes() {
-  try {
-    if (!dbHealthy) return;
-
-    const cibleAleatoire = Math.floor(Math.random() * (15 - 5 + 1)) + 5;
-    const machinesMelangees = [...LISTE_MACHINES_SMI].sort(() => 0.5 - Math.random());
-    const selectionMachinesEnPanne = machinesMelangees.slice(0, cibleAleatoire);
-
-    const typesErreurs = ['Material', 'Mechanical', 'Electrical', 'Sensor', 'Software'];
-
-    let listeFinaleDesPannes = selectionMachinesEnPanne.map(code => ({
-      code: code,
-      status: 'en panne',
-      type_erreur: typesErreurs[Math.floor(Math.random() * typesErreurs.length)]
-    }));
-
-    const pannesReelles = await safeQuery(
-      `SELECT machine AS code, 'en panne' AS status, piece_observation AS type_erreur 
-       FROM downtime_logs 
-       WHERE status IN ('Pending', 'Escalated', 'En attente') 
-          OR heure_arret_technicien IS NULL 
-          OR heure_arret_technicien = ''`
-    );
-
-    pannesReelles.rows.forEach(panneReelle => {
-      const existeDeja = listeFinaleDesPannes.some(p => p.code === panneReelle.code);
-      if (!existeDeja) listeFinaleDesPannes.push(panneReelle);
-    });
-
-    if (app.get('io')) {
-      app.get('io').emit('updateMachines', listeFinaleDesPannes);
-      console.log(`[Simulation] ${listeFinaleDesPannes.length} machines EN PANNE (Cible: ${cibleAleatoire})`);
-    }
-  } catch (err) {
-    console.error('[Machines] Erreur simulation :', err.message);
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   10. ROUTES
+   9. ROUTES
 ═══════════════════════════════════════════════════════════════════ */
 app.get('/api/health', async (_req, res) => {
   try {
@@ -431,7 +388,7 @@ app.get('/api/health', async (_req, res) => {
     return sendSuccess(res, {
       server: 'En ligne',
       database: dbHealthy ? 'Connecte' : 'Degrade',
-      version: '2.5.0',
+      version: '2.6.0',
       env: CONFIG.server.env,
       uptime: `${Math.floor(process.uptime())} secondes`,
     }, 'Serveur operationnel');
@@ -497,61 +454,54 @@ app.post('/api/login', (req, res) => {
   return sendSuccess(res, { username: username.trim(), role: 'admin' }, 'Connexion reussie');
 });
 
-// MODIFIE : Ajout de date_panne automatique
+/* ═══════════════════════════════════════════════════════════════════
+   POST /api/logs
+   ✅ FIX : lit machine/status/alertType envoyes par le frontend au lieu
+   de choisir une machine aleatoire et de forcer un statut/alerte random.
+   Statuts acceptes : 'En attente' | 'En cours' | 'Termine'
+═══════════════════════════════════════════════════════════════════ */
 app.post('/api/logs', validateLogPayload, async (req, res) => {
     const body = req.body;
-    const indexMachine = Math.floor(Math.random() * LISTE_MACHINES_SMI.length);
-    const machine = LISTE_MACHINES_SMI[indexMachine];
 
+    const machine = sanitizeStr(body.machine || body.machineID);
+    const status = sanitizeStr(body.status, 'En attente'); // 'En attente' | 'En cours' | 'Termine'
+    const alert_type = sanitizeStr(body.alertType || body.alert_type, null) || null;
     const start_time = sanitizeStr(body.startTime || body.start_time, new Date().toLocaleTimeString('fr-FR'));
     const duration = sanitizeInt(body.duration, 0);
-    const technician = sanitizeStr(body.technician || body.technicianName, 'Operateur');
-    let status = 'En attente';
-
-    let alert_type = null;
-    let heure_arret_technicien = null;
-    let piece_observation = null;
-    let criticite = "Moyenne";
-
-    const hasard = Math.random();
-
-    if (hasard < 0.7) {
-        const indexPanne = Math.floor(Math.random() * LISTE_PANNES.length);
-        const indexObs = Math.floor(Math.random() * LISTE_OBSERVATIONS.length);
-        alert_type = LISTE_PANNES[indexPanne];
-        heure_arret_technicien = new Date().toLocaleTimeString('fr-FR'); 
-        piece_observation = LISTE_OBSERVATIONS[indexObs]; 
-        criticite = "Haute";
-        console.log(`[70%] Auto -> Machine: ${machine} | Panne: ${alert_type}`);
-    } else {
-        alert_type = null;
-        heure_arret_technicien = null;
-        piece_observation = null;
-        criticite = "Moyenne";
-        console.log(`[30%] NULL -> Machine: ${machine}. En attente technicien.`);
-    }
+    const technician = sanitizeStr(body.technician || body.technicianName, 'Non assigne');
+    const criticite = sanitizeStr(body.criticite, 'Moyenne');
+    const heure_arret_technicien = sanitizeStr(body.heureArretTechnicien || body.heure_arret_technicien, null) || null;
+    const piece_observation = sanitizeStr(body.observation || body.piece_observation, null) || null;
 
     try {
         const result = await safeQuery(
             `INSERT INTO downtime_logs 
             (machine, start_time, duration, technician, status, criticite, alert_type, heure_arret_technicien, piece_observation, atelier, date_panne) 
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
-            RETURNING id;`, 
-            [machine, start_time, duration.toString(), technician, status, criticite, alert_type, heure_arret_technicien, piece_observation, deriveAtelier(machine), new Date()]
+            RETURNING *;`,
+            [machine, start_time, duration, technician, status, criticite, alert_type, heure_arret_technicien, piece_observation, deriveAtelier(machine), new Date()]
         );
-        return sendSuccess(res, result.rows[0], 'Log insere avec succes.', 201);
+
+        const newLog = result.rows[0];
+        console.log(`[LOGS] Nouveau log cree - Machine: ${newLog.machine} | Statut: "${newLog.status}"`);
+
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('machineStatusChanged', {
+                machine: newLog.machine,
+                status: newLog.status,
+                alert_type: newLog.alert_type,
+                criticite: newLog.criticite,
+                logId: newLog.id
+            });
+        }
+
+        return sendSuccess(res, newLog, 'Log cree avec succes.', 201);
     } catch (err) {
         console.error('[LOGS] Erreur insertion :', err.message);
         return sendError(res, 500, "Erreur interne lors de l'insertion.", err.message);
     }
 });
-
-function deriveAtelier(machine) {
-    if (!machine) return 'Atelier General';
-    const prefix = String(machine).substring(0, 2).toUpperCase();
-    const map = { 'KA': 'Atelier A', 'KB': 'Atelier B', 'KC': 'Atelier C', 'KD': 'Atelier D', 'KX': 'Atelier X' };
-    return map[prefix] || 'Atelier General';
-}
 
 app.get('/api/logs', async (req, res) => {
   const limit   = Math.min(sanitizeInt(req.query.limit, CONFIG.pagination.defaultLimit), CONFIG.pagination.maxLimit);
@@ -602,15 +552,19 @@ app.get('/api/logs/:id', async (req, res) => {
   }
 });
 
-// MODIFIE : Mise a jour avec date_reparation quand status = Termine
+/* ═══════════════════════════════════════════════════════════════════
+   PUT /api/logs/:id
+   ✅ FIX : gere les transitions d'etat proprement, y compris criticite
+   (pour l'escalade), et fixe date_reparation quand status = 'Termine'
+═══════════════════════════════════════════════════════════════════ */
 app.put('/api/logs/:id', async (req, res) => {
   const { id } = req.params;
-  const { status, technician, duration } = req.body;
+  const { status, technician, duration, criticite } = req.body;
   if (!isPresent(id)) return sendError(res, 400, 'ID requis.');
   if (!isPresent(status)) return sendError(res, 400, 'Champ "status" obligatoire.');
 
   try {
-    // Si status = Termine, on met date_reparation = NOW()
+    // Si status = Termine, on fixe date_reparation = NOW()
     const dateReparation = status === 'Termine' ? new Date() : null;
 
     const result = await safeQuery(
@@ -619,14 +573,36 @@ app.put('/api/logs/:id', async (req, res) => {
            technician = COALESCE($2, technician), 
            duration = COALESCE($3, duration),
            date_reparation = COALESCE($4, date_reparation),
+           criticite = COALESCE($5, criticite),
            updated_at = NOW() 
-       WHERE id = $5 
+       WHERE id = $6 
        RETURNING *;`,
-      [sanitizeStr(status), isPresent(technician) ? sanitizeStr(technician) : null, isPresent(duration) ? sanitizeInt(duration) : null, dateReparation, sanitizeStr(id)]
+      [
+        sanitizeStr(status),
+        isPresent(technician) ? sanitizeStr(technician) : null,
+        isPresent(duration) ? sanitizeInt(duration) : null,
+        dateReparation,
+        isPresent(criticite) ? sanitizeStr(criticite) : null,
+        sanitizeStr(id)
+      ]
     );
     if (!result.rows.length) return sendError(res, 404, `Log "${id}" introuvable.`);
+
+    const updatedLog = result.rows[0];
     console.log(`[LOGS] Mis a jour - ID: ${id} | Statut: "${status}"`);
-    return sendSuccess(res, result.rows[0], 'Log mis a jour.');
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('machineStatusChanged', {
+        machine: updatedLog.machine,
+        status: updatedLog.status,
+        alert_type: updatedLog.alert_type,
+        criticite: updatedLog.criticite,
+        logId: updatedLog.id
+      });
+    }
+
+    return sendSuccess(res, updatedLog, 'Log mis a jour.');
   } catch (err) {
     return sendError(res, 500, 'Erreur mise a jour log.', err.message);
   }
@@ -649,7 +625,7 @@ app.get('/api/historique', async (req, res) => {
   }
 });
 
-// ROUTE /api/stats - CORRIGE : Vrai calcul MTTR avec dates
+// ROUTE /api/stats - Vrai calcul MTTR avec dates ; filtres alignes sur 'Termine'/'En attente'/'En cours'
 app.get('/api/stats', async (req, res) => {
   try {
     const [total, byStatus, mttrResult, topMachines, today, weekly, pendingCount] = await Promise.all([
@@ -676,8 +652,8 @@ app.get('/api/stats', async (req, res) => {
       safeQuery('SELECT COUNT(*) AS count FROM downtime_logs WHERE DATE(created_at) = CURRENT_DATE'),
       safeQuery(`SELECT DATE(created_at) AS jour, COUNT(*) AS total FROM downtime_logs WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY DATE(created_at) ORDER BY jour ASC`),
 
-      // Nombre de pannes en cours
-      safeQuery(`SELECT COUNT(*) AS count FROM downtime_logs WHERE status IN ('Pending', 'En attente', 'En reparation')`)
+      // Nombre de pannes en cours (statuts FR uniquement)
+      safeQuery(`SELECT COUNT(*) AS count FROM downtime_logs WHERE status IN ('En attente', 'En cours')`)
     ]);
 
     const totalInterventions = parseInt(total.rows[0].count, 10) || 0;
@@ -738,6 +714,11 @@ app.get('/api/sessions', async (req, res) => {
   }
 });
 
+/* ═══════════════════════════════════════════════════════════════════
+   POST /api/intervention
+   ✅ FIX : n'ecrase plus toutes les machines - emet un seul evenement
+   'machineStatusChanged' cible sur la machine concernee.
+═══════════════════════════════════════════════════════════════════ */
 app.post('/api/intervention', async (req, res) => {
   const idPanne = req.body.idPanne || req.body.id;
   const criticite = req.body.criticiteRaw || req.body.criticite;
@@ -750,7 +731,8 @@ app.post('/api/intervention', async (req, res) => {
 
   try {
     const result = await safeQuery(
-      `UPDATE downtime_logs SET criticite = $1, heure_arret_technicien = $2, piece_observation = $3 WHERE id = $4`,
+      `UPDATE downtime_logs SET criticite = $1, heure_arret_technicien = $2, piece_observation = $3 
+       WHERE id = $4 RETURNING *`,
       [criticite, heureIntervention, observation, idPanne]
     );
 
@@ -758,11 +740,17 @@ app.post('/api/intervention', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Aucun enregistrement trouve !' });
     }
 
+    const updatedLog = result.rows[0];
     const io = req.app.get('io');
     if (io) {
-      io.emit('panne_mise_a_jour', { id: idPanne, criticite });
-      io.emit('updateMachines', { id: idPanne, criticite, status: 'En panne' });
-      console.log(`Real-time event sent for machine ${idPanne}`);
+      io.emit('machineStatusChanged', {
+        machine: updatedLog.machine,
+        status: updatedLog.status,
+        alert_type: updatedLog.alert_type,
+        criticite: criticite,
+        logId: updatedLog.id
+      });
+      console.log(`Real-time event sent for machine ${updatedLog.machine}`);
     }
     return res.status(200).json({ success: true, message: "Intervention enregistree !" });
   } catch (err) {
@@ -771,6 +759,11 @@ app.post('/api/intervention', async (req, res) => {
   }
 });
 
+/* ═══════════════════════════════════════════════════════════════════
+   POST /api/machines/update-status
+   ✅ FIX : appel a maintenirQuotaDesPannes() supprime - plus de
+   simulation qui ecrase les actions manuelles des operateurs/techniciens.
+═══════════════════════════════════════════════════════════════════ */
 app.post('/api/machines/update-status', async (req, res) => {
   const { code, status, type_erreur } = req.body;
   if (!isPresent(code) || !isPresent(status)) {
@@ -784,7 +777,11 @@ app.post('/api/machines/update-status', async (req, res) => {
     );
 
     console.log(`[Machines] ${code} -> status: "${status}"`);
-    await maintenirQuotaDesPannes();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('machineStatusChanged', { machine: code, status: status, alert_type: type_erreur || null });
+    }
 
     return sendSuccess(res, null, 'Statut mis a jour dans PostgreSQL.');
   } catch (err) {
@@ -793,7 +790,7 @@ app.post('/api/machines/update-status', async (req, res) => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════
-   10b. STATIC HTML PAGE ROUTES
+   10. STATIC HTML PAGE ROUTES
 ═══════════════════════════════════════════════════════════════════ */
 app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'login.html'));
@@ -808,7 +805,7 @@ app.get('/technicien', (req, res) => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════
-   ✅ FIX: ROOT ROUTE - Redirect / → /technicien
+   ROOT ROUTE - Redirect / → /technicien
 ═══════════════════════════════════════════════════════════════════ */
 app.get('/', (req, res) => {
     res.redirect(301, '/technicien');
@@ -829,12 +826,14 @@ app.use((err, req, res, _next) => {
 
 /* ═══════════════════════════════════════════════════════════════════
    12. START SERVER WITH RAILWAY CONFIG
+   ✅ FIX : plus de maintenirQuotaDesPannes() a la connexion socket -
+   plus aucune emission automatique/concurrente ne force un statut
+   aleatoire. Seules les actions operateur/technicien pilotent l'etat.
 ═══════════════════════════════════════════════════════════════════ */
 app.set('io', io);
 
 io.on('connection', (socket) => {
   console.log(`[SOCKET] Client connecte - ID: ${socket.id}`);
-  maintenirQuotaDesPannes();
 
   socket.on('disconnect', () => {
     console.log(`[SOCKET] Client deconnecte - ID: ${socket.id}`);
@@ -859,9 +858,9 @@ async function startServer() {
     server.listen(tryPort, '0.0.0.0', () => {
       console.log('');
       console.log('========================================');
-      console.log('  SMI Enterprise - API Server v2.5');
+      console.log('  SMI Enterprise - API Server v2.6');
       console.log('  RAILWAY DEPLOYMENT - MTTR FIX');
-      console.log('  PWA Manifest + No-Cache Headers');
+      console.log('  Simulation removed - manual actions only');
       console.log('========================================');
       console.log(`  Serveur demarre sur le port : ${tryPort}`);
       console.log(`  Environnement : ${CONFIG.server.env}`);
