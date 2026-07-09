@@ -808,6 +808,13 @@ app.get('/technicien', (req, res) => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════
+   ✅ FIX: ROOT ROUTE - Redirect / → /technicien
+═══════════════════════════════════════════════════════════════════ */
+app.get('/', (req, res) => {
+    res.redirect(301, '/technicien');
+});
+
+/* ═══════════════════════════════════════════════════════════════════
    11. ERROR HANDLERS
 ═══════════════════════════════════════════════════════════════════ */
 app.use((req, res) => {
@@ -875,6 +882,7 @@ async function startServer() {
       console.log('    POST /api/intervention');
       console.log('    POST /api/machines/update-status');
       console.log('    GET  /site.webmanifest  <- PWA FIX');
+      console.log('    GET  /                  <- ROOT REDIRECT');
       console.log('========================================');
       console.log('');
     });
