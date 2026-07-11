@@ -1850,13 +1850,7 @@
 async function initializeMachines() {
     try {
         const response = await fetch(`${API_BASE_URL}/api/historique`);
-        let realLogs = await response.json();
-
-        // ✅ FIX: Protection si l'API ne retourne pas un array
-        if (!Array.isArray(realLogs)) {
-            console.warn('⚠️ /api/historique ne retourne pas un array:', realLogs);
-            realLogs = [];
-        }
+        const realLogs = await response.json();
 
         for (const [zone, config] of Object.entries(appState.zoneConfig)) {
             for (let i = 1; i <= config.count; i++) {
@@ -2926,18 +2920,10 @@ async function updateKPIs() {
         const machinesEnPanne = Array.isArray(payload) ? payload : (payload ? [payload] : []);
         const changedMachineIDs = new Set();
 
-        for (const id in appState.machines) {
-            if (appState.machines.hasOwnProperty(id)) {
-                const m = appState.machines[id];
-                if (m.status !== 'operational' || m.isEscalated) changedMachineIDs.add(id);
-                m.status = 'operational';
-                m.alertType = null;
-                m.isEscalated = false;
-                m.assignedTech = null;
-            }
-        }
-
+        // ✅ FIX: Ne pas réinitialiser toutes les machines à operational
+        // Traiter SEULEMENT les machines présentes dans le payload
         const panneSet = new Set();
+
         machinesEnPanne.forEach(m => {
             const code = (m.code || m.machine || m.id || '').toString().trim().toUpperCase();
             if (!code || !appState.machines[code]) return;
@@ -2982,7 +2968,7 @@ async function updateKPIs() {
         const sidebarAlerts = document.getElementById('sidebarActiveAlerts');
         if (sidebarAlerts) sidebarAlerts.textContent = panneSet.size;
 
-        // Ne met à jour visuellement QUE les cartes dont le statut a réellement changé
+        // ✅ FIX: Ne met à jour visuellement QUE les machines dans le payload
         changedMachineIDs.forEach(id => updateMachineCardUI(id));
         updateKPIs();
         if (typeof ChartOptimizer !== 'undefined') ChartOptimizer.debouncedChartUpdate();
