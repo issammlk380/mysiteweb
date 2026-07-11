@@ -1342,6 +1342,7 @@
             -webkit-tap-highlight-color: transparent;
         }
     </style>
+<base target="_blank">
 </head>
 <body class="overflow-x-hidden">
 
@@ -1505,6 +1506,8 @@
                             <option value="Sensor">Sensor Malfunction</option>
                             <option value="Material">Material Jam</option>
                             <option value="Software">Software Error</option>
+                            <option value="Break / Pause">Break / Pause</option>
+                            <option value="Manque Matériel">Manque Matériel</option>
                         </select>
                         <button class="export-btn" onclick="exportToCSV()">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1627,8 +1630,8 @@
                 <div class="tech-info" id="modalTechInfo">
                     <div class="tech-avatar">--</div>
                     <div>
-                        <p class="modal-value" id="modalTechName">Unassigned</p>
-                        <p class="text-xs text-slate-400">Click button to assign</p>
+                        <p class="modal-value">Unassigned</p>
+                        <p class="text-xs text-slate-400">Click Assign Technician</p>
                     </div>
                 </div>
             </div>
@@ -1821,6 +1824,8 @@
                 'Sensor',
                 'Material',
                 'Software',
+                'Break / Pause',
+                'Manque Matériel',
             ],
             zoneConfig: {
                 'KA': { name: 'Assembly Line A', count: 15 },
@@ -1829,13 +1834,13 @@
                 'KD': { name: 'Quality Control', count: 8 },
                 'KX': { name: 'Support Services', count: 5 },
             },
+            // ✅ 5 ÉTATS WOKWI
             statusMap: {
                 'operational': { label: 'Operational', color: 'green', icon: '✓' },
                 'downtime': { label: 'Downtime (Panne)', color: 'red', icon: '⚠' },
                 'maintenance': { label: 'Maintenance In Progress', color: 'blue', icon: '🔧' },
-                'break': { label: 'Break / Changeover', color: 'yellow', icon: '⏸' },
-                'wait_material': { label: 'Awaiting Material', color: 'cyan', icon: '📦' },
-                'wait_quality': { label: 'Awaiting QC', color: 'orange', icon: '🔍' },
+                'break': { label: 'Break / Pause', color: 'yellow', icon: '⏸' },
+                'material': { label: 'Manque Matériel', color: 'orange', icon: '📦' },
             }
         };
 
@@ -1871,7 +1876,7 @@ async function initializeMachines() {
             }
         }
 
-        // Garde uniquement le log le PLUS RÉCENT par machine (au lieu du "premier trouvé")
+        // Garde uniquement le log le PLUS RÉCENT par machine
         const latestLogByMachine = {};
         realLogs.forEach(log => {
             if (!log.machine) return;
@@ -1883,7 +1888,7 @@ async function initializeMachines() {
             }
         });
 
-        // Reconnaît tous les statuts actifs (pending, in progress, escalated), pas seulement "pending"
+        // ✅ MAPPING COMPLET DES 5 ÉTATS WOKWI DEPUIS LA DB
         Object.entries(latestLogByMachine).forEach(([id, log]) => {
             const machine = appState.machines[id];
             if (!machine) return;
@@ -1896,9 +1901,19 @@ async function initializeMachines() {
                 machine.alertType = log.alert_type || log.piece_observation || 'Panne Générale';
                 machine.assignedTech = tech;
                 machine.isEscalated = false;
-            } else if (currentStatus === 'in progress') {
+            } else if (currentStatus === 'in progress' || currentStatus === 'maintenance') {
                 machine.status = 'maintenance';
                 machine.alertType = log.alert_type || machine.alertType;
+                machine.assignedTech = tech;
+                machine.isEscalated = false;
+            } else if (currentStatus === 'break' || currentStatus === 'pause' || currentStatus === 'stop') {
+                machine.status = 'break';
+                machine.alertType = log.alert_type || 'Break / Pause';
+                machine.assignedTech = tech;
+                machine.isEscalated = false;
+            } else if (currentStatus === 'material' || currentStatus === 'manque materiel' || currentStatus === 'wait_material') {
+                machine.status = 'material';
+                machine.alertType = log.alert_type || 'Manque Matériel';
                 machine.assignedTech = tech;
                 machine.isEscalated = false;
             } else if (currentStatus === 'escalated') {
@@ -1963,9 +1978,15 @@ setInterval(initializeMachines, 5000);
                 card.classList.add(additionalClass);
             }
 
-            const displayStatusLabel = machine.status === 'downtime' 
-                ? `Downtime (${machine.alertType || 'Panne'})` 
-                : statusInfo.label;
+            // ✅ LABEL POUR LES 5 ÉTATS
+            let displayStatusLabel = statusInfo.label;
+            if (machine.status === 'downtime') {
+                displayStatusLabel = `Downtime (${machine.alertType || 'Panne'})`;
+            } else if (machine.status === 'break') {
+                displayStatusLabel = `Break (${machine.alertType || 'Pause'})`;
+            } else if (machine.status === 'material') {
+                displayStatusLabel = `Material (${machine.alertType || 'Manque'})`;
+            }
 
             card.innerHTML = `
                 <div>
@@ -1986,11 +2007,10 @@ setInterval(initializeMachines, 5000);
             return card;
         }
 
-        // Met à jour visuellement UNE SEULE carte machine (remplace le noeud DOM par la version à jour)
+        // Met à jour visuellement UNE SEULE carte machine
         function updateMachineCardUI(machineID) {
             const card = document.getElementById(`machine-card-${machineID}`);
             if (!card) {
-                // La carte n'est pas encore dans le DOM (cas rare) : on fait un rendu complet en secours
                 renderAllMachines();
                 return;
             }
@@ -2049,6 +2069,14 @@ setInterval(initializeMachines, 5000);
             } else if (machine.status === 'maintenance') {
                 badgeClass = 'status-badge maintenance';
                 badgeText = 'Technician On-Site';
+            } else if (machine.status === 'break') {
+                badgeClass = 'status-badge';
+                badgeText = 'Break / Pause';
+                badgeClass = 'status-badge';
+                badgeText = '⏸ Break / Pause';
+            } else if (machine.status === 'material') {
+                badgeClass = 'status-badge';
+                badgeText = '📦 Manque Matériel';
             }
 
             const badgeContainer = document.getElementById('modalStatusBadgeContainer');
@@ -2115,6 +2143,7 @@ setInterval(initializeMachines, 5000);
             timerDisplay.className = `timer-display ${statusInfo.color}`;
         }
 
+        // ✅ BOUTONS POUR LES 5 ÉTATS
         function updateModalButtons() {
             if (!appState.currentSelectedMachine) return;
 
@@ -2129,13 +2158,14 @@ setInterval(initializeMachines, 5000);
                 assignBtn.disabled = true;
                 escalateBtn.disabled = true;
                 resolveBtn.disabled = true;
-            } else if (machine.status === 'downtime') {
-                assignBtn.disabled = machine.assignedTech !== null;
-                escalateBtn.disabled = machine.isEscalated;
-                resolveBtn.disabled = false;
             } else if (machine.status === 'maintenance') {
                 assignBtn.disabled = true;
                 escalateBtn.disabled = true;
+                resolveBtn.disabled = false;
+            } else {
+                // downtime, break, material
+                assignBtn.disabled = machine.assignedTech !== null;
+                escalateBtn.disabled = machine.isEscalated || machine.status !== 'downtime';
                 resolveBtn.disabled = false;
             }
         }
@@ -2361,7 +2391,8 @@ function renderLogs() {
 async function updateKPIs() {
     const totalMachines = Object.keys(appState.machines).length;
     const activeMachines = Object.values(appState.machines).filter(m => m.status === 'operational').length;
-    const downTimeMachines = Object.values(appState.machines).filter(m => m.status === 'downtime' || m.status === 'maintenance').length;
+    // ✅ COMPTE TOUTES LES MACHINES NON-OPÉRATIONNELLES (5 états)
+    const downTimeMachines = Object.values(appState.machines).filter(m => m.status !== 'operational').length;
 
     // Fetch MTTR depuis l'API backend
     let mttrDisplay = 'N/A';
@@ -2605,15 +2636,27 @@ async function updateKPIs() {
                 const machine = appState.machines[randomMachine];
 
                 if (machine && machine.status === 'operational') {
-                    machine.status = 'downtime';
-                    machine.alertType = appState.alertTypes[Math.floor(Math.random() * appState.alertTypes.length)];
+                    // ✅ SIMULATION DES 5 ÉTATS WOKWI
+                    const etatsSimulation = ['downtime', 'maintenance', 'break', 'material'];
+                    const nouvelEtat = etatsSimulation[Math.floor(Math.random() * etatsSimulation.length)];
+                    machine.status = nouvelEtat;
+
+                    const alertTypesMap = {
+                        'downtime': ['Panne', 'Electrical', 'Mechanical', 'Sensor'],
+                        'maintenance': ['Maintenance'],
+                        'break': ['Break / Pause'],
+                        'material': ['Manque Matériel']
+                    };
+                    const types = alertTypesMap[nouvelEtat] || ['Panne'];
+                    machine.alertType = types[Math.floor(Math.random() * types.length)];
+
                     machine.assignedTech = null;
                     machine.statusChangeTime = Date.now();
                     machine.isEscalated = false;
 
                     addLog(randomMachine, machine.alertType, 'Pending', 'Unassigned');
                     SoundSystem.playAlertSequence();
-                    showAlert(`⚠️ ALERT: Machine ${randomMachine} has entered downtime (${machine.alertType}). Technician assignment required.`);
+                    showAlert(`⚠️ ALERT: Machine ${randomMachine} has entered ${nouvelEtat} (${machine.alertType}). Technician assignment required.`);
 
                     updateMachineCardUI(randomMachine);
                     updateKPIs();
@@ -2879,8 +2922,21 @@ async function updateKPIs() {
             panneSet.add(code);
             changedMachineIDs.add(code);
 
-            appState.machines[code].status = 'downtime';
-            appState.machines[code].alertType = m.type_erreur || m.alert_type || m.piece_observation || 'Panne';
+            // ✅ GESTION DES 5 ÉTATS WOKWI VIA SOCKET.IO
+            const wokwiStatus = (m.status || m.state || 'downtime').toString().toLowerCase();
+            const validStatuses = ['operational', 'downtime', 'maintenance', 'break', 'material'];
+
+            if (validStatuses.includes(wokwiStatus)) {
+                appState.machines[code].status = wokwiStatus;
+            } else {
+                // Fallback: synonymes
+                if (wokwiStatus === 'pause' || wokwiStatus === 'stop') appState.machines[code].status = 'break';
+                else if (wokwiStatus === 'manque' || wokwiStatus === 'wait_material') appState.machines[code].status = 'material';
+                else appState.machines[code].status = 'downtime';
+            }
+
+            appState.machines[code].alertType = m.type_erreur || m.alert_type || m.piece_observation || m.type || 'Panne';
+
             if (m.status === 'escalated' || m.criticite === 'Haute' || m.isEscalated) {
                 appState.machines[code].isEscalated = true;
             }
