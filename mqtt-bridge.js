@@ -263,13 +263,13 @@ function init(pool, io) {
         console.log('  Session present:', connack.sessionPresent);
         console.log('========================================');
 
-        // Subscribe avec QoS 1
-        mqttClient.subscribe([
-            { topic: TOPIC_ALERT, qos: 1 },
-            { topic: TOPIC_RESOLVE, qos: 1 },
-            { topic: TOPIC_AUTH, qos: 1 },
-            { topic: TOPIC_HEART, qos: 0 }
-        ], (err) => {
+        // Subscribe avec QoS 1 (format correct pour mqtt.js)
+        mqttClient.subscribe({
+            [TOPIC_ALERT]: { qos: 1 },
+            [TOPIC_RESOLVE]: { qos: 1 },
+            [TOPIC_AUTH]: { qos: 1 },
+            [TOPIC_HEART]: { qos: 0 }
+        }, (err) => {
             if (err) {
                 console.error('[MQTT] ❌ Subscribe error:', err.message);
             } else {
