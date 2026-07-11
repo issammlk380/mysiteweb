@@ -1850,7 +1850,13 @@
 async function initializeMachines() {
     try {
         const response = await fetch(`${API_BASE_URL}/api/historique`);
-        const realLogs = await response.json();
+        let realLogs = await response.json();
+
+        // ✅ FIX: Protection si l'API ne retourne pas un array
+        if (!Array.isArray(realLogs)) {
+            console.warn('⚠️ /api/historique ne retourne pas un array:', realLogs);
+            realLogs = [];
+        }
 
         for (const [zone, config] of Object.entries(appState.zoneConfig)) {
             for (let i = 1; i <= config.count; i++) {
@@ -2987,68 +2993,6 @@ async function updateKPIs() {
         initializeMachines();
     });
 
-    // ============================================================================
-    // ✅ NOUVEAU: ÉVÉNEMENTS MQTT temps réel (Bouton Résolu + Alertes)
-    // ============================================================================
-
-    // 1. Mise à jour statut machine (depuis mqtt-bridge v4)
-    socket.on('machine_status_updated', (data) => {
-        console.log('🔄 [Socket] machine_status_updated:', data);
-
-        if (!data || !data.code || !appState.machines[data.code]) return;
-
-        const machine = appState.machines[data.code];
-        const newStatus = (data.status || 'operational').toLowerCase();
-
-        // حدّث الحالة فـ appState
-        machine.status = newStatus;
-        machine.alertType = data.type || null;
-        machine.statusChangeTime = Date.now();
-
-        // إلا رجعات operational → نضّف التايرات
-        if (newStatus === 'operational') {
-            machine.isEscalated = false;
-            machine.assignedTech = null;
-            machine.elapsedTime = 0;
-        }
-
-        // حدّث الكارطة فـ الـ Dashboard
-        updateMachineCardUI(data.code);
-        updateKPIs();
-
-        // نوتيفيكاسيون
-        if (newStatus !== 'operational') {
-            showAlert(`⚠️ ALERT: Machine ${data.code} - ${data.type || 'Panne'}`);
-        }
-    });
-
-    // 2. Résolution alerte (Bouton VERT / Résolu)
-    socket.on('alert_resolved', (data) => {
-        console.log('✅ [Socket] alert_resolved:', data);
-
-        if (!data || !data.code || !appState.machines[data.code]) return;
-
-        const machine = appState.machines[data.code];
-
-        // رجّع الماكينة لـ Operational
-        machine.status = 'operational';
-        machine.alertType = null;
-        machine.isEscalated = false;
-        machine.assignedTech = null;
-        machine.statusChangeTime = Date.now();
-        machine.elapsedTime = 0;
-
-        // حدّث الكارطة فالحال
-        updateMachineCardUI(data.code);
-        updateKPIs();
-
-        // Toast نوتيفيكاسيون
-        showNotification(`✅ Machine ${data.code} est opérationnelle`, 'success');
-
-        // Alert banner
-        showAlert(`✓ Alert resolved for ${data.code}. Machine returned to production.`);
-    });
-
     function modifierStatutDepuisInterface(codeMachine, nouveauStatut, typeErreur = null) {
         fetch('https://mysiteweb-production.up.railway.app/api/machines/update-status', {
             method: 'POST',
@@ -3076,3 +3020,4 @@ async function updateKPIs() {
     }
 </script>
 </body>
+</html>
