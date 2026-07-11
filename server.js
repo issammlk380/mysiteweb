@@ -505,7 +505,20 @@ app.post('/api/intervention', async (req, res) => {
     if (result.rowCount === 0) return res.status(404).json({ success: false, message: 'Aucun enregistrement trouve !' });
     const updatedLog = result.rows[0];
     const io = req.app.get('io');
-    if (io) { io.emit('machineStatusChanged', { machine: updatedLog.machine, status: updatedLog.status, alert_type: updatedLog.alert_type, criticite: criticite, logId: updatedLog.id }); console.log(`Real-time event sent for machine ${updatedLog.machine}`); }
+    if (io) {
+        io.emit('machineStatusChanged', { machine: updatedLog.machine, status: updatedLog.status, alert_type: updatedLog.alert_type, criticite: criticite, logId: updatedLog.id });
+        // ✅ EMIT updateMachines pour temps réel (5 états Wokwi)
+        io.emit('updateMachines', [{
+            code: updatedLog.machine,
+            status: 'maintenance',
+            type_erreur: updatedLog.alert_type || 'Intervention',
+            criticite: criticite || 'Moderee',
+            logId: updatedLog.id,
+            source: 'intervention',
+            timestamp: Date.now()
+        }]);
+        console.log(`Real-time event sent for machine ${updatedLog.machine}`);
+    }
     return res.status(200).json({ success: true, message: "Intervention enregistree !" });
   } catch (err) { console.error('[INTERVENTION] Erreur:', err); return res.status(500).json({ success: false, message: 'Erreur interne serveur.', detail: err.message }); }
 });
@@ -517,7 +530,18 @@ app.post('/api/machines/update-status', async (req, res) => {
     await safeQuery('UPDATE machines SET status = $1, type_erreur = $2 WHERE code = $3', [status, status.toLowerCase() === 'operational' ? null : (type_erreur || null), code]);
     console.log(`[Machines] ${code} -> status: "${status}"`);
     const io = req.app.get('io');
-    if (io) io.emit('machineStatusChanged', { machine: code, status: status, alert_type: type_erreur || null });
+    if (io) {
+        io.emit('machineStatusChanged', { machine: code, status: status, alert_type: type_erreur || null });
+        // ✅ EMIT updateMachines pour temps réel (5 états Wokwi)
+        const wokwiStatus = (status === 'Operational' || status === 'Termine') ? 'operational' : status.toLowerCase();
+        io.emit('updateMachines', [{
+            code: code,
+            status: wokwiStatus,
+            type_erreur: type_erreur || null,
+            source: 'api_update',
+            timestamp: Date.now()
+        }]);
+    }
     return sendSuccess(res, null, 'Statut mis a jour dans PostgreSQL.');
   } catch (err) { return sendError(res, 500, 'Erreur mise a jour statut.', err.message); }
 });
