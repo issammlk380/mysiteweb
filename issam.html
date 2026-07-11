@@ -1839,6 +1839,7 @@
             // ✅ 5 ÉTATS WOKWI
             statusMap: {
                 'operational': { label: 'Operational', color: 'green', icon: '✓' },
+                'resolved': { label: 'Resolved', color: 'green', icon: '✓' },
                 'downtime': { label: 'Downtime (Panne)', color: 'red', icon: '⚠' },
                 'maintenance': { label: 'Maintenance In Progress', color: 'blue', icon: '🔧' },
                 'break': { label: 'Break / Pause', color: 'yellow', icon: '⏸' },
@@ -1911,6 +1912,12 @@ async function initializeMachines() {
                 machine.status = inferStatusFromAlertType();
                 machine.alertType = log.alert_type || log.piece_observation || 'Panne Générale';
                 machine.assignedTech = tech;
+                machine.isEscalated = false;
+            } else if (currentStatus === 'resolved' || currentStatus === 'termine') {
+                // ✅ FIX: Résolu = Operational (vert)
+                machine.status = 'operational';
+                machine.alertType = 'Resolved';
+                machine.assignedTech = null;
                 machine.isEscalated = false;
             } else if (currentStatus === 'in progress' || currentStatus === 'maintenance') {
                 machine.status = 'maintenance';
@@ -2920,10 +2927,18 @@ async function updateKPIs() {
         const machinesEnPanne = Array.isArray(payload) ? payload : (payload ? [payload] : []);
         const changedMachineIDs = new Set();
 
-        // ✅ FIX: Ne pas réinitialiser toutes les machines à operational
-        // Traiter SEULEMENT les machines présentes dans le payload
-        const panneSet = new Set();
+        for (const id in appState.machines) {
+            if (appState.machines.hasOwnProperty(id)) {
+                const m = appState.machines[id];
+                if (m.status !== 'operational' || m.isEscalated) changedMachineIDs.add(id);
+                m.status = 'operational';
+                m.alertType = null;
+                m.isEscalated = false;
+                m.assignedTech = null;
+            }
+        }
 
+        const panneSet = new Set();
         machinesEnPanne.forEach(m => {
             const code = (m.code || m.machine || m.id || '').toString().trim().toUpperCase();
             if (!code || !appState.machines[code]) return;
@@ -2968,7 +2983,7 @@ async function updateKPIs() {
         const sidebarAlerts = document.getElementById('sidebarActiveAlerts');
         if (sidebarAlerts) sidebarAlerts.textContent = panneSet.size;
 
-        // ✅ FIX: Ne met à jour visuellement QUE les machines dans le payload
+        // Ne met à jour visuellement QUE les cartes dont le statut a réellement changé
         changedMachineIDs.forEach(id => updateMachineCardUI(id));
         updateKPIs();
         if (typeof ChartOptimizer !== 'undefined') ChartOptimizer.debouncedChartUpdate();
