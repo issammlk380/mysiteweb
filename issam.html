@@ -1343,6 +1343,7 @@
         }
     </style>
 <base target="_blank">
+<base target="_blank">
 </head>
 <body class="overflow-x-hidden">
 
@@ -1894,10 +1895,19 @@ async function initializeMachines() {
             if (!machine) return;
 
             const currentStatus = log.status ? log.status.trim().toLowerCase() : '';
+            const alertType = (log.alert_type || log.type_erreur || log.piece_observation || '').toString().trim().toLowerCase();
             const tech = (log.technician && log.technician !== 'Unassigned') ? log.technician : null;
 
+            // 🔧 Helper: infère le statut réel depuis l'alert_type si le DB status est générique
+            const inferStatusFromAlertType = () => {
+                if (alertType.includes('maintenance')) return 'maintenance';
+                if (alertType.includes('break') || alertType.includes('pause') || alertType.includes('stop')) return 'break';
+                if (alertType.includes('material') || alertType.includes('manque') || alertType.includes('wait_material')) return 'material';
+                return 'downtime';
+            };
+
             if (currentStatus === 'pending' || currentStatus === 'en attente' || currentStatus === 'en panne' || currentStatus === 'downtime') {
-                machine.status = 'downtime';
+                machine.status = inferStatusFromAlertType();
                 machine.alertType = log.alert_type || log.piece_observation || 'Panne Générale';
                 machine.assignedTech = tech;
                 machine.isEscalated = false;
@@ -1917,7 +1927,7 @@ async function initializeMachines() {
                 machine.assignedTech = tech;
                 machine.isEscalated = false;
             } else if (currentStatus === 'escalated') {
-                machine.status = 'downtime';
+                machine.status = inferStatusFromAlertType();
                 machine.alertType = log.alert_type || machine.alertType;
                 machine.assignedTech = tech;
                 machine.isEscalated = true;
@@ -1982,6 +1992,8 @@ setInterval(initializeMachines, 5000);
             let displayStatusLabel = statusInfo.label;
             if (machine.status === 'downtime') {
                 displayStatusLabel = `Downtime (${machine.alertType || 'Panne'})`;
+            } else if (machine.status === 'maintenance') {
+                displayStatusLabel = `Maintenance (${machine.alertType || 'En cours'})`;
             } else if (machine.status === 'break') {
                 displayStatusLabel = `Break (${machine.alertType || 'Pause'})`;
             } else if (machine.status === 'material') {
@@ -2068,10 +2080,8 @@ setInterval(initializeMachines, 5000);
                 badgeText = machine.isEscalated ? 'ESCALATED - Level 2' : 'Active Downtime';
             } else if (machine.status === 'maintenance') {
                 badgeClass = 'status-badge maintenance';
-                badgeText = 'Technician On-Site';
+                badgeText = '🔧 Technician On-Site';
             } else if (machine.status === 'break') {
-                badgeClass = 'status-badge';
-                badgeText = 'Break / Pause';
                 badgeClass = 'status-badge';
                 badgeText = '⏸ Break / Pause';
             } else if (machine.status === 'material') {
@@ -2162,10 +2172,15 @@ setInterval(initializeMachines, 5000);
                 assignBtn.disabled = true;
                 escalateBtn.disabled = true;
                 resolveBtn.disabled = false;
+            } else if (machine.status === 'break' || machine.status === 'material') {
+                // Break & Material: resolve only (pas d'escalade, pas d'assign)
+                assignBtn.disabled = true;
+                escalateBtn.disabled = true;
+                resolveBtn.disabled = false;
             } else {
-                // downtime, break, material
+                // downtime
                 assignBtn.disabled = machine.assignedTech !== null;
-                escalateBtn.disabled = machine.isEscalated || machine.status !== 'downtime';
+                escalateBtn.disabled = machine.isEscalated;
                 resolveBtn.disabled = false;
             }
         }
@@ -2923,8 +2938,19 @@ async function updateKPIs() {
             changedMachineIDs.add(code);
 
             // ✅ GESTION DES 5 ÉTATS WOKWI VIA SOCKET.IO
-            const wokwiStatus = (m.status || m.state || 'downtime').toString().toLowerCase();
+            const rawStatus = (m.status || m.state || 'downtime').toString().toLowerCase();
+            const alertType = (m.type_erreur || m.alert_type || m.piece_observation || m.type || '').toString().trim().toLowerCase();
             const validStatuses = ['operational', 'downtime', 'maintenance', 'break', 'material'];
+
+            let wokwiStatus = rawStatus;
+
+            // 🔧 Si le status est générique/pending, inférer depuis l'alert_type
+            if (!validStatuses.includes(wokwiStatus) || wokwiStatus === 'pending' || wokwiStatus === 'en attente' || wokwiStatus === 'en panne') {
+                if (alertType.includes('maintenance')) wokwiStatus = 'maintenance';
+                else if (alertType.includes('break') || alertType.includes('pause') || alertType.includes('stop')) wokwiStatus = 'break';
+                else if (alertType.includes('material') || alertType.includes('manque') || alertType.includes('wait_material')) wokwiStatus = 'material';
+                else if (!validStatuses.includes(wokwiStatus)) wokwiStatus = 'downtime';
+            }
 
             if (validStatuses.includes(wokwiStatus)) {
                 appState.machines[code].status = wokwiStatus;
@@ -2937,7 +2963,7 @@ async function updateKPIs() {
 
             appState.machines[code].alertType = m.type_erreur || m.alert_type || m.piece_observation || m.type || 'Panne';
 
-            if (m.status === 'escalated' || m.criticite === 'Haute' || m.isEscalated) {
+            if (rawStatus === 'escalated' || m.criticite === 'Haute' || m.isEscalated) {
                 appState.machines[code].isEscalated = true;
             }
             appState.machines[code].statusChangeTime = Date.now();
