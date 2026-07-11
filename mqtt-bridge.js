@@ -149,9 +149,12 @@ async function resolveAlert(payload) {
                  date_reparation = $2,
                  duration = GREATEST(0, EXTRACT(EPOCH FROM ($2 - date_panne)) / 60)::INTEGER,
                  updated_at = $2
-             WHERE machine = $3 AND status != 'Resolved'
-             ORDER BY created_at DESC 
-             LIMIT 1
+             WHERE id = (
+                 SELECT id FROM downtime_logs 
+                 WHERE machine = $3 AND status != 'Resolved'
+                 ORDER BY created_at DESC 
+                 LIMIT 1
+             )
              RETURNING *;`,
             [resolvedBy, now, mapped.machine]
         );
