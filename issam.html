@@ -1,0 +1,3078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="robots" content="noindex, nofollow">
+    <title>NextGen Industrial Andon & Maintenance Dashboard - SEWS Automotive</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+
+    <style>
+        /* [KOLL CSS DYALEK KIF MA KAYN] */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #0f172a;
+            --secondary: #1e293b;
+            --accent: #0ea5e9;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            --maintenance: #3b82f6;
+            --break: #f59e0b;
+            --wait-material: #06b6d4;
+            --wait-quality: #f97316;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1a1f3a 100%);
+            font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+            color: #e2e8f0;
+            min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .glass-effect {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            border-radius: 12px;
+        }
+
+        .glow-pulse {
+            animation: glow-pulse 1.5s ease-in-out infinite;
+        }
+
+        .glow-critical {
+            animation: glow-critical 0.8s ease-in-out infinite;
+        }
+
+        @keyframes glow-pulse {
+            0%, 100% {
+                box-shadow: 0 0 15px rgba(239, 68, 68, 0.4), inset 0 0 10px rgba(239, 68, 68, 0.08);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(239, 68, 68, 0.7), inset 0 0 20px rgba(239, 68, 68, 0.15);
+            }
+        }
+
+        @keyframes glow-critical {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), inset 0 0 15px rgba(239, 68, 68, 0.2);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(239, 68, 68, 1), inset 0 0 25px rgba(239, 68, 68, 0.3);
+            }
+        }
+
+        .status-green {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.03));
+            border-color: #10b981;
+        }
+
+        .status-red {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.03));
+            border-color: #ef4444;
+        }
+
+        .status-blue {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.03));
+            border-color: #3b82f6;
+        }
+
+        .status-yellow {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.03));
+            border-color: #f59e0b;
+        }
+
+        .status-cyan {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(6, 182, 212, 0.03));
+            border-color: #06b6d4;
+        }
+
+        .status-orange {
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.03));
+            border-color: #f97316;
+        }
+
+        .machine-card {
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-width: 2px;
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 110px;
+            backdrop-filter: blur(8px);
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .machine-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 35px rgba(14, 165, 233, 0.15);
+        }
+
+        .machine-card.red {
+            border-color: #ef4444;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+            flex-shrink: 0;
+        }
+
+        .status-dot.green {
+            background: #10b981;
+            box-shadow: 0 0 12px #10b981;
+        }
+
+        .status-dot.red {
+            background: #ef4444;
+            box-shadow: 0 0 12px #ef4444;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        .status-dot.blue {
+            background: #3b82f6;
+            box-shadow: 0 0 12px #3b82f6;
+        }
+
+        .status-dot.yellow {
+            background: #f59e0b;
+            box-shadow: 0 0 12px #f59e0b;
+        }
+
+        .status-dot.cyan {
+            background: #06b6d4;
+            box-shadow: 0 0 12px #06b6d4;
+        }
+
+        .status-dot.orange {
+            background: #f97316;
+            box-shadow: 0 0 12px #f97316;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        .kpi-card {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(59, 130, 246, 0.05));
+            border: 1px solid rgba(14, 165, 233, 0.2);
+            border-radius: 12px;
+            padding: 24px;
+            backdrop-filter: blur(12px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(14, 165, 233, 0.1) 0%, transparent 70%);
+            transition: all 0.6s ease;
+        }
+
+        .kpi-card:hover {
+            border-color: rgba(14, 165, 233, 0.5);
+            box-shadow: 0 8px 32px rgba(14, 165, 233, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .kpi-value {
+            font-size: 36px;
+            font-weight: 800;
+            color: #0ea5e9;
+            margin: 12px 0 8px 0;
+            font-family: 'Courier New', monospace;
+            letter-spacing: -1px;
+        }
+
+        .kpi-label {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            font-weight: 600;
+        }
+
+        .kpi-trend {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 8px;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 540px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+            animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+
+            margin-bottom: 28px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            padding-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 26px;
+            font-weight: 700;
+            color: #e2e8f0;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-close {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 28px;
+            transition: all 0.3s;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .btn-close:hover {
+            color: #e2e8f0;
+            background: rgba(14, 165, 233, 0.1);
+        }
+
+        .modal-section {
+            margin-bottom: 24px;
+        }
+
+        .modal-label {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1.1px;
+            margin-bottom: 10px;
+            display: block;
+            font-weight: 600;
+        }
+
+        .modal-value {
+            font-size: 16px;
+            color: #e2e8f0;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+
+        .timer-display {
+            font-size: 42px;
+            font-weight: 900;
+            color: #ef4444;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            background: rgba(239, 68, 68, 0.1);
+            padding: 16px 20px;
+            border-radius: 10px;
+            border-left: 4px solid #ef4444;
+            margin: 12px 0;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        .timer-display.green {
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+            border-left-color: #10b981;
+        }
+
+        .timer-display.blue {
+            color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+            border-left-color: #3b82f6;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            margin-top: 6px;
+        }
+
+        .status-badge.operational {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid #10b981;
+        }
+
+        .status-badge.downtime {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+        }
+
+        .status-badge.maintenance {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            border: 1px solid #3b82f6;
+        }
+
+        .status-badge.escalated {
+            background: rgba(239, 68, 68, 0.35);
+            color: #fca5a5;
+            border: 1px solid #fca5a5;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        .tech-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            margin-right: 14px;
+            font-size: 16px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+        }
+
+        .tech-info {
+            display: flex;
+            align-items: center;
+            margin: 12px 0;
+            background: rgba(59, 130, 246, 0.08);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(59, 130, 246, 0.15);
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 28px;
+            border-top: 1px solid rgba(148, 163, 184, 0.1);
+            padding-top: 24px;
+        }
+
+        .btn {
+            padding: 14px 22px;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+            color: white;
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #0284c7, #2563eb);
+            box-shadow: 0 8px 25px rgba(14, 165, 233, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 10px rgba(14, 165, 233, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: rgba(148, 163, 184, 0.1);
+            color: #0ea5e9;
+            border: 1.5px solid rgba(14, 165, 233, 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(14, 165, 233, 0.25);
+            border-color: #0ea5e9;
+            color: #38bdf8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.2);
+        }
+
+        .btn-secondary:active {
+            transform: translateY(0);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn-success:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn-danger:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 10px rgba(239, 68, 68, 0.3);
+        }
+
+        .zone-header {
+            background: linear-gradient(90deg, rgba(14, 165, 233, 0.15), transparent);
+            border-left: 4px solid #0ea5e9;
+            padding: 14px 16px;
+            margin: 24px 0 14px 0;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #0ea5e9;
+        }
+
+        .zone-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .data-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+
+        .data-table th {
+            padding: 14px 12px;
+            text-align: left;
+            font-weight: 700;
+            color: #0ea5e9;
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.7px;
+            position: sticky;
+            top: 0;
+            background: #0f172a !important;
+            border-bottom: 2px solid rgba(14, 165, 233, 0.2);
+        }
+
+        .data-table td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+            color: #cbd5e1;
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(14, 165, 233, 0.05);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 16px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+
+        .badge-resolved {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 0.5px solid #10b981;
+        }
+
+        .badge-pending {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 0.5px solid #ef4444;
+        }
+
+        .badge-in-progress {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            border: 0.5px solid #3b82f6;
+        }
+
+        .search-input, .select-input {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: #e2e8f0;
+            padding: 11px 15px;
+            border-radius: 8px;
+            font-size: 16px; /* Empêche zoom sur iOS */
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .search-input::placeholder {
+            color: #64748b;
+        }
+
+        .search-input:focus, .select-input:focus {
+            outline: none;
+            border-color: #0ea5e9;
+            background: rgba(30, 41, 59, 0.95);
+            box-shadow: 0 0 12px rgba(14, 165, 233, 0.2);
+        }
+
+        .filter-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 340px;
+            margin-bottom: 28px;
+        }
+
+        .alert-banner {
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
+            border-left: 4px solid #ef4444;
+            padding: 16px 18px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            animation: slideDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-banner-icon {
+            flex-shrink: 0;
+            color: #ef4444;
+        }
+
+        .alert-banner-text {
+            flex: 1;
+        }
+
+        .alert-banner-text p {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fca5a5;
+            line-height: 1.4;
+        }
+
+        .sound-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1.5px solid rgba(16, 185, 129, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            width: fit-content;
+            transition: all 0.3s;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+
+        .sound-toggle:hover {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: #10b981;
+        }
+
+        .sound-toggle.active {
+            background: rgba(16, 185, 129, 0.25);
+            border-color: #10b981;
+        }
+
+        .toggle-switch {
+            width: 32px;
+            height: 18px;
+            background: rgba(148, 163, 184, 0.3);
+            border-radius: 9px;
+            position: relative;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: #10b981;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: left 0.3s;
+        }
+
+        .toggle-switch.active::after {
+            left: 16px;
+        }
+
+        .export-btn {
+            padding: 11px 22px;
+            background: linear-gradient(135deg, #0ea5e9, #06b6d4);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 12px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .export-btn:hover {
+            box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .sidebar {
+            position: fixed;
+            right: 20px;
+            top: 100px;
+            width: 320px;
+            max-height: 680px;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            border-radius: 12px;
+            padding: 24px;
+            backdrop-filter: blur(12px);
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            z-index: 40;
+        }
+
+        .sidebar-title {
+            font-size: 14px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #e2e8f0;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .sidebar-section:last-child {
+            border-bottom: none;
+        }
+
+        .sidebar-label {
+            font-size: 10px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            display: block;
+            font-weight: 700;
+        }
+
+        .sidebar-value {
+            font-size: 28px;
+            font-weight: 900;
+            color: #ef4444;
+            font-family: 'Courier New', monospace;
+        }
+
+        .sidebar-value.success {
+            color: #10b981;
+        }
+
+        .sidebar-value.info {
+            color: #0ea5e9;
+        }
+
+        .zone-status-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            font-size: 13px;
+            border-bottom: 0.5px solid rgba(148, 163, 184, 0.08);
+        }
+
+        .zone-status-item:last-child {
+            border-bottom: none;
+        }
+
+        .zone-status-label {
+            color: #cbd5e1;
+            font-weight: 600;
+        }
+
+        .zone-status-fraction {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            background: rgba(14, 165, 233, 0.15);
+            border-radius: 4px;
+            color: #0ea5e9;
+        }
+
+        .shift-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .shift-icon {
+            font-size: 16px;
+        }
+
+        @media (max-width: 1400px) {
+            .sidebar {
+                display: none;
+            }
+        }
+
+        .scroll-container {
+            overflow-x: auto;
+            padding: 10px 0;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(148, 163, 184, 0.05);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(14, 165, 233, 0.3);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(14, 165, 233, 0.5);
+        }
+
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+        }
+
+        .header-logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+        }
+
+        .header-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header-title {
+            font-size: 16px;
+            background: linear-gradient(90deg, #0ea5e9, #06b6d4);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .header-subtitle {
+            font-size: 10px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .header-time {
+            display: flex;
+            flex-direction: column;
+            text-align: right;
+        }
+
+        .header-time-label {
+            font-size: 10px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+        }
+
+        .header-time-value {
+            font-size: 13px;
+            font-weight: 700;
+            color: #0ea5e9;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.5px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(14, 165, 233, 0.3);
+            border-top-color: #0ea5e9;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #94a3b8;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state-text {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .machine-card-id {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            color: #0ea5e9;
+        }
+
+        .machine-card-status {
+            font-size: 12px;
+            color: #cbd5e1;
+            margin-top: 4px;
+            font-weight: 600;
+        }
+
+        .machine-card-time {
+            font-size: 10px;
+            color: #64748b;
+            margin-top: 6px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .data-management-btn {
+            padding: 8px 12px;
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 10px;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+
+        .data-management-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: #ef4444;
+        }
+
+        .notification-toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid #10b981;
+            color: #10b981;
+            padding: 14px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 12px;
+            z-index: 1200;
+            animation: slideInRight 0.4s ease;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(400px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .notification-toast.success {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: #10b981;
+            color: #10b981;
+        }
+
+        .notification-toast.error {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .table-container {
+            max-height: 400px !important;
+            height: 400px !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            display: block !important;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .table-container table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table-container table thead th {
+            position: sticky !important;
+            top: 0 !important;
+            background-color: #0f172a !important;
+            z-index: 20 !important;
+        }
+
+        /* ==================== MOBILE RESPONSIVE ==================== */
+
+        /* Tablettes et petits écrans */
+        @media (max-width: 1024px) {
+            .container {
+                padding: 12px;
+            }
+
+            .header h1 {
+                font-size: 1.75rem;
+            }
+
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+
+            .machine-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 12px;
+            }
+        }
+
+        /* Mobile phones */
+        @media (max-width: 768px) {
+            .container {
+                padding: 8px;
+            }
+
+            .header {
+                padding: 16px;
+            }
+
+            .header h1 {
+                font-size: 1.25rem;
+            }
+
+            .header p {
+                font-size: 0.875rem;
+            }
+
+            .meta {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .shift-indicator, .live-indicator, .time-display {
+                font-size: 0.75rem;
+                padding: 6px 12px;
+            }
+
+            .time-display {
+                font-size: 1.25rem;
+            }
+
+            /* KPI Cards */
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+
+            .kpi-card {
+                padding: 16px;
+            }
+
+            .kpi-value {
+                font-size: 1.5rem;
+            }
+
+            .kpi-label {
+                font-size: 0.75rem;
+            }
+
+            /* Zones */
+            .zone-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+                padding: 12px 16px;
+            }
+
+            .zone-title {
+                font-size: 1rem;
+            }
+
+            .zone-status {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            /* Machine Grid */
+            .machine-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+
+            .machine-card {
+                padding: 12px;
+            }
+
+            .machine-id {
+                font-size: 0.875rem;
+            }
+
+            .machine-status {
+                font-size: 0.75rem;
+            }
+
+            .machine-reason {
+                font-size: 0.625rem;
+            }
+
+            .machine-timer {
+                font-size: 0.75rem;
+            }
+
+            /* Controls */
+            .controls {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+                padding: 14px 20px;
+                font-size: 0.875rem;
+            }
+
+            /* Modal */
+            .modal {
+                width: 95%;
+                padding: 20px;
+                margin: 16px;
+            }
+
+            .modal-footer {
+                flex-direction: column;
+            }
+
+            .modal-footer .btn {
+                width: 100%;
+            }
+
+            /* Logs */
+            .log-panel {
+                padding: 16px;
+                max-height: 300px;
+            }
+
+            .log-entry {
+                font-size: 0.75rem;
+                padding: 6px 8px;
+            }
+
+            /* Toast */
+            .toast {
+                max-width: 90%;
+                padding: 12px 16px;
+                font-size: 0.875rem;
+            }
+
+            .toast-container {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+            }
+        }
+
+        /* Très petits écrans */
+        @media (max-width: 480px) {
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .machine-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 1.1rem;
+            }
+
+            .zone-title {
+                font-size: 0.875rem;
+            }
+
+            .status-badge {
+                font-size: 0.625rem;
+                padding: 4px 8px;
+            }
+        }
+
+        /* ==================== MOBILE TOUCH OPTIMIZATIONS ==================== */
+
+        /* Augmenter la taille des zones cliquables */
+        .machine-card, .btn, .kpi-card {
+            min-height: 44px; /* iOS recommendation */
+        }
+
+        /* Empêcher le zoom sur input */
+        input, select, textarea {
+            font-size: 16px; /* Empêche zoom sur iOS */
+        }
+
+        /* Scroll smooth */
+        html {
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch; /* iOS smooth scroll */
+        }
+
+        /* Sélection disabled */
+        .machine-card, .btn {
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+<base target="_blank">
+<base target="_blank">
+<base target="_blank">
+</head>
+<body class="overflow-x-hidden">
+
+    <!-- Header -->
+    <header class="glass-effect fixed top-0 left-0 right-0 z-50 border-b border-slate-700">
+        <div class="max-w-full mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="header-logo">
+                <div class="header-logo-icon">
+                    ⚙️
+                </div>
+                <div class="header-info">
+                    <div class="header-title">NextGen Andon System</div>
+                    <div class="header-subtitle">SEWS Automotive - Real-Time Factory Floor Monitor</div>
+                </div>
+            </div>
+
+           <div class="flex items-center gap-6">
+    <div class="shift-indicator" id="shiftDisplay">
+        <span class="shift-icon">🌅</span>
+        <span>Morning Shift</span>
+    </div>
+
+    <div class="sound-toggle" id="soundToggle">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9.383 3.076A1 1 0 0110 2h4a1 1 0 011 1v12a1 1 0 01-1 1h-4a1 1 0 01-.617-.176l-.708.58A1 1 0 018 15V4a1 1 0 01.383-.924l.617.58zM12 12a2 2 0 110-4 2 2 0 010 4zM15.356 5.573a.5.5 0 00-.707.707A3 3 0 0115 10a3 3 0 01-4.356 2.72.5.5 0 00-.707.707A4 4 0 0115 10a4 4 0 00-.644-2.427zM17.07 2.929a.5.5 0 00-.707.707A6 6 0 0117 10a6 6 0 01-8.637 5.364.5.5 0 00-.707.707A7 7 0 0117 10a7 7 0 00-.93-3.071z"></path>
+        </svg>
+        <span>Sound</span>
+        <div class="toggle-switch" id="soundToggleSwitch"></div>
+    </div>
+
+    <a href="login.html" target="_blank" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm transition-all shadow-[0_0_10px_rgba(37,99,235,0.5)] border border-blue-400" style="text-decoration: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        <span>Console Admin</span>
+    </a>
+    <div class="header-time">
+        <span class="header-time-label">Live Status</span>
+        <span class="header-time-value" id="currentTime">00:00:00</span>
+    </div>
+</div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="pt-28 pb-20 px-6">
+        <!-- KPI Cards Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="kpi-card">
+                <div>
+                    <p class="kpi-label">Active Machines</p>
+                    <p class="kpi-value" id="kpiActive">0</p>
+                    <p class="kpi-trend">↑ Production running</p>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div>
+                    <p class="kpi-label">Machines en panne</p>
+                    <p class="kpi-value" id="kpiMachinesEnPanne">…</p>
+                    <p class="kpi-trend">Machines uniques · statut Pending</p>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div>
+                    <p class="kpi-label">MTTR (Mean Time To Repair)</p>
+                    <p class="kpi-value" id="kpiMTTR">0m</p>
+                    <p class="kpi-trend">Average recovery time</p>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div>
+                    <p class="kpi-label">OEE Impact</p>
+                    <p class="kpi-value" id="kpiOEE">100%</p>
+                    <p class="kpi-trend">Equipment effectiveness</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alert Banner -->
+        <div id="alertBanner" class="alert-banner" style="display: none;">
+            <div class="alert-banner-icon">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                </svg>
+            </div>
+            <div class="alert-banner-text">
+                <p id="alertText"></p>
+            </div>
+            <button class="text-red-500 hover:text-red-400 px-2" onclick="closeAlert();">✕</button>
+        </div>
+
+        <!-- Andon Grid Section -->
+        <div class="mb-12">
+            <h2 class="text-xl font-bold mb-6 flex items-center gap-3">
+                <span class="inline-block w-2 h-8 bg-gradient-to-b from-cyan-400 to-blue-600"></span>
+                Production Zones - Live Monitoring
+            </h2>
+
+            <div class="scroll-container">
+                <!-- Zone KA -->
+                <div class="zone-header">🏭 Zone KA - Assembly Line A (KA01 to KA15)</div>
+                <div class="zone-grid" id="zoneKA"></div>
+
+                <!-- Zone KB -->
+                <div class="zone-header">🏭 Zone KB - Assembly Line B (KB01 to KB15)</div>
+                <div class="zone-grid" id="zoneKB"></div>
+
+                <!-- Zone KC -->
+                <div class="zone-header">🏭 Zone KC - Assembly Line C (KC01 to KC18)</div>
+                <div class="zone-grid" id="zoneKC"></div>
+
+                <!-- Zone KD -->
+                <div class="zone-header">✓ Zone KD - Quality Control (KD01 to KD08)</div>
+                <div class="zone-grid" id="zoneKD"></div>
+
+                <!-- Zone KX -->
+                <div class="zone-header">⚡ Zone KX - Support Services (KX01 to KX05)</div>
+                <div class="zone-grid" id="zoneKX"></div>
+            </div>
+        </div>
+
+        <!-- Bottom Section: Charts and Logs -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+            <!-- Top Bottleneck Machines Chart -->
+            <div class="lg:col-span-1">
+                <div class="glass-effect p-6 rounded-xl">
+                    <h3 class="text-lg font-bold mb-6 flex items-center gap-3">
+                        <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"></path>
+                        </svg>
+                        <span class="text-sm uppercase font-mono tracking-wider">Top 5 Bottleneck Machines</span>
+                    </h3>
+                    <div class="chart-container">
+                        <canvas id="bottleneckChart"></canvas>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-6 text-center">Most frequent downtime incidents today</p>
+                </div>
+            </div>
+
+            <!-- Downtime History Logs -->
+            <div class="lg:col-span-2">
+                <div class="glass-effect p-6 rounded-xl">
+                    <h3 class="text-lg font-bold mb-6 flex items-center gap-3">
+                        <svg class="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
+                            <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 1 1 0 000-2H6a6 6 0 100 12H4a2 2 0 01-2-2v-4a2 2 0 012-2zm15-3h-4a1 1 0 100 2h4a1 1 0 100-2zM4 13a2 2 0 100 4h12a2 2 0 100-4H4z"></path>
+                        </svg>
+                        <span class="text-sm uppercase font-mono tracking-wider">Downtime Incidents Log</span>
+                    </h3>
+
+                  <div class="filter-controls">
+                        <input type="text" id="searchInput" class="search-input flex-1" placeholder="Search Machine ID or Technician...">
+                        <select id="filterType" class="select-input">
+                            <option value="">All Alert Types</option>
+                            <option value="Panne">Panne (Downtime)</option>
+                            <option value="Electrical">Electrical Issue</option>
+                            <option value="Mechanical">Mechanical Fault</option>
+                            <option value="Sensor">Sensor Malfunction</option>
+                            <option value="Material">Material Jam</option>
+                            <option value="Software">Software Error</option>
+                            <option value="Break / Pause">Break / Pause</option>
+                            <option value="Manque Matériel">Manque Matériel</option>
+                        </select>
+                        <button class="export-btn" onclick="exportToCSV()">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            Export
+                        </button>
+                        <button class="data-management-btn" onclick="clearLocalData()" title="حذف جميع البيانات المحفوظة">
+                            🗑️ Clear Data
+                        </button>
+                    </div>
+
+                    <div class="scroll-container max-h-[350px] overflow-y-auto">
+   <table class="data-table">
+        <thead class="sticky top-0 bg-[#0f172a] z-30 block md:table-header-group shadow-md border-b border-slate-800">
+            <tr class="bg-[#0f172a]">
+                <th class="p-4 text-xs font-mono font-bold text-cyan-400 tracking-wider uppercase h-12 align-middle">Log ID</th>
+                <th class="p-4 text-xs font-mono font-bold text-cyan-400 tracking-wider uppercase h-12 align-middle">Machine</th>
+                <th class="p-4 text-xs font-mono font-bold text-cyan-400 tracking-wider uppercase h-12 align-middle">Alert Type</th>
+                <th class="p-4 text-xs font-mono font-bold text-cyan-400 tracking-wider uppercase h-12 align-middle">Start Time</th>
+                <th class="p-4 text-xs font-mono font-bold text-cyan-400 tracking-wider uppercase h-12 align-middle">Duration</th>
+                <th class="p-4 text-xs font-mono font-bold text-cyan-400 tracking-wider uppercase h-12 align-middle">Technician</th>
+                <th class="p-4 text-xs font-mono font-bold text-cyan-400 tracking-wider uppercase h-12 align-middle">Status</th>
+            </tr>
+        </thead>
+
+        <tbody id="logsTableBody" class="block md:table-row-group divide-y divide-slate-800/60">
+            </tbody>
+    </table>
+</div>
+
+                    <div id="emptyState" class="empty-state" style="display: none;">
+                        <div class="empty-state-icon">📋</div>
+                        <div class="empty-state-text">No downtime incidents recorded yet. Excellent factory performance!</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <!-- Sidebar Analytics -->
+    <div class="sidebar" id="sidebar">
+        <h3 class="sidebar-title">
+            <svg class="w-5 h-5 text-cyan-400" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"></path>
+            </svg>
+            Quick Stats
+        </h3>
+
+        <div class="sidebar-section">
+            <span class="sidebar-label">Critical Alerts</span>
+            <p class="sidebar-value" id="sidebarActiveAlerts">0</p>
+        </div>
+
+        <div class="sidebar-section">
+            <span class="sidebar-label">Total Downtime Today</span>
+            <p class="sidebar-value" id="sidebarTotalDowntime">0h 0m</p>
+        </div>
+
+        <div class="sidebar-section">
+            <span class="sidebar-label">Avg Response Time</span>
+            <p class="sidebar-value info" id="sidebarAvgResponse">0m</p>
+        </div>
+
+        <div class="sidebar-section">
+            <span class="sidebar-label">Zone Health Status</span>
+            <div class="space-y-2">
+                <div class="zone-status-item">
+                    <span class="zone-status-label">Zone KA</span>
+                    <span class="zone-status-fraction" id="zoneKAStatus">15/15</span>
+                </div>
+                <div class="zone-status-item">
+                    <span class="zone-status-label">Zone KB</span>
+                    <span class="zone-status-fraction" id="zoneKBStatus">15/15</span>
+                </div>
+                <div class="zone-status-item">
+                    <span class="zone-status-label">Zone KC</span>
+                    <span class="zone-status-fraction" id="zoneKCStatus">18/18</span>
+                </div>
+                <div class="zone-status-item">
+                    <span class="zone-status-label">Zone KD</span>
+                    <span class="zone-status-fraction" id="zoneKDStatus">8/8</span>
+                </div>
+                <div class="zone-status-item">
+                    <span class="zone-status-label">Zone KX</span>
+                    <span class="zone-status-fraction" id="zoneKXStatus">5/5</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Machine Detail Modal -->
+    <div class="modal-overlay" id="machineModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalMachineID">KA01</h2>
+                <button class="btn-close" onclick="closeMachineModal()">&times;</button>
+            </div>
+
+            <div class="modal-section">
+                <label class="modal-label">Current Status</label>
+                <div class="flex items-center mt-2">
+                    <span class="status-dot green" id="modalStatusDot"></span>
+                    <p class="modal-value" id="modalStatus">Operational</p>
+                </div>
+                <div id="modalStatusBadgeContainer"></div>
+            </div>
+
+            <div class="modal-section">
+                <label class="modal-label">Time in Current State</label>
+                <div class="timer-display green" id="modalTimer">00:00</div>
+            </div>
+
+            <div class="modal-section">
+                <label class="modal-label">Alert Type</label>
+                <p class="modal-value" id="modalAlertType">N/A</p>
+            </div>
+
+            <div class="modal-section">
+                <label class="modal-label">Assigned Technician</label>
+                <div class="tech-info" id="modalTechInfo">
+                    <div class="tech-avatar">--</div>
+                    <div>
+                        <p class="modal-value">Unassigned</p>
+                        <p class="text-xs text-slate-400">Click Assign Technician</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <label class="modal-label">Machine Metadata</label>
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div class="bg-slate-800 p-2 rounded">
+                        <p class="text-slate-400">Zone</p>
+                        <p class="text-cyan-400 font-mono" id="modalZone">--</p>
+                    </div>
+                    <div class="bg-slate-800 p-2 rounded">
+                        <p class="text-slate-400">Total Downtime</p>
+                        <p class="text-orange-400 font-mono" id="modalTotalDowntime">0m</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" id="assignBtn" onclick="assignTechnician()">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                    </svg>
+                    Assign Technician
+                </button>
+                <button class="btn btn-secondary" id="escalateBtn" onclick="escalateAlert()">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Technical Escalation
+                </button>
+                <button class="btn btn-success" id="resolveBtn" onclick="resolveAlert()">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Resolve Alert
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== BACKEND CONFIGURATION ====================
+        const API_BASE_URL = 'https://mysiteweb-production.up.railway.app';
+
+        // ==================== SHIFT MANAGEMENT ====================
+        class ShiftManager {
+            static SHIFTS = {
+                morning: { name: 'Morning Shift', startHour: 6, endHour: 14, icon: '🌅', color: '#fbbf24' },
+                afternoon: { name: 'Afternoon Shift', startHour: 14, endHour: 22, icon: '☀️', color: '#f97316' },
+                night: { name: 'Night Shift', startHour: 22, endHour: 6, icon: '🌙', color: '#6366f1' }
+            };
+
+            static getCurrentShift() {
+                const hour = new Date().getHours();
+
+                if (hour >= 6 && hour < 14) return 'morning';
+                if (hour >= 14 && hour < 22) return 'afternoon';
+                return 'night';
+            }
+
+            static getShiftInfo(shiftKey) {
+                return this.SHIFTS[shiftKey] || this.SHIFTS.morning;
+            }
+
+            static updateShiftDisplay() {
+                const currentShift = this.getCurrentShift();
+                const shiftInfo = this.getShiftInfo(currentShift);
+
+                const shiftDisplay = document.getElementById('shiftDisplay');
+                if (shiftDisplay) {
+                    shiftDisplay.innerHTML = `
+                        <span class="shift-icon">${shiftInfo.icon}</span>
+                        <span>${shiftInfo.name}</span>
+                    `;
+                }
+
+                appState.currentShift = currentShift;
+            }
+        }
+
+        // ==================== ADVANCED SOUND SYSTEM ====================
+        class SoundSystem {
+            static SOUNDS = {
+                alert: { freq: 800, duration: 0.3, type: 'sine' },
+                warning: { freq: 600, duration: 0.5, type: 'sine' },
+                success: { freq: 1000, duration: 0.4, type: 'sine' },
+                info: { freq: 400, duration: 0.2, type: 'sine' }
+            };
+
+            static play(soundType = 'alert') {
+                if (!appState.soundEnabled) return;
+
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const sound = this.SOUNDS[soundType] || this.SOUNDS.alert;
+
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    oscillator.type = sound.type;
+                    oscillator.frequency.setValueAtTime(sound.freq * 0.8, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(sound.freq * 1.2, audioContext.currentTime + sound.duration * 0.7);
+
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + sound.duration);
+
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + sound.duration);
+                } catch (e) {
+                    console.log('Sound playback not available');
+                }
+            }
+
+            static playAlertSequence() {
+                if (!appState.soundEnabled) return;
+
+                setTimeout(() => this.play('alert'), 0);
+                setTimeout(() => this.play('alert'), 300);
+                setTimeout(() => this.play('warning'), 600);
+            }
+        }
+
+        // ==================== CHART PERFORMANCE OPTIMIZATION ====================
+        class ChartOptimizer {
+            static debounceTimer = null;
+
+            static debouncedChartUpdate(delay = 500) {
+                clearTimeout(this.debounceTimer);
+                this.debounceTimer = setTimeout(() => {
+                    updateBottleneckChart();
+                }, delay);
+            }
+
+            static lazyLoadChart() {
+                const chartContainer = document.querySelector('.chart-container');
+                if (!chartContainer) return;
+
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting && !appState.chartInstance) {
+                            updateBottleneckChart();
+                            observer.unobserve(entry.target);
+                        }
+                    });
+                }, { threshold: 0.1 });
+
+                observer.observe(chartContainer);
+            }
+        }
+
+
+        // ==================== NOTIFICATION SYSTEM ====================
+        function showNotification(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `notification-toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 4000);
+        }
+
+        // ==================== GLOBAL APPLICATION STATE ====================
+        const appState = {
+            machines: {},
+            logs: [],
+            currentSelectedMachine: null,
+            soundEnabled: false,
+            currentShift: 'morning',
+            theme: 'dark',
+            chartInstance: null,
+            simulationRunning: true,
+            technicians: [
+                { id: 1, name: 'Ahmed Kadi', initials: 'AK', specialty: 'Electrical' },
+                { id: 2, name: 'Youssef Alami', initials: 'YA', specialty: 'Mechanical' },
+                { id: 3, name: 'Fatima Bennani', initials: 'FB', specialty: 'Hydraulics' },
+                { id: 4, name: 'Hassan Boukris', initials: 'HB', specialty: 'Software' },
+                { id: 5, name: 'Zainab Erradi', initials: 'ZE', specialty: 'Sensors' },
+                { id: 6, name: 'Mohamed Tazi', initials: 'MT', specialty: 'Pneumatics' },
+            ],
+            alertTypes: [
+                'Panne',
+                'Electrical',
+                'Mechanical',
+                'Sensor',
+                'Material',
+                'Software',
+                'Break / Pause',
+                'Manque Matériel',
+            ],
+            zoneConfig: {
+                'KA': { name: 'Assembly Line A', count: 15 },
+                'KB': { name: 'Assembly Line B', count: 15 },
+                'KC': { name: 'Assembly Line C', count: 18 },
+                'KD': { name: 'Quality Control', count: 8 },
+                'KX': { name: 'Support Services', count: 5 },
+            },
+            // ✅ 5 ÉTATS WOKWI
+            statusMap: {
+                'operational': { label: 'Operational', color: 'green', icon: '✓' },
+                'downtime': { label: 'Downtime (Panne)', color: 'red', icon: '⚠' },
+                'maintenance': { label: 'Maintenance In Progress', color: 'blue', icon: '🔧' },
+                'break': { label: 'Break / Pause', color: 'yellow', icon: '⏸' },
+                'material': { label: 'Manque Matériel', color: 'orange', icon: '📦' },
+            }
+        };
+
+       // ==================== MACHINE INITIALIZATION ====================
+async function initializeMachines() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/historique`);
+        const realLogs = await response.json();
+
+        for (const [zone, config] of Object.entries(appState.zoneConfig)) {
+            for (let i = 1; i <= config.count; i++) {
+                const machineID = `${zone}${String(i).padStart(2, '0')}`;
+
+                if (!appState.machines[machineID]) {
+                    appState.machines[machineID] = {
+                        id: machineID,
+                        zone: zone,
+                        status: 'operational',
+                        elapsedTime: 0,
+                        assignedTech: null,
+                        alertType: null,
+                        downtimeCount: 0,
+                        statusChangeTime: Date.now(),
+                        createdAt: Date.now(),
+                        isEscalated: false,
+                        totalDowntimeMinutes: 0,
+                    };
+                } else {
+                    appState.machines[machineID].status = 'operational';
+                    appState.machines[machineID].alertType = null;
+                    appState.machines[machineID].isEscalated = false;
+                }
+            }
+        }
+
+        // Garde uniquement le log le PLUS RÉCENT par machine
+        const latestLogByMachine = {};
+        realLogs.forEach(log => {
+            if (!log.machine) return;
+            const id = log.machine.trim().toUpperCase();
+            const ts = new Date(log.created_at || log.startTime || 0).getTime() || 0;
+
+            if (!latestLogByMachine[id] || ts >= latestLogByMachine[id]._ts) {
+                latestLogByMachine[id] = { ...log, _ts: ts };
+            }
+        });
+
+        // ✅ MAPPING COMPLET DES 5 ÉTATS WOKWI DEPUIS LA DB
+        Object.entries(latestLogByMachine).forEach(([id, log]) => {
+            const machine = appState.machines[id];
+            if (!machine) return;
+
+            const currentStatus = log.status ? log.status.trim().toLowerCase() : '';
+            const alertType = (log.alert_type || log.type_erreur || log.piece_observation || '').toString().trim().toLowerCase();
+            const tech = (log.technician && log.technician !== 'Unassigned') ? log.technician : null;
+
+            // 🔧 Helper: infère le statut réel depuis l'alert_type si le DB status est générique
+            const inferStatusFromAlertType = () => {
+                if (alertType.includes('maintenance')) return 'maintenance';
+                if (alertType.includes('break') || alertType.includes('pause') || alertType.includes('stop')) return 'break';
+                if (alertType.includes('material') || alertType.includes('manque') || alertType.includes('wait_material')) return 'material';
+                return 'downtime';
+            };
+
+            if (currentStatus === 'pending' || currentStatus === 'en attente' || currentStatus === 'en panne' || currentStatus === 'downtime') {
+                machine.status = inferStatusFromAlertType();
+                machine.alertType = log.alert_type || log.piece_observation || 'Panne Générale';
+                machine.assignedTech = tech;
+                machine.isEscalated = false;
+            } else if (currentStatus === 'in progress' || currentStatus === 'maintenance') {
+                machine.status = 'maintenance';
+                machine.alertType = log.alert_type || machine.alertType;
+                machine.assignedTech = tech;
+                machine.isEscalated = false;
+            } else if (currentStatus === 'break' || currentStatus === 'pause' || currentStatus === 'stop') {
+                machine.status = 'break';
+                machine.alertType = log.alert_type || 'Break / Pause';
+                machine.assignedTech = tech;
+                machine.isEscalated = false;
+            } else if (currentStatus === 'material' || currentStatus === 'manque materiel' || currentStatus === 'wait_material') {
+                machine.status = 'material';
+                machine.alertType = log.alert_type || 'Manque Matériel';
+                machine.assignedTech = tech;
+                machine.isEscalated = false;
+            } else if (currentStatus === 'escalated') {
+                machine.status = inferStatusFromAlertType();
+                machine.alertType = log.alert_type || machine.alertType;
+                machine.assignedTech = tech;
+                machine.isEscalated = true;
+            }
+            // 'resolved' (ou autre) => reste 'operational' (déjà réinitialisé plus haut)
+        });
+
+        renderAllMachines();
+        updateKPIs();
+        if (typeof ChartOptimizer !== 'undefined') ChartOptimizer.debouncedChartUpdate();
+
+    } catch (error) {
+        console.error("Error fetching data from API:", error);
+    }
+}
+
+setInterval(initializeMachines, 5000);
+        // ==================== TIME MANAGEMENT & SIMULATION ====================
+        function updateAllMachineTimers() {
+            for (const machineID in appState.machines) {
+                const machine = appState.machines[machineID];
+                if (machine.status !== 'operational') {
+                    machine.elapsedTime = Math.floor((Date.now() - machine.statusChangeTime) / 1000);
+                }
+            }
+        }
+
+        function formatSeconds(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+
+            if (hours > 0) {
+                return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            }
+            return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        // ==================== MACHINE CARD RENDERING ====================
+      function renderMachineCard(machineID) {
+            const machine = appState.machines[machineID];
+            if (!machine) return null;
+
+            const statusInfo = appState.statusMap[machine.status];
+            const statusClass = `status-${statusInfo.color}`;
+            const uptime = formatSeconds(machine.elapsedTime);
+
+            const card = document.createElement('div');
+            card.className = `machine-card ${statusClass}`;
+            card.id = `machine-card-${machineID}`;
+
+            let additionalClass = '';
+               if (machine.status === 'downtime') {
+                additionalClass = machine.isEscalated ? 'glow-critical' : 'glow-pulse';
+            }
+
+            if (additionalClass) {
+                card.classList.add(additionalClass);
+            }
+
+            // ✅ LABEL POUR LES 5 ÉTATS
+            let displayStatusLabel = statusInfo.label;
+            if (machine.status === 'downtime') {
+                displayStatusLabel = `Downtime (${machine.alertType || 'Panne'})`;
+            } else if (machine.status === 'maintenance') {
+                displayStatusLabel = `Maintenance (${machine.alertType || 'En cours'})`;
+            } else if (machine.status === 'break') {
+                displayStatusLabel = `Break (${machine.alertType || 'Pause'})`;
+            } else if (machine.status === 'material') {
+                displayStatusLabel = `Material (${machine.alertType || 'Manque'})`;
+            }
+
+            card.innerHTML = `
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="machine-card-id">${machineID}</span>
+                        <span class="status-dot ${statusInfo.color}"></span>
+                    </div>
+                    <p class="machine-card-status">${displayStatusLabel}</p>
+                </div>
+                <p class="machine-card-time">${uptime}</p>
+            `;
+
+            card.onclick = (e) => {
+                e.stopPropagation();
+                openMachineModal(machineID);
+            };
+
+            return card;
+        }
+
+        // Met à jour visuellement UNE SEULE carte machine
+        function updateMachineCardUI(machineID) {
+            const card = document.getElementById(`machine-card-${machineID}`);
+            if (!card) {
+                renderAllMachines();
+                return;
+            }
+            const newCard = renderMachineCard(machineID);
+            if (newCard) {
+                card.replaceWith(newCard);
+            }
+        }
+
+        function renderAllMachines() {
+            const zones = {
+                'KA': document.getElementById('zoneKA'),
+                'KB': document.getElementById('zoneKB'),
+                'KC': document.getElementById('zoneKC'),
+                'KD': document.getElementById('zoneKD'),
+                'KX': document.getElementById('zoneKX')
+            };
+
+            for (const zone in zones) {
+                zones[zone].innerHTML = '';
+                for (const machineID in appState.machines) {
+                    if (machineID.startsWith(zone)) {
+                        const card = renderMachineCard(machineID);
+                        if (card) {
+                            zones[zone].appendChild(card);
+                        }
+                    }
+                }
+            }
+        }
+
+        // ==================== MODAL MANAGEMENT ====================
+        function openMachineModal(machineID) {
+            appState.currentSelectedMachine = machineID;
+            const machine = appState.machines[machineID];
+
+            if (!machine) return;
+
+            const statusInfo = appState.statusMap[machine.status];
+
+            document.getElementById('modalMachineID').textContent = machineID;
+            document.getElementById('modalStatus').textContent = statusInfo.label;
+            document.getElementById('modalStatusDot').className = `status-dot ${statusInfo.color}`;
+            document.getElementById('modalAlertType').textContent = machine.alertType || 'N/A';
+            document.getElementById('modalZone').textContent = machine.zone;
+            document.getElementById('modalTotalDowntime').textContent = `${machine.totalDowntimeMinutes}m`;
+
+            let badgeClass = '';
+            let badgeText = '';
+            if (machine.status === 'operational') {
+                badgeClass = 'status-badge operational';
+                badgeText = 'Active';
+            } else if (machine.status === 'downtime') {
+                badgeClass = machine.isEscalated ? 'status-badge escalated' : 'status-badge downtime';
+                badgeText = machine.isEscalated ? 'ESCALATED - Level 2' : 'Active Downtime';
+            } else if (machine.status === 'maintenance') {
+                badgeClass = 'status-badge maintenance';
+                badgeText = '🔧 Technician On-Site';
+            } else if (machine.status === 'break') {
+                badgeClass = 'status-badge';
+                badgeText = '⏸ Break / Pause';
+            } else if (machine.status === 'material') {
+                badgeClass = 'status-badge';
+                badgeText = '📦 Manque Matériel';
+            }
+
+            const badgeContainer = document.getElementById('modalStatusBadgeContainer');
+            badgeContainer.innerHTML = badgeClass ? `<div class="${badgeClass}">${badgeText}</div>` : '';
+
+            if (machine.assignedTech) {
+                document.getElementById('modalTechInfo').innerHTML = `
+                    <div class="tech-avatar">${machine.assignedTech.initials}</div>
+                    <div>
+                        <p class="modal-value">${machine.assignedTech.name}</p>
+                        <p class="text-xs text-slate-400">${machine.assignedTech.specialty} Specialist</p>
+                    </div>
+                `;
+            } else {
+                document.getElementById('modalTechInfo').innerHTML = `
+                    <div class="tech-avatar">--</div>
+                    <div>
+                        <p class="modal-value">Unassigned</p>
+                        <p class="text-xs text-slate-400">Click Assign Technician</p>
+                    </div>
+                `;
+            }
+
+            updateModalButtons();
+
+            document.getElementById('machineModal').classList.add('active');
+            updateModalTimer();
+            startModalTimerInterval();
+        }
+
+        function closeMachineModal() {
+            document.getElementById('machineModal').classList.remove('active');
+            appState.currentSelectedMachine = null;
+            stopModalTimerInterval();
+        }
+
+        let modalTimerInterval = null;
+        function startModalTimerInterval() {
+            stopModalTimerInterval();
+            updateModalTimer();
+            modalTimerInterval = setInterval(updateModalTimer, 1000);
+        }
+
+        function stopModalTimerInterval() {
+            if (modalTimerInterval) {
+                clearInterval(modalTimerInterval);
+                modalTimerInterval = null;
+            }
+        }
+
+        function updateModalTimer() {
+            if (!appState.currentSelectedMachine) return;
+
+            const machine = appState.machines[appState.currentSelectedMachine];
+            if (!machine) return;
+
+            const elapsed = Math.floor((Date.now() - machine.statusChangeTime) / 1000);
+            const displayTime = formatSeconds(elapsed);
+
+            const timerDisplay = document.getElementById('modalTimer');
+            timerDisplay.textContent = displayTime;
+
+            const statusInfo = appState.statusMap[machine.status];
+            timerDisplay.className = `timer-display ${statusInfo.color}`;
+        }
+
+        // ✅ BOUTONS POUR LES 5 ÉTATS
+        function updateModalButtons() {
+            if (!appState.currentSelectedMachine) return;
+
+            const machine = appState.machines[appState.currentSelectedMachine];
+            if (!machine) return;
+
+            const assignBtn = document.getElementById('assignBtn');
+            const escalateBtn = document.getElementById('escalateBtn');
+            const resolveBtn = document.getElementById('resolveBtn');
+
+            if (machine.status === 'operational') {
+                assignBtn.disabled = true;
+                escalateBtn.disabled = true;
+                resolveBtn.disabled = true;
+            } else if (machine.status === 'maintenance') {
+                assignBtn.disabled = true;
+                escalateBtn.disabled = true;
+                resolveBtn.disabled = false;
+            } else if (machine.status === 'break' || machine.status === 'material') {
+                // Break & Material: resolve only (pas d'escalade, pas d'assign)
+                assignBtn.disabled = true;
+                escalateBtn.disabled = true;
+                resolveBtn.disabled = false;
+            } else {
+                // downtime
+                assignBtn.disabled = machine.assignedTech !== null;
+                escalateBtn.disabled = machine.isEscalated;
+                resolveBtn.disabled = false;
+            }
+        }
+
+        // ==================== 1. ASSIGN TECHNICIAN ====================
+async function assignTechnician() {
+    const machineID = appState.currentSelectedMachine;
+    if (!machineID) return;
+
+    const machine = appState.machines[machineID];
+    if (!machine || machine.assignedTech) return;
+
+    const randomTech = appState.technicians[Math.floor(Math.random() * appState.technicians.length)];
+    machine.assignedTech = randomTech;
+    machine.status = 'maintenance';
+    machine.statusChangeTime = Date.now();
+
+    // Mise à jour visuelle immédiate (carte -> bleu) sans attendre la réponse réseau
+    updateMachineCardUI(machineID);
+    if (appState.currentSelectedMachine === machineID) updateModalButtons();
+
+    try {
+        await sendLogToServer(machineID, 'In Progress', randomTech.name, 0);
+    } catch(e) { 
+        console.error("Error sending to DB:", e); 
+    }
+
+    const pendingLog = appState.logs.find(l => l.machineID === machineID && l.status === 'Pending');
+    if (pendingLog) {
+        pendingLog.status = 'In Progress';
+        pendingLog.technician = randomTech.name;
+    } else {
+        addLog(machineID, machine.alertType, 'In Progress', randomTech.name);
+    }
+
+    document.getElementById('modalTechInfo').innerHTML = `
+        <div class="tech-avatar">${randomTech.initials}</div>
+        <div>
+            <p class="modal-value">${randomTech.name}</p>
+            <p class="text-xs text-slate-400">${randomTech.specialty} Specialist</p>
+        </div>
+    `;
+
+    updateModalButtons();
+    updateMachineCardUI(machineID);
+    updateKPIs();
+    renderLogs();
+
+    if(typeof ChartOptimizer !== 'undefined') ChartOptimizer.debouncedChartUpdate();
+    if(typeof showNotification === 'function') showNotification(`✓ ${randomTech.name} assigned to ${machineID}`, 'success');
+}
+
+/// ==================== 2. RESOLVE ALERT ====================
+async function resolveAlert() { 
+    const machineID = appState.currentSelectedMachine;
+    if (!machineID) return;
+
+    const machine = appState.machines[machineID];
+    if (!machine) return;
+
+    const startTime = machine.statusChangeTime || Date.now();
+    let downtimeMinutes = Math.floor((Date.now() - startTime) / 60000);
+    if (isNaN(downtimeMinutes) || downtimeMinutes < 0) downtimeMinutes = 0;
+
+    machine.totalDowntimeMinutes += downtimeMinutes;
+    const techName = (machine.assignedTech && machine.assignedTech.name) ? machine.assignedTech.name : 'Unassigned';
+
+    // Mise à jour visuelle immédiate (carte -> vert) avant l'appel réseau
+    machine.status = 'operational';
+    machine.alertType = null;
+    machine.assignedTech = null;
+    machine.statusChangeTime = Date.now();
+    machine.isEscalated = false;
+    machine.downtimeCount += 1;
+    updateMachineCardUI(machineID);
+
+    try {
+        await sendLogToServer(machineID, 'Resolved', techName, downtimeMinutes);
+
+        const response = await fetch('https://mysiteweb-production.up.railway.app/api/machines/update-status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                code: machineID,
+                status: 'Operational',
+                type_erreur: null
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            console.log(`✅ [PGAdmin] Synchro réussie. Machine ${machineID} est maintenant opérationnelle.`);
+        } else {
+            console.warn(`⚠️ [PGAdmin] Échec de la synchro pour ${machineID}:`, data.message);
+        }
+
+    } catch(e) { 
+        console.error("❌ Erreur lors de l'envoi à la base de données :", e); 
+    }
+
+    const logEntry = appState.logs.find(l => l.machineID === machineID && (l.status === 'In Progress' || l.status === 'Escalated'));
+    if (logEntry) {
+        logEntry.status = 'Resolved';
+        logEntry.endTime = new Date().toLocaleTimeString();
+        logEntry.duration = downtimeMinutes;
+    }
+
+    closeMachineModal();
+    updateMachineCardUI(machineID);
+    renderLogs();
+
+    if(typeof updateKPIs === 'function') updateKPIs();
+    if(typeof ChartOptimizer !== 'undefined') ChartOptimizer.debouncedChartUpdate();
+
+    if(typeof showAlert === 'function') showAlert(`✓ Alert resolved for ${machineID}. Machine returned to production.`);
+}
+
+// ==================== 3. ESCALATE ALERT ====================
+async function escalateAlert() {
+    const machineID = appState.currentSelectedMachine;
+    if (!machineID) return;
+
+    const machine = appState.machines[machineID];
+    if (!machine) return;
+
+    machine.isEscalated = true;
+    machine.statusChangeTime = Date.now();
+
+    // Mise à jour visuelle immédiate (carte -> glow critique) avant l'appel réseau
+    updateMachineCardUI(machineID);
+
+    const techName = (machine.assignedTech && machine.assignedTech.name) ? machine.assignedTech.name : 'Unassigned';
+
+    try {
+        await sendLogToServer(machineID, 'Escalated', techName, 0);
+    } catch (err) { console.error("Error sending to DB:", err); }
+
+    const currentLog = appState.logs.find(l => l.machineID === machineID && (l.status === 'In Progress' || l.status === 'Pending'));
+    if (currentLog) {
+        currentLog.status = 'Escalated';
+    }
+
+    closeMachineModal();
+    updateMachineCardUI(machineID);
+    if(typeof updateKPIs === 'function') updateKPIs();
+    renderLogs();
+    if(typeof ChartOptimizer !== 'undefined') ChartOptimizer.debouncedChartUpdate();
+
+    if (typeof showNotification === 'function') {
+        showNotification(`⚠️ Escalation triggered for ${machineID}`, 'warning');
+    }
+}
+        // ==================== LOGGING SYSTEM ====================
+        function addLog(machineID, alertType, status, technicianName) {
+    const logID = `LOG-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    const logEntry = {
+        id: logID,
+        machineID: machineID,
+        alertType: alertType || 'Unknown',
+        startTime: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        endTime: '-',
+        duration: 0,
+        technician: technicianName || 'Unassigned',
+        status: status,
+        createdAt: Date.now()
+    };
+
+    appState.logs.push(logEntry);
+
+    sendLogToBackend(
+        logEntry.id, 
+        logEntry.machineID, 
+        logEntry.alertType, 
+        logEntry.startTime, 
+        logEntry.duration, 
+        logEntry.technician, 
+        logEntry.status
+    );
+}
+
+function renderLogs() {
+    const tbody = document.getElementById('logsTableBody');
+    const emptyState = document.getElementById('emptyState');
+    tbody.innerHTML = '';
+
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const filterType = document.getElementById('filterType').value;
+
+    const filteredLogs = appState.logs.filter(log => {
+        const matchSearch = log.machineID.toLowerCase().includes(searchTerm) || 
+                            log.technician.toLowerCase().includes(searchTerm);
+        const matchFilter = !filterType || log.alertType === filterType;
+        return matchSearch && matchFilter;
+    });
+
+    if (filteredLogs.length === 0) {
+        emptyState.style.display = 'block';
+        tbody.style.display = 'none';
+    } else {
+        emptyState.style.display = 'none';
+        tbody.style.display = ''; 
+
+        filteredLogs.slice().reverse().forEach(log => {
+            const row = document.createElement('tr');
+            const statusBadgeClass = log.status === 'Resolved' ? 'badge-resolved' : (log.status === 'In Progress' ? 'badge-in-progress' : 'badge-pending');
+
+            row.innerHTML = `
+                <td><span class="text-cyan-400 font-mono text-xs">${log.id.substring(0, 12)}</span></td>
+                <td class="font-mono font-semibold text-cyan-300">${log.machineID}</td>
+                <td>${log.alertType}</td>
+                <td class="text-xs">${log.startTime}</td>
+                <td class="font-mono">${log.duration}m</td>
+                <td>${log.technician}</td>
+                <td><span class="badge ${statusBadgeClass}">${log.status}</span></td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+}
+// ==================== KPI UPDATES ====================
+async function updateKPIs() {
+    const totalMachines = Object.keys(appState.machines).length;
+    const activeMachines = Object.values(appState.machines).filter(m => m.status === 'operational').length;
+    // ✅ COMPTE TOUTES LES MACHINES NON-OPÉRATIONNELLES (5 états)
+    const downTimeMachines = Object.values(appState.machines).filter(m => m.status !== 'operational').length;
+
+    // Fetch MTTR depuis l'API backend
+    let mttrDisplay = 'N/A';
+    let mttrColor = '#fbbf24'; // jaune
+    let mttrLabelText = 'Aucune panne résolue';
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/stats`);
+        const statsData = await response.json();
+
+        if (statsData.mttrAvailable && statsData.pannesResolues > 0) {
+            mttrDisplay = statsData.mttr; // "53m"
+            mttrColor = '#0ea5e9'; // cyan
+            mttrLabelText = `Moyenne (${statsData.pannesResolues} pannes)`;
+        }
+    } catch (err) {
+        console.warn('⚠️ Failed to fetch MTTR:', err);
+    }
+
+    document.getElementById('kpiActive').textContent = activeMachines;
+
+    // MTTR dynamique
+    const mttrElement = document.getElementById('kpiMTTR');
+    mttrElement.textContent = mttrDisplay;
+    mttrElement.style.color = mttrColor;
+
+    // Label dynamique
+    const mttrLabel = mttrElement.parentElement.querySelector('.kpi-trend');
+    if (mttrLabel) mttrLabel.textContent = mttrLabelText;
+
+    const oeeImpact = Math.round((downTimeMachines / totalMachines) * 25);
+    document.getElementById('kpiOEE').textContent = `${Math.max(0, 100 - oeeImpact)}%`;
+
+    document.getElementById('sidebarActiveAlerts').textContent = downTimeMachines;
+
+    const totalDowntime = appState.logs
+        .filter(l => l.status === 'Resolved')
+        .reduce((sum, l) => sum + l.duration, 0);
+    const hours = Math.floor(totalDowntime / 60);
+    const minutes = totalDowntime % 60;
+    document.getElementById('sidebarTotalDowntime').textContent = `${hours}h ${minutes}m`;
+
+    const resolvedLogs = appState.logs.filter(l => l.status === 'Resolved');
+    const avgResponse = resolvedLogs.length > 0 ? 
+        Math.round(resolvedLogs.reduce((sum, l) => sum + l.duration, 0) / resolvedLogs.length) : 0;
+    document.getElementById('sidebarAvgResponse').textContent = `${avgResponse}m`;
+
+    const zones = {
+        'KA': Object.values(appState.machines).filter(m => m.zone === 'KA' && m.status === 'operational').length,
+        'KB': Object.values(appState.machines).filter(m => m.zone === 'KB' && m.status === 'operational').length,
+        'KC': Object.values(appState.machines).filter(m => m.zone === 'KC' && m.status === 'operational').length,
+        'KD': Object.values(appState.machines).filter(m => m.zone === 'KD' && m.status === 'operational').length,
+        'KX': Object.values(appState.machines).filter(m => m.zone === 'KX' && m.status === 'operational').length,
+    };
+
+    const zoneTotal = {
+        'KA': appState.zoneConfig['KA'].count,
+        'KB': appState.zoneConfig['KB'].count,
+        'KC': appState.zoneConfig['KC'].count,
+        'KD': appState.zoneConfig['KD'].count,
+        'KX': appState.zoneConfig['KX'].count,
+    };
+
+    for (const zone in zones) {
+        document.getElementById(`zone${zone}Status`).textContent = `${zones[zone]}/${zoneTotal[zone]}`;
+    }
+}
+        // ==================== CHART MANAGEMENT ====================
+        function updateBottleneckChart() {
+            const machineDowntimes = {};
+            appState.logs.forEach(log => {
+                if (log.status === 'Resolved') {
+                    machineDowntimes[log.machineID] = (machineDowntimes[log.machineID] || 0) + log.duration;
+                }
+            });
+
+            const sorted = Object.entries(machineDowntimes)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+
+            const labels = sorted.length > 0 ? sorted.map(([id]) => id) : ['No Data'];
+            const data = sorted.length > 0 ? sorted.map(([, duration]) => duration) : [0];
+
+            const ctx = document.getElementById('bottleneckChart');
+            if (!ctx) return;
+
+            const chartCtx = ctx.getContext('2d');
+
+            if (appState.chartInstance) {
+                appState.chartInstance.destroy();
+            }
+
+            appState.chartInstance = new Chart(chartCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Downtime Minutes',
+                        data: data,
+                        backgroundColor: [
+                            'rgba(239, 68, 68, 0.7)',
+                            'rgba(249, 115, 22, 0.7)',
+                            'rgba(245, 158, 11, 0.7)',
+                            'rgba(34, 197, 94, 0.7)',
+                            'rgba(59, 130, 246, 0.7)',
+                        ],
+                        borderColor: [
+                            '#ef4444',
+                            '#f97316',
+                            '#f59e0b',
+                            '#22c55e',
+                            '#3b82f6',
+                        ],
+                        borderWidth: 2,
+                        borderRadius: 6,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: '#cbd5e1',
+                                font: {
+                                    size: 11,
+                                    weight: 'bold'
+                                },
+                                padding: 15,
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                font: {
+                                    size: 11,
+                                    weight: '500'
+                                }
+                            }
+                        },
+                        y: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                font: {
+                                    size: 12,
+                                    weight: '600'
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ==================== UTILITY FUNCTIONS ====================
+        function showAlert(message) {
+            const banner = document.getElementById('alertBanner');
+            document.getElementById('alertText').textContent = message;
+            banner.style.display = 'flex';
+            setTimeout(() => {
+                banner.style.display = 'none';
+            }, 6000);
+        }
+
+        function closeAlert() {
+            document.getElementById('alertBanner').style.display = 'none';
+        }
+
+        function playSound(soundType = 'alert') {
+            SoundSystem.play(soundType);
+        }
+
+        function exportToCSV() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filterType = document.getElementById('filterType').value;
+
+            const filteredLogs = appState.logs.filter(log => {
+                const matchSearch = log.machineID.toLowerCase().includes(searchTerm) || 
+                                  log.technician.toLowerCase().includes(searchTerm);
+                const matchFilter = !filterType || log.alertType === filterType;
+                return matchSearch && matchFilter;
+            });
+
+            if (filteredLogs.length === 0) {
+                showAlert('No logs to export. Please adjust filters.');
+                return;
+            }
+
+            let csv = 'Log ID,Machine ID,Alert Type,Start Time,End Time,Duration (min),Technician,Status';
+
+            filteredLogs.forEach(log => {
+                const escapedMachine = `"${log.machineID}"`;
+                const escapedAlert = `"${log.alertType}"`;
+                const escapedTech = `"${log.technician}"`;
+                csv += `${log.id},${escapedMachine},${escapedAlert},${log.startTime},${log.endTime},${log.duration},${escapedTech},${log.status}
+`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            const timestamp = new Date().toISOString().split('T')[0];
+            link.setAttribute('href', url);
+            link.setAttribute('download', `andon_downtime_logs_${timestamp}.csv`);
+            link.style.visibility = 'hidden';
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showNotification(`✓ Exported ${filteredLogs.length} log entries to CSV.`, 'success');
+        }
+
+        function clearLocalData() {
+            localStorage.clear();
+            console.log('🗑️ LocalStorage cleared');
+        }
+
+        // ==================== SIMULATION ENGINE ====================
+       async function simulateFactoryActivity() {
+            if (!appState.simulationRunning) return;
+
+            updateAllMachineTimers();
+
+            if (Math.random() > 0.95) {
+                const machineKeys = Object.keys(appState.machines);
+                const randomMachine = machineKeys[Math.floor(Math.random() * machineKeys.length)];
+                const machine = appState.machines[randomMachine];
+
+                if (machine && machine.status === 'operational') {
+                    // ✅ SIMULATION DES 5 ÉTATS WOKWI
+                    const etatsSimulation = ['downtime', 'maintenance', 'break', 'material'];
+                    const nouvelEtat = etatsSimulation[Math.floor(Math.random() * etatsSimulation.length)];
+                    machine.status = nouvelEtat;
+
+                    const alertTypesMap = {
+                        'downtime': ['Panne', 'Electrical', 'Mechanical', 'Sensor'],
+                        'maintenance': ['Maintenance'],
+                        'break': ['Break / Pause'],
+                        'material': ['Manque Matériel']
+                    };
+                    const types = alertTypesMap[nouvelEtat] || ['Panne'];
+                    machine.alertType = types[Math.floor(Math.random() * types.length)];
+
+                    machine.assignedTech = null;
+                    machine.statusChangeTime = Date.now();
+                    machine.isEscalated = false;
+
+                    addLog(randomMachine, machine.alertType, 'Pending', 'Unassigned');
+                    SoundSystem.playAlertSequence();
+                    showAlert(`⚠️ ALERT: Machine ${randomMachine} has entered ${nouvelEtat} (${machine.alertType}). Technician assignment required.`);
+
+                    updateMachineCardUI(randomMachine);
+                    updateKPIs();
+                    ChartOptimizer.debouncedChartUpdate();
+                    renderLogs();
+
+                  try {
+                        const selectOperateur = document.getElementById('operateurSelect');
+                        const nomOperateur = selectOperateur ? selectOperateur.value : 'Unassigned';
+
+                        await fetch('https://mysiteweb-production.up.railway.app/api/logs', { 
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ 
+                                machine: randomMachine,
+                                alertType: machine.alertType,
+                                startTime: new Date().toLocaleTimeString('fr-FR'),
+                                duration: 0,
+                                technician: nomOperateur,
+                                status: 'Pending'
+                            })
+                        });
+                        console.log(`✅ [PostgreSQL] Nouvelle panne enregistrée avec succès pour la machine ${randomMachine} !`);
+                    } catch(err) {
+                        console.log("❌ [Erreur] Impossible d'envoyer la panne au serveur.");
+                    }
+                }
+            }
+
+            if (appState.currentSelectedMachine) {
+                updateModalTimer();
+                updateModalButtons();
+            }
+        }
+        // ==================== EVENT LISTENERS ====================
+        document.getElementById('soundToggle').addEventListener('click', function() {
+            appState.soundEnabled = !appState.soundEnabled;
+            document.getElementById('soundToggleSwitch').classList.toggle('active');
+
+            const toggle = document.getElementById('soundToggle');
+            if (appState.soundEnabled) {
+                toggle.style.borderColor = '#10b981';
+                toggle.style.background = 'rgba(16, 185, 129, 0.15)';
+                showNotification('🔊 Sound alerts enabled', 'success');
+            } else {
+                toggle.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+                toggle.style.background = 'rgba(16, 185, 129, 0.1)';
+                showNotification('🔇 Sound alerts disabled', 'success');
+            }
+        });
+
+        document.getElementById('searchInput').addEventListener('input', renderLogs);
+        document.getElementById('filterType').addEventListener('change', renderLogs);
+
+        document.getElementById('machineModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeMachineModal();
+            }
+        });
+        // ==================== LIVE TIME UPDATE ====================
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = 
+                now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }, 1000);
+
+        // ==================== FACTORY SIMULATION LOOP ====================
+        setInterval(simulateFactoryActivity, 3000);
+
+        // ==================== APPLICATION INITIALIZATION ====================
+        async function initializeApplication() {
+            console.log('🚀 Initializing NextGen Andon & Maintenance Dashboard...');
+
+            initializeMachines();
+            console.log(`✓ Initialized ${Object.keys(appState.machines).length} machines across 5 zones`);
+
+            try {
+                const response = await fetch('https://mysiteweb-production.up.railway.app/api/historique');
+                const data = await response.json();
+
+                if (Array.isArray(data) && data.length > 0) {
+                    appState.logs = data.map(log => ({
+                        id: log.log_id || `LOG-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
+                        machineID: log.machine,
+                        alertType: log.alert_type || 'Unknown',
+                        startTime: log.start_time,
+                        endTime: log.status === 'Resolved' ? new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-',
+                        duration: parseInt(log.duration) || 0,
+                        technician: log.technician || 'Unassigned',
+                        status: log.status,
+                        createdAt: new Date(log.created_at).getTime()
+                    }));
+                    console.log(`✓ Loaded ${appState.logs.length} logs from Railway`);
+                } else {
+                    console.log('⚠️ No logs found in Railway');
+                    appState.logs = [];
+                }
+            } catch (err) {
+                console.warn('⚠️ Failed to fetch logs from Railway:', err);
+                appState.logs = [];
+            }
+
+            renderAllMachines();
+            renderLogs();
+            updateKPIs();
+            ChartOptimizer.lazyLoadChart();
+            ShiftManager.updateShiftDisplay();
+            setInterval(() => ShiftManager.updateShiftDisplay(), 60000);
+
+            if (appState.soundEnabled) {
+                document.getElementById('soundToggleSwitch').classList.add('active');
+            }
+
+            fetchUniqueMachinesEnPanne();
+
+            console.log('✓ Dashboard rendered successfully');
+            console.log('🏭 SEWS Automotive Wiring Harness Factory - Live Monitor Active');
+            console.log('✓ All data from Railway - No LocalStorage');
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApplication);
+        } else {
+            initializeApplication();
+        }
+
+        async function sendLogToBackend(logId, machine, alertType, startTime, duration, technician, status) {
+            const logData = {
+                logId: logId,
+                machine: machine,
+                alertType: alertType,
+                startTime: startTime,
+                duration: duration,
+                technician: technician,
+                status: status
+            };
+
+            try {
+                const response = await fetch('https://mysiteweb-production.up.railway.app/api/logs', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(logData)
+                });
+
+                const data = await response.json();
+                console.log('✅ Success:', data);
+
+            } catch (error) {
+                console.error('❌ Error:', error);
+            }
+        }
+
+        async function fetchUniqueMachinesEnPanne() {
+            try {
+                const reponse = await fetch('https://mysiteweb-production.up.railway.app/api/historique');
+
+                if (!reponse.ok) {
+                    throw new Error(`HTTP ${reponse.status}`);
+                }
+
+                const data = await reponse.json();
+
+                const pendingSet = new Set();
+                data.forEach(log => {
+                    const status = (log.status || '').toString().trim().toLowerCase();
+                    if (status === 'pending' || status === 'escalated' || status === 'en attente' || status === 'en panne') {
+                        if (log.machine) pendingSet.add(log.machine.trim().toUpperCase());
+                    }
+                });
+
+                const count = pendingSet.size;
+                const kpiEl = document.getElementById('kpiMachinesEnPanne');
+                if (kpiEl) kpiEl.textContent = count;
+
+                return data;
+
+            } catch (erreur) {
+                console.warn("⚠️ [GMAO] fetchUniqueMachinesEnPanne :", erreur.message);
+                return [];
+            }
+        }
+
+        setInterval(fetchUniqueMachinesEnPanne, 30000);
+
+        async function sendLogToServer(machineID, status, technician, duration = 0) {
+            try {
+                let currentAlertType = 'N/A';
+                if (typeof appState !== 'undefined' && appState.machines && appState.machines[machineID]) {
+                    currentAlertType = appState.machines[machineID].alertType || 'N/A';
+                }
+
+                const selectOperateur = document.getElementById('operateurSelect');
+                const realTechnician = selectOperateur && selectOperateur.value ? selectOperateur.value : (technician || 'Unassigned');
+
+                const payload = {
+                    machine: machineID,
+                    status: status, 
+                    technician: realTechnician,
+                    startTime: new Date().toLocaleTimeString('fr-FR'), 
+                    duration: duration,
+                    alert_type: currentAlertType
+                };
+
+                const response = await fetch('https://mysiteweb-production.up.railway.app/api/logs', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    console.log(`✅ [SUCCESS] État de la machine ${machineID} synchronisé avec succès !`);
+                } else {
+                    const errorDetails = await response.text();
+                    console.error(`❌ [ERROR] Le serveur a refusé la requête. Détails :`, errorDetails);
+                }
+            } catch (error) {
+                console.error("❌ [API ERROR]: Impossible de joindre le serveur.", error);
+            }
+        }
+   </script>
+   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+<script>
+    const socket = io("https://mysiteweb-production.up.railway.app", {
+        transports: ['polling', 'websocket']
+    });
+
+    socket.on("connect", () => {
+        console.log("⚡ [GMAO] Connecté au serveur Real-time via Socket.io!");
+    });
+
+    socket.on("connect_error", (error) => {
+        console.error("❌ [GMAO] Erreur Socket.io:", error);
+    });
+
+    socket.on("updateMachines", (payload) => {
+        console.log("=== [GMAO] Données temps réel reçues ===", payload);
+
+        const machinesEnPanne = Array.isArray(payload) ? payload : (payload ? [payload] : []);
+        const changedMachineIDs = new Set();
+
+        for (const id in appState.machines) {
+            if (appState.machines.hasOwnProperty(id)) {
+                const m = appState.machines[id];
+                if (m.status !== 'operational' || m.isEscalated) changedMachineIDs.add(id);
+                m.status = 'operational';
+                m.alertType = null;
+                m.isEscalated = false;
+                m.assignedTech = null;
+            }
+        }
+
+        const panneSet = new Set();
+        machinesEnPanne.forEach(m => {
+            const code = (m.code || m.machine || m.id || '').toString().trim().toUpperCase();
+            if (!code || !appState.machines[code]) return;
+            panneSet.add(code);
+            changedMachineIDs.add(code);
+
+            // ✅ GESTION DES 5 ÉTATS WOKWI VIA SOCKET.IO
+            const rawStatus = (m.status || m.state || 'downtime').toString().toLowerCase();
+            const alertType = (m.type_erreur || m.alert_type || m.piece_observation || m.type || '').toString().trim().toLowerCase();
+            const validStatuses = ['operational', 'downtime', 'maintenance', 'break', 'material'];
+
+            let wokwiStatus = rawStatus;
+
+            // 🔧 Si le status est générique/pending, inférer depuis l'alert_type
+            if (!validStatuses.includes(wokwiStatus) || wokwiStatus === 'pending' || wokwiStatus === 'en attente' || wokwiStatus === 'en panne') {
+                if (alertType.includes('maintenance')) wokwiStatus = 'maintenance';
+                else if (alertType.includes('break') || alertType.includes('pause') || alertType.includes('stop')) wokwiStatus = 'break';
+                else if (alertType.includes('material') || alertType.includes('manque') || alertType.includes('wait_material')) wokwiStatus = 'material';
+                else if (!validStatuses.includes(wokwiStatus)) wokwiStatus = 'downtime';
+            }
+
+            if (validStatuses.includes(wokwiStatus)) {
+                appState.machines[code].status = wokwiStatus;
+            } else {
+                // Fallback: synonymes
+                if (wokwiStatus === 'pause' || wokwiStatus === 'stop') appState.machines[code].status = 'break';
+                else if (wokwiStatus === 'manque' || wokwiStatus === 'wait_material') appState.machines[code].status = 'material';
+                else appState.machines[code].status = 'downtime';
+            }
+
+            appState.machines[code].alertType = m.type_erreur || m.alert_type || m.piece_observation || m.type || 'Panne';
+
+            if (rawStatus === 'escalated' || m.criticite === 'Haute' || m.isEscalated) {
+                appState.machines[code].isEscalated = true;
+            }
+            appState.machines[code].statusChangeTime = Date.now();
+        });
+
+        const kpiEl = document.getElementById('kpiMachinesEnPanne');
+        if (kpiEl) kpiEl.textContent = panneSet.size;
+
+        const sidebarAlerts = document.getElementById('sidebarActiveAlerts');
+        if (sidebarAlerts) sidebarAlerts.textContent = panneSet.size;
+
+        // Ne met à jour visuellement QUE les cartes dont le statut a réellement changé
+        changedMachineIDs.forEach(id => updateMachineCardUI(id));
+        updateKPIs();
+        if (typeof ChartOptimizer !== 'undefined') ChartOptimizer.debouncedChartUpdate();
+    });
+
+    socket.on("panne_mise_a_jour", (data) => {
+        console.log("📢 [GMAO] Mise à jour panne reçue:", data);
+        initializeMachines();
+    });
+
+    // ============================================================================
+    // ✅ NOUVEAU: ÉVÉNEMENTS MQTT temps réel (Bouton Résolu + Alertes)
+    // ============================================================================
+
+    // 1. Mise à jour statut machine (depuis mqtt-bridge v4)
+    socket.on('machine_status_updated', (data) => {
+        console.log('🔄 [Socket] machine_status_updated:', data);
+
+        if (!data || !data.code || !appState.machines[data.code]) return;
+
+        const machine = appState.machines[data.code];
+        const newStatus = (data.status || 'operational').toLowerCase();
+
+        // حدّث الحالة فـ appState
+        machine.status = newStatus;
+        machine.alertType = data.type || null;
+        machine.statusChangeTime = Date.now();
+
+        // إلا رجعات operational → نضّف التايرات
+        if (newStatus === 'operational') {
+            machine.isEscalated = false;
+            machine.assignedTech = null;
+            machine.elapsedTime = 0;
+        }
+
+        // حدّث الكارطة فـ الـ Dashboard
+        updateMachineCardUI(data.code);
+        updateKPIs();
+
+        // نوتيفيكاسيون
+        if (newStatus !== 'operational') {
+            showAlert(`⚠️ ALERT: Machine ${data.code} - ${data.type || 'Panne'}`);
+        }
+    });
+
+    // 2. Résolution alerte (Bouton VERT / Résolu)
+    socket.on('alert_resolved', (data) => {
+        console.log('✅ [Socket] alert_resolved:', data);
+
+        if (!data || !data.code || !appState.machines[data.code]) return;
+
+        const machine = appState.machines[data.code];
+
+        // رجّع الماكينة لـ Operational
+        machine.status = 'operational';
+        machine.alertType = null;
+        machine.isEscalated = false;
+        machine.assignedTech = null;
+        machine.statusChangeTime = Date.now();
+        machine.elapsedTime = 0;
+
+        // حدّث الكارطة فالحال
+        updateMachineCardUI(data.code);
+        updateKPIs();
+
+        // Toast نوتيفيكاسيون
+        showNotification(`✅ Machine ${data.code} est opérationnelle`, 'success');
+
+        // Alert banner
+        showAlert(`✓ Alert resolved for ${data.code}. Machine returned to production.`);
+    });
+
+    function modifierStatutDepuisInterface(codeMachine, nouveauStatut, typeErreur = null) {
+        fetch('https://mysiteweb-production.up.railway.app/api/machines/update-status', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                code: codeMachine,
+                status: nouveauStatut,
+                type_erreur: typeErreur
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log(`✅ Machine ${codeMachine} synchronisée dans PGAdmin.`);
+                if (typeof closeMachineModal === "function") {
+                    closeMachineModal(); 
+                }
+            } else {
+                console.warn(`⚠️ Échec sync PGAdmin pour ${codeMachine}:`, data.message);
+            }
+        })
+        .catch(erreur => console.error("❌ Erreur sync PGAdmin:", erreur));
+    }
+</script>
+</body>
