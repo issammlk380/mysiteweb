@@ -569,12 +569,17 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => console.log(`[SOCKET] Client deconnecte - ID: ${socket.id}`));
 });
 
-// Initialize MQTT Bridge
-mqttBridge.init(pool, io);
-app.set('mqttBridge', mqttBridge);
-
 async function startServer() {
     await runMigrations();
+
+    // ✅ INITIALISER MQTT BRIDGE APRÈS DB READY
+    try {
+        mqttBridge.init(pool, io);
+        app.set('mqttBridge', mqttBridge);
+        console.log('✅ MQTT Bridge initialisé avec succès');
+    } catch (err) {
+        console.error('❌ Erreur initialisation MQTT Bridge:', err.message);
+    }
     const tryPort = CONFIG.server.port;
     server.on('error', (err) => {
         if (err.code === 'EADDRINUSE') { console.error(`[PORT] Le port ${tryPort} est deja utilise !`); process.exit(1); }

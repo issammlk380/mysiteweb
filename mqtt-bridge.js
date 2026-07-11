@@ -1,38 +1,40 @@
 /*
- * mqtt-bridge.js - Pont MQTT → PostgreSQL + Socket.IO
+ * mqtt-bridge-v2.js - Pont MQTT → PostgreSQL + Socket.IO (Robuste)
  * Andon KA01 - Intégration Wokwi ESP32 (5 États)
  * 
- * 5 États Wokwi supportés:
- *   🔴 DOWNTIME     → downtime     (Panne)
- *   🔵 MAINTENANCE  → maintenance  (Maintenance)
- *   🟡 BREAK        → break        (Break / Pause)
- *   🟠 WAIT_MATERIAL→ material     (Manque Matériel)
- *   🟢 OPERATIONAL  → operational  (Résolu)
- * 
- * FIX: Topic MQTT aligné avec Wokwi: factory/ligne1/andon/alert
- * FIX: Payload parsing corrigé (machine_id, status, type)
- * FIX: Socket.io emit vers dashboard en temps réel
+ * FIXES v2:
+ *   - QoS 1 pour fiabilité
+ *   - Clean Session = false (persist subscriptions)
+ *   - Last Will Testament (LWT)
+ *   - Message queue pour offline
+ *   - Reconnection optimisée
+ *   - Heartbeat monitoring
  */
 
 const mqtt = require('mqtt');
 
 // ═══════════════════════════════════════════════════════════════════
-// CONFIGURATION MQTT (même broker que Wokwi ESP32)
+// CONFIGURATION MQTT
 // ═══════════════════════════════════════════════════════════════════
 const MQTT_HOST = process.env.MQTT_HOST || 'broker.hivemq.com';
 const MQTT_PORT = process.env.MQTT_PORT || 1883;
 const MQTT_USER = process.env.MQTT_USER || '';
 const MQTT_PASS = process.env.MQTT_PASS || '';
 
-// ✅ TOPICS MQTT - ALIGNÉS AVEC WOKWI
-const TOPIC_ALERT   = 'factory/ligne1/andon/alert';      // ← FIX: même topic que Wokwi
-const TOPIC_RESOLVE = 'factory/ligne1/andon/resolve';    // ← FIX: topic resolve
-const TOPIC_AUTH    = 'factory/ligne1/andon/auth';       // ← FIX: topic auth
+// Topics
+const TOPIC_ALERT   = 'factory/ligne1/andon/alert';
+const TOPIC_RESOLVE = 'factory/ligne1/andon/resolve';
+const TOPIC_AUTH    = 'factory/ligne1/andon/auth';
 const TOPIC_HEART   = 'andon/zone/ka/machine/ka01/heartbeat';
+const TOPIC_STATUS  = 'factory/ligne1/andon/status';  // LWT topic
 
 let mqttClient = null;
 let poolRef = null;
 let ioRef = null;
+let isConnected = false;
+let messageQueue = [];
+let reconnectCount = 0;
+const MAX_RECONNECT = 10;
 
 // ═══════════════════════════════════════════════════════════════════
 // MAPPING Wokwi → Dashboard
@@ -41,29 +43,27 @@ function mapWokwiToDashboard(payload) {
     const status = (payload.status || '').toString().toUpperCase().trim();
     const type   = (payload.type || '').toString().trim();
 
-    // Mapping status Wokwi → status dashboard (5 valeurs)
     const statusMap = {
-        'DOWNTIME':      'downtime',
-        'MAINTENANCE':   'maintenance',
-        'BREAK':         'break',
+        'DOWNTIME': 'downtime',
+        'MAINTENANCE': 'maintenance',
+        'BREAK': 'break',
         'WAIT_MATERIAL': 'material',
-        'OPERATIONAL':   'operational',
-        'PENDING':       'downtime',
-        'EN ATTENTE':    'downtime',
-        'EN PANNE':      'downtime'
+        'OPERATIONAL': 'operational',
+        'PENDING': 'downtime',
+        'EN ATTENTE': 'downtime',
+        'EN PANNE': 'downtime'
     };
 
-    // Mapping type Wokwi → alert_type (affichage)
     const typeMap = {
-        'DOWNTIME':      'Panne',
-        'MAINTENANCE':   'Maintenance',
-        'BREAK':         'Break / Pause',
+        'DOWNTIME': 'Panne',
+        'MAINTENANCE': 'Maintenance',
+        'BREAK': 'Break / Pause',
         'WAIT_MATERIAL': 'Manque Matériel',
-        'OPERATIONAL':   'Résolu',
-        'PANNE':         'Panne',
+        'OPERATIONAL': 'Résolu',
+        'PANNE': 'Panne',
         'BREAK / PAUSE': 'Break / Pause',
         'MANQUE MATÉRIEL': 'Manque Matériel',
-        'RÉSOLU':        'Résolu'
+        'RÉSOLU': 'Résolu'
     };
 
     const mappedStatus = statusMap[status] || 'downtime';
@@ -81,10 +81,10 @@ function mapWokwiToDashboard(payload) {
 
 function mapCriticite(status) {
     const map = {
-        'downtime':    'Majeure',
+        'downtime': 'Majeure',
         'maintenance': 'Moderee',
-        'break':       'Faible',
-        'material':    'Moyenne',
+        'break': 'Faible',
+        'material': 'Moyenne',
         'operational': 'Faible'
     };
     return map[status] || 'Moyenne';
@@ -94,14 +94,13 @@ function mapCriticite(status) {
 // FONCTIONS DB
 // ═══════════════════════════════════════════════════════════════════
 
-// ✅ Insérer alerte MQTT dans downtime_logs
 async function insertAlert(payload) {
     try {
         const mapped = mapWokwiToDashboard(payload);
         const now = new Date();
         const timeStr = now.toLocaleTimeString('fr-FR', { hour12: false });
 
-        console.log(`[MQTT→DB] 📨 Traitement alerte: machine=${mapped.machine}, status=${mapped.status}, type=${mapped.alert_type}`);
+        console.log(`[MQTT→DB] 📨 Traitement: machine=${mapped.machine}, status=${mapped.status}, type=${mapped.alert_type}`);
 
         const result = await poolRef.query(
             `INSERT INTO downtime_logs 
@@ -110,27 +109,24 @@ async function insertAlert(payload) {
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
              RETURNING *;`,
             [
-                mapped.machine,           // $1
-                timeStr,                  // $2 start_time
-                0,                        // $3 duration
-                'Non assigne',            // $4 technician
-                mapped.status === 'operational' ? 'Resolved' : 'Pending',  // $5 status DB
-                mapCriticite(mapped.status), // $6 criticite
-                mapped.alert_type,         // $7 alert_type
-                null,                      // $8 heure_arret_technicien
-                `Alerte Wokwi: ${mapped.status} (${mapped.alert_type}) par ${mapped.operator}`,  // $9 piece_observation
-                mapped.zone,               // $10 atelier
-                now,                       // $11 date_panne
-                now                        // $12 created_at
+                mapped.machine,
+                timeStr,
+                0,
+                'Non assigne',
+                mapped.status === 'operational' ? 'Resolved' : 'Pending',
+                mapCriticite(mapped.status),
+                mapped.alert_type,
+                null,
+                `Alerte Wokwi: ${mapped.status} (${mapped.alert_type}) par ${mapped.operator}`,
+                mapped.zone,
+                now,
+                now
             ]
         );
 
         const newLog = result.rows[0];
-        console.log(`[MQTT→DB] ✅ Alerte insérée - ID: ${newLog.id} | Machine: ${mapped.machine} | Status: ${mapped.status} | Type: ${mapped.alert_type}`);
-
-        // ✅ ÉMETTRE VERS DASHBOARD EN TEMPS RÉEL
+        console.log(`[MQTT→DB] ✅ Inséré - ID: ${newLog.id} | ${mapped.machine} | ${mapped.status} | ${mapped.alert_type}`);
         emitToDashboard(mapped, newLog.id);
-
         return newLog;
     } catch (err) {
         console.error('[MQTT→DB] ❌ Erreur insertion:', err.message);
@@ -138,16 +134,14 @@ async function insertAlert(payload) {
     }
 }
 
-// ✅ Résoudre alerte (bouton RESOLVE ou RFID)
 async function resolveAlert(payload) {
     try {
         const mapped = mapWokwiToDashboard(payload);
         const resolvedBy = payload.resolvedBy || payload.operator || 'Technicien_RFID';
         const now = new Date();
 
-        console.log(`[MQTT→DB] 🟢 Résolution: machine=${mapped.machine}, par=${resolvedBy}`);
+        console.log(`[MQTT→DB] 🟢 Résolution: ${mapped.machine} par ${resolvedBy}`);
 
-        // Mettre à jour le dernier log non résolu
         const result = await poolRef.query(
             `UPDATE downtime_logs 
              SET status = 'Resolved', 
@@ -164,16 +158,13 @@ async function resolveAlert(payload) {
 
         if (result.rows.length > 0) {
             const updatedLog = result.rows[0];
-            console.log(`[MQTT→DB] ✅ Alerte résolue - ID: ${updatedLog.id} | Par: ${resolvedBy}`);
-
-            // ✅ ÉMETTRE STATUS OPERATIONAL VERS DASHBOARD
+            console.log(`[MQTT→DB] ✅ Résolu - ID: ${updatedLog.id}`);
             mapped.status = 'operational';
             mapped.alert_type = 'Résolu';
             emitToDashboard(mapped, updatedLog.id, 'wokwi_resolve');
-
             return updatedLog;
         } else {
-            console.log(`[MQTT→DB] ⚠️ Aucune alerte ouverte à résoudre pour ${mapped.machine}`);
+            console.log(`[MQTT→DB] ⚠️ Aucune alerte ouverte pour ${mapped.machine}`);
         }
     } catch (err) {
         console.error('[MQTT→DB] ❌ Erreur résolution:', err.message);
@@ -181,7 +172,6 @@ async function resolveAlert(payload) {
     }
 }
 
-// ✅ Émettre vers Dashboard via Socket.io
 function emitToDashboard(mapped, logId, source = 'wokwi_mqtt') {
     if (!ioRef) {
         console.warn('[MQTT→Socket] ⚠️ ioRef non initialisé');
@@ -190,7 +180,7 @@ function emitToDashboard(mapped, logId, source = 'wokwi_mqtt') {
 
     const payload = {
         code: mapped.machine,
-        status: mapped.status,           // ← 5 valeurs: downtime/maintenance/break/material/operational
+        status: mapped.status,
         type_erreur: mapped.alert_type,
         criticite: mapCriticite(mapped.status),
         logId: logId,
@@ -199,10 +189,7 @@ function emitToDashboard(mapped, logId, source = 'wokwi_mqtt') {
         timestamp: Date.now()
     };
 
-    // Émettre vers TOUS les clients connectés
     ioRef.emit('updateMachines', [payload]);
-
-    // Émettre aussi l'event legacy pour compatibilité
     ioRef.emit('machineStatusChanged', {
         machine: mapped.machine,
         status: mapped.status === 'operational' ? 'Resolved' : 'Pending',
@@ -212,45 +199,27 @@ function emitToDashboard(mapped, logId, source = 'wokwi_mqtt') {
         source: source
     });
 
-    console.log(`[MQTT→Socket] 📡 Emit updateMachines:`, JSON.stringify(payload));
+    console.log(`[MQTT→Socket] 📡 Emit: ${JSON.stringify(payload)}`);
 }
 
-// Enregistrer opérateur RFID
 async function authOperator(payload) {
     try {
         const uid = payload.uid || 'UNKNOWN';
         const name = payload.name || 'Opérateur_' + uid;
-
         await poolRef.query(
             `INSERT INTO operators (uid, name, role) 
              VALUES ($1, $2, 'operator')
              ON CONFLICT (uid) DO UPDATE SET name = $2, role = 'operator';`,
             [uid, name]
         );
-
-        console.log(`[MQTT→DB] Opérateur enregistré: ${name} (UID: ${uid})`);
+        console.log(`[MQTT→DB] Opérateur: ${name} (UID: ${uid})`);
     } catch (err) {
-        console.error('[MQTT→DB] Erreur auth opérateur:', err.message);
+        console.error('[MQTT→DB] Erreur auth:', err.message);
     }
 }
 
-// Helper: dériver atelier depuis code machine
-function deriveAtelier(machine) {
-    if (!machine) return 'Atelier General';
-    const prefix = String(machine).substring(0, 2).toUpperCase();
-    const map = { 
-        'KA': 'Atelier A', 
-        'KB': 'Atelier B', 
-        'KC': 'Atelier C', 
-        'KD': 'Atelier D', 
-        'KX': 'Atelier X',
-        'M0': 'Atelier Wokwi'
-    };
-    return map[prefix] || 'Atelier Wokwi';
-}
-
 // ═══════════════════════════════════════════════════════════════════
-// INITIALISATION MQTT
+// INITIALISATION MQTT (ROBUSTE)
 // ═══════════════════════════════════════════════════════════════════
 function init(pool, io) {
     poolRef = pool;
@@ -260,77 +229,122 @@ function init(pool, io) {
         ? `mqtts://${MQTT_USER}:${MQTT_PASS}@${MQTT_HOST}:${MQTT_PORT}` 
         : `mqtt://${MQTT_HOST}:${MQTT_PORT}`;
 
+    const clientId = 'smi-andon-bridge-' + Math.random().toString(16).substr(2, 8);
+
     mqttClient = mqtt.connect(mqttUrl, {
-        clientId: 'smi-enterprise-mqtt-bridge-' + Math.random().toString(16).substr(2, 8),
-        reconnectPeriod: 5000,
-        connectTimeout: 30000,
-        clean: true
+        clientId: clientId,
+        reconnectPeriod: 3000,      // ← 3s (moins que 5s)
+        connectTimeout: 10000,       // ← 10s (moins que 30s)
+        clean: false,                // ← PERSIST subscriptions!
+        keepalive: 30,              // ← Ping every 30s
+        resubscribe: true,          // ← Auto-resubscribe on reconnect
+        will: {                     // ← Last Will Testament
+            topic: TOPIC_STATUS,
+            payload: JSON.stringify({
+                machine_id: 'KA01',
+                status: 'OFFLINE',
+                timestamp: Date.now()
+            }),
+            qos: 1,
+            retain: true
+        }
     });
 
-    mqttClient.on('connect', () => {
+    // ═══ EVENT: CONNECT ═══
+    mqttClient.on('connect', (connack) => {
+        isConnected = true;
+        reconnectCount = 0;
+
         console.log('');
         console.log('========================================');
-        console.log('  MQTT BRIDGE CONNECTÉ (5 ÉTATS)');
+        console.log('  ✅ MQTT BRIDGE CONNECTÉ');
         console.log('  Broker:', MQTT_HOST + ':' + MQTT_PORT);
+        console.log('  Client ID:', clientId);
+        console.log('  Session present:', connack.sessionPresent);
         console.log('========================================');
 
+        // Subscribe avec QoS 1
         mqttClient.subscribe([
-            TOPIC_ALERT,
-            TOPIC_RESOLVE,
-            TOPIC_AUTH,
-            TOPIC_HEART
+            { topic: TOPIC_ALERT, qos: 1 },
+            { topic: TOPIC_RESOLVE, qos: 1 },
+            { topic: TOPIC_AUTH, qos: 1 },
+            { topic: TOPIC_HEART, qos: 0 }
         ], (err) => {
             if (err) {
-                console.error('[MQTT] ❌ Erreur subscription:', err.message);
+                console.error('[MQTT] ❌ Subscribe error:', err.message);
             } else {
-                console.log('  ✅ Topics abonnés:');
-                console.log('     -', TOPIC_ALERT);
-                console.log('     -', TOPIC_RESOLVE);
-                console.log('     -', TOPIC_AUTH);
-                console.log('     -', TOPIC_HEART);
+                console.log('  ✅ Subscribed:');
+                console.log('     -', TOPIC_ALERT, '(QoS 1)');
+                console.log('     -', TOPIC_RESOLVE, '(QoS 1)');
+                console.log('     -', TOPIC_AUTH, '(QoS 1)');
+                console.log('     -', TOPIC_HEART, '(QoS 0)');
                 console.log('========================================');
                 console.log('');
             }
         });
+
+        // Flush message queue
+        if (messageQueue.length > 0) {
+            console.log(`[MQTT] 📤 Flushing ${messageQueue.length} queued messages`);
+            while (messageQueue.length > 0) {
+                const msg = messageQueue.shift();
+                mqttClient.publish(msg.topic, msg.payload, { qos: 1, retain: true });
+            }
+        }
     });
 
+    // ═══ EVENT: ERROR ═══
     mqttClient.on('error', (err) => {
-        console.error('[MQTT] ❌ Erreur:', err.message);
+        console.error('[MQTT] ❌ Error:', err.message);
+        isConnected = false;
     });
 
+    // ═══ EVENT: RECONNECT ═══
     mqttClient.on('reconnect', () => {
-        console.log('[MQTT] 🔄 Reconnexion...');
+        reconnectCount++;
+        console.log(`[MQTT] 🔄 Reconnecting... (attempt ${reconnectCount}/${MAX_RECONNECT})`);
+        if (reconnectCount >= MAX_RECONNECT) {
+            console.error('[MQTT] ❌ Max reconnections reached!');
+            mqttClient.end(true);
+        }
     });
 
+    // ═══ EVENT: OFFLINE ═══
     mqttClient.on('offline', () => {
-        console.warn('[MQTT] ⚠️ Client hors ligne');
+        console.warn('[MQTT] ⚠️ Client offline');
+        isConnected = false;
     });
 
-    mqttClient.on('message', async (topic, message) => {
+    // ═══ EVENT: CLOSE ═══
+    mqttClient.on('close', () => {
+        console.warn('[MQTT] 🔌 Connection closed');
+        isConnected = false;
+    });
+
+    // ═══ EVENT: MESSAGE ═══
+    mqttClient.on('message', async (topic, message, packet) => {
         try {
             const payload = JSON.parse(message.toString());
-            console.log('[MQTT] 📨 RX [' + topic + ']:', JSON.stringify(payload).substring(0, 300));
+            console.log(`[MQTT] 📨 RX [${topic}] QoS:${packet.qos}:`, JSON.stringify(payload).substring(0, 300));
 
             switch (topic) {
                 case TOPIC_ALERT:
                     if (payload.type === 'SYSTEM') {
-                        console.log('[MQTT] ℹ️ Message système ignoré');
+                        console.log('[MQTT] ℹ️ System message ignored');
                         return;
                     }
-
-                    // 🔧 Vérifier si c'est un RESOLVE (status OPERATIONAL)
                     const status = (payload.status || '').toString().toUpperCase().trim();
                     if (status === 'OPERATIONAL' || status === 'RESOLVED') {
-                        console.log('[MQTT] 🟢 Résolution détectée pour', payload.machine_id || payload.machine);
+                        console.log('[MQTT] 🟢 Resolve:', payload.machine_id || payload.machine);
                         await resolveAlert(payload);
                     } else {
-                        console.log('[MQTT] 🔴 Alerte détectée:', status);
+                        console.log('[MQTT] 🔴 Alert:', status);
                         await insertAlert(payload);
                     }
                     break;
 
                 case TOPIC_RESOLVE:
-                    console.log('[MQTT] 🟢 Topic resolve reçu');
+                    console.log('[MQTT] 🟢 Resolve topic');
                     await resolveAlert(payload);
                     break;
 
@@ -339,14 +353,14 @@ function init(pool, io) {
                     break;
 
                 case TOPIC_HEART:
-                    console.log('[MQTT] 💓 Heartbeat - État:', payload.state, '| RSSI:', payload.rssi);
+                    console.log('[MQTT] 💓 Heartbeat:', payload.state, '| RSSI:', payload.rssi);
                     break;
 
                 default:
-                    console.log('[MQTT] ❓ Topic inconnu:', topic);
+                    console.log('[MQTT] ❓ Unknown topic:', topic);
             }
         } catch (err) {
-            console.error('[MQTT] ❌ Erreur traitement message:', err.message);
+            console.error('[MQTT] ❌ Parse error:', err.message);
         }
     });
 
@@ -357,19 +371,22 @@ function init(pool, io) {
 // FONCTIONS UTILITAIRES
 // ═══════════════════════════════════════════════════════════════════
 
-// Publier un message MQTT (commander Wokwi depuis backend)
 function publish(topic, message) {
-    if (mqttClient && mqttClient.connected) {
-        mqttClient.publish(topic, JSON.stringify(message));
+    if (mqttClient && isConnected) {
+        mqttClient.publish(topic, JSON.stringify(message), { qos: 1, retain: true });
         console.log('[MQTT] 📤 TX [' + topic + ']:', message);
     } else {
-        console.warn('[MQTT] ⚠️ Client non connecté, impossible de publier');
+        console.warn('[MQTT] ⚠️ Offline, queuing message');
+        messageQueue.push({ topic, payload: JSON.stringify(message) });
     }
 }
 
-// Vérifier connexion MQTT
-function isConnected() {
-    return mqttClient ? mqttClient.connected : false;
+function getStatus() {
+    return {
+        connected: isConnected,
+        reconnectCount: reconnectCount,
+        queuedMessages: messageQueue.length
+    };
 }
 
-module.exports = { init, publish, isConnected };
+module.exports = { init, publish, getStatus };
