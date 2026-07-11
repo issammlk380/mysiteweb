@@ -18,12 +18,13 @@ let messageQueue = [];
 
 // Mapping des statuts ESP32 → Dashboard
 const STATUS_MAP = {
-    'DOWNTIME':    { db: 'downtime',    color: 'red',    label: 'Panne' },
-    'MAINTENANCE': { db: 'maintenance', color: 'blue',   label: 'Maintenance' },
-    'BREAK':       { db: 'break',       color: 'yellow', label: 'Break / Pause' },
-    'MATERIAL':    { db: 'material',    color: 'orange', label: 'Material' },
-    'RESOLVED':    { db: 'operational', color: 'green',  label: 'Operational' },
-    'OPERATIONAL': { db: 'operational', color: 'green',  label: 'Operational' }
+    'DOWNTIME':      { db: 'downtime',    color: 'red',    label: 'Panne' },
+    'MAINTENANCE':   { db: 'maintenance', color: 'blue',   label: 'Maintenance' },
+    'BREAK':         { db: 'break',       color: 'yellow', label: 'Break / Pause' },
+    'MATERIAL':      { db: 'material',    color: 'orange', label: 'Material' },
+    'WAIT_MATERIAL': { db: 'material',    color: 'orange', label: 'Manque Matériel' },
+    'RESOLVED':      { db: 'operational', color: 'green',  label: 'Operational' },
+    'OPERATIONAL':   { db: 'operational', color: 'green',  label: 'Operational' }
 };
 
 // ============================================================================
@@ -167,11 +168,11 @@ async function insertDowntimeLog(machine, zone, status, type, operator) {
     const now = new Date();
     const query = `
         INSERT INTO downtime_logs 
-        (machine, zone, status, type, operator, date_panne, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $6, $6)
+        (machine, status, type, operator, date_panne, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $5, $5)
         RETURNING *;
     `;
-    const result = await poolRef.query(query, [machine, zone, status, type, operator, now]);
+    const result = await poolRef.query(query, [machine, status, type, operator, now]);
     console.log(`[MQTT→DB] ✅ Inséré - ID: ${result.rows[0].id} | ${machine} | ${status} | ${type}`);
     return result.rows[0];
 }
