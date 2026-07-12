@@ -1589,6 +1589,70 @@
                 </div>
             </div>
         </div>
+            <!-- Analysis Section -->
+        <div class="mb-12">
+            <h2 class="text-xl font-bold mb-6 flex items-center gap-3">
+                <span class="inline-block w-2 h-8 bg-gradient-to-b from-purple-400 to-pink-600"></span>
+                Analyse des Pannes
+            </h2>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Alert Type Analysis -->
+                <div class="glass-effect p-6 rounded-xl">
+                    <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"></path>
+                        </svg>
+                        <span class="text-sm uppercase font-mono tracking-wider">Par Type d'Alerte</span>
+                    </h3>
+                    <div class="chart-container" style="height: 250px;">
+                        <canvas id="alertTypeChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Atelier Analysis -->
+                <div class="glass-effect p-6 rounded-xl">
+                    <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-pink-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+                        </svg>
+                        <span class="text-sm uppercase font-mono tracking-wider">Par Atelier</span>
+                    </h3>
+                    <div class="chart-container" style="height: 250px;">
+                        <canvas id="atelierChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Technician Analysis -->
+                <div class="glass-effect p-6 rounded-xl">
+                    <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-cyan-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"></path>
+                        </svg>
+                        <span class="text-sm uppercase font-mono tracking-wider">Par Technicien</span>
+                    </h3>
+                    <div class="chart-container" style="height: 250px;">
+                        <canvas id="technicianChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Monthly Trend -->
+                <div class="glass-effect p-6 rounded-xl">
+                    <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-sm uppercase font-mono tracking-wider">Tendance Mensuelle</span>
+                    </h3>
+                    <div class="chart-container" style="height: 250px;">
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </main>
     <!-- Sidebar Analytics -->
     <div class="sidebar" id="sidebar">
@@ -2561,6 +2625,193 @@ async function updateKPIs() {
     }
 }
         // ==================== CHART MANAGEMENT ====================
+        async function fetchAnalysisData() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/analysis`);
+                const data = await response.json();
+                if (data.success) {
+                    updateAlertTypeChart(data.data.byAlertType);
+                    updateAtelierChart(data.data.byAtelier);
+                    updateTechnicianChart(data.data.byTechnician);
+                    updateMonthlyChart(data.data.byMonth);
+                }
+            } catch (err) {
+                console.error('Error fetching analysis:', err);
+            }
+        }
+
+        function updateAlertTypeChart(data) {
+            const ctx = document.getElementById('alertTypeChart');
+            if (!ctx) return;
+
+            const labels = data.map(d => d.alert_type || 'Unknown');
+            const values = data.map(d => parseInt(d.count) || 0);
+
+            if (window.alertTypeChartInstance) window.alertTypeChartInstance.destroy();
+
+            window.alertTypeChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: [
+                            'rgba(239, 68, 68, 0.7)',
+                            'rgba(245, 158, 11, 0.7)',
+                            'rgba(59, 130, 246, 0.7)',
+                            'rgba(16, 185, 129, 0.7)',
+                            'rgba(139, 92, 246, 0.7)',
+                            'rgba(236, 72, 153, 0.7)',
+                            'rgba(6, 182, 212, 0.7)',
+                            'rgba(249, 115, 22, 0.7)',
+                        ],
+                        borderColor: '#0f172a',
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { color: '#94a3b8', font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateAtelierChart(data) {
+            const ctx = document.getElementById('atelierChart');
+            if (!ctx) return;
+
+            const labels = data.map(d => d.atelier || 'Unknown');
+            const values = data.map(d => parseInt(d.count) || 0);
+
+            if (window.atelierChartInstance) window.atelierChartInstance.destroy();
+
+            window.atelierChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Pannes',
+                        data: values,
+                        backgroundColor: 'rgba(236, 72, 153, 0.7)',
+                        borderColor: '#ec4899',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94a3b8', font: { size: 10 } },
+                            grid: { display: false }
+                        },
+                        y: {
+                            ticks: { color: '#94a3b8', font: { size: 10 } },
+                            grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateTechnicianChart(data) {
+            const ctx = document.getElementById('technicianChart');
+            if (!ctx) return;
+
+            const labels = data.map(d => d.technician || 'Unknown');
+            const values = data.map(d => parseInt(d.count) || 0);
+
+            if (window.technicianChartInstance) window.technicianChartInstance.destroy();
+
+            window.technicianChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Interventions',
+                        data: values,
+                        backgroundColor: 'rgba(6, 182, 212, 0.7)',
+                        borderColor: '#06b6d4',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94a3b8', font: { size: 10 } },
+                            grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                        },
+                        y: {
+                            ticks: { color: '#94a3b8', font: { size: 10 } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateMonthlyChart(data) {
+            const ctx = document.getElementById('monthlyChart');
+            if (!ctx) return;
+
+            const labels = data.map(d => d.month || 'Unknown').reverse();
+            const values = data.map(d => parseInt(d.count) || 0).reverse();
+
+            if (window.monthlyChartInstance) window.monthlyChartInstance.destroy();
+
+            window.monthlyChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Pannes',
+                        data: values,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#10b981',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94a3b8', font: { size: 10 } },
+                            grid: { display: false }
+                        },
+                        y: {
+                            ticks: { color: '#94a3b8', font: { size: 10 } },
+                            grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                        }
+                    }
+                }
+            });
+        }
+
         function updateBottleneckChart() {
             const machineDowntimes = {};
             appState.logs.forEach(log => {
@@ -2868,6 +3119,7 @@ async function updateKPIs() {
             renderLogs();
             updateKPIs();
             ChartOptimizer.lazyLoadChart();
+            fetchAnalysisData();
             ShiftManager.updateShiftDisplay();
             setInterval(() => ShiftManager.updateShiftDisplay(), 60000);
 

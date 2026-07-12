@@ -493,6 +493,23 @@ app.get('/api/stats', async (req, res) => {
   } catch (err) { console.error('[STATS] Erreur:', err.message); return res.status(500).json({ success: false, message: err.message, downtime: 0, mttr: 'Erreur', mtbf: '0h', availability: '0%', total: 0, today: 0, avgDuration: 0, byStatus: [], topMachines: [], weekly: [] }); }
 });
 
+app.get('/api/analysis', async (req, res) => {
+  try {
+    const [byAlertType, byAtelier, byTechnician, byMonth] = await Promise.all([
+      safeQuery(`SELECT alert_type, COUNT(*) AS count FROM downtime_logs WHERE alert_type IS NOT NULL GROUP BY alert_type ORDER BY count DESC LIMIT 10`),
+      safeQuery(`SELECT atelier, COUNT(*) AS count FROM downtime_logs WHERE atelier IS NOT NULL GROUP BY atelier ORDER BY count DESC`),
+      safeQuery(`SELECT technician, COUNT(*) AS count FROM downtime_logs WHERE technician IS NOT NULL AND technician != 'Non assigne' GROUP BY technician ORDER BY count DESC LIMIT 10`),
+      safeQuery(`SELECT DATE_TRUNC('month', created_at) AS month, COUNT(*) AS count FROM downtime_logs GROUP BY DATE_TRUNC('month', created_at) ORDER BY month DESC LIMIT 12`)
+    ]);
+    return sendSuccess(res, {
+      byAlertType: byAlertType.rows,
+      byAtelier: byAtelier.rows,
+      byTechnician: byTechnician.rows,
+      byMonth: byMonth.rows.map(r => ({ month: r.month.toISOString().slice(0, 7), count: parseInt(r.count, 10) }))
+    }, 'Analyse des pannes');
+  } catch (err) { return sendError(res, 500, 'Erreur analyse des pannes.', err.message); }
+});
+
 app.get('/api/sessions', async (req, res) => {
   const limit = Math.min(sanitizeInt(req.query.limit, 200), CONFIG.pagination.maxLimit);
   try { const result = await safeQuery(`SELECT id AS log_id, machine AS name, alert_type AS type, status, duration, technician AS service, created_at AS date FROM downtime_logs ORDER BY created_at DESC LIMIT $1`, [limit]); return res.status(200).json(result.rows); }
