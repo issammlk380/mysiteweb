@@ -174,6 +174,11 @@ async function insertDowntimeLog(machine, zone, status, type, operator) {
     `;
     const result = await poolRef.query(query, [machine, status, type, operator, now]);
     console.log(`[MQTT→DB] ✅ Inséré - ID: ${result.rows[0].id} | ${machine} | ${status} | ${type}`);
+
+    // Update criticite if available
+    try {
+        await poolRef.query(`UPDATE downtime_logs SET criticite = $1 WHERE id = $2`, ['Moyenne', result.rows[0].id]);
+    } catch (e) { /* ignore */ }
     return result.rows[0];
 }
 
@@ -193,6 +198,7 @@ async function resolveAlert(machine, resolvedBy, timestamp) {
                 resolved_by = $1,
                 date_reparation = $2,
                 duration = GREATEST(0, EXTRACT(EPOCH FROM ($2 - date_panne)) / 60)::INTEGER,
+                heure_arret_technicien = COALESCE(heure_arret_technicien, $2),
                 updated_at = $2
             WHERE id = (
                 SELECT id FROM downtime_logs 
@@ -287,8 +293,6 @@ async function upsertMachineState(machineId, zone, status, type) {
 // ============================================================================
 function emitToDashboard(machineId, zone, status, type, color, operator, timestamp, logId = null) {
     if (!ioRef) return;
-    // 🔒 Real-Time Control: only KA01 receives Socket.IO updates
-    if (machineId !== 'KA01') return;
 
     const payload = {
         code: machineId,
@@ -299,7 +303,12 @@ function emitToDashboard(machineId, zone, status, type, color, operator, timesta
         operator: operator,
         timestamp: timestamp,
         updated_at: new Date().toISOString(),
-        log_id: logId
+        log_id: logId,
+        criticite: 'Moyenne',
+        date_panne: null,
+        date_reparation: null,
+        heure_arret_technicien: null,
+        resolved_by: null
     };
 
     console.log('[MQTT→Socket] 📡 Emit machine_status_updated:', payload);
