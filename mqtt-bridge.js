@@ -15,7 +15,6 @@ let ioRef = null;
 let mqttClient = null;
 let isConnected = false;
 let messageQueue = [];
-let lastMessageTimestamps = new Map(); // ✅ DEDUPLICATION: éviter les messages en rafale
 
 // Mapping des statuts ESP32 → Dashboard
 const STATUS_MAP = {
@@ -27,25 +26,6 @@ const STATUS_MAP = {
     'RESOLVED':      { db: 'operational', color: 'green',  label: 'Operational' },
     'OPERATIONAL':   { db: 'operational', color: 'green',  label: 'Operational' }
 };
-
-// ============================================================================
-// DEDUPLICATION HELPER
-// ============================================================================
-function isDuplicate(machineId, status, type) {
-    const key = `${machineId}:${status}:${type}`;
-    const now = Date.now();
-    const last = lastMessageTimestamps.get(key);
-    // ✅ Ignorer les messages identiques reçus dans les 2 secondes
-    if (last && (now - last) < 2000) {
-        return true;
-    }
-    lastMessageTimestamps.set(key, now);
-    // Nettoyer les entrées vieilles de plus de 60s pour éviter la fuite mémoire
-    for (const [k, v] of lastMessageTimestamps) {
-        if (now - v > 60000) lastMessageTimestamps.delete(k);
-    }
-    return false;
-}
 
 // ============================================================================
 // INITIALISATION
@@ -110,13 +90,10 @@ function init(pool, io) {
     });
 
     // --- MESSAGE ---
-    // ✅ CORRECTION: Le callback 'message' reçoit (topic, message, packet)
-    // message = Buffer, packet = objet complet avec qos, retain, etc.
-    mqttClient.on('message', async (topic, message, packet) => {
+    mqttClient.on('message', async (topic, message) => {
         try {
             const payload = message.toString();
-            // ✅ CORRECTION: packet.qos au lieu de message.qos (message est un Buffer)
-            const qos = packet ? packet.qos : 0;
+            const qos = message.qos || 0;
             console.log(`[MQTT] 📨 RX [${topic}] QoS:${qos}: ${payload}`);
 
             if (topic === TOPIC_ALERT) {
@@ -140,9 +117,6 @@ function init(pool, io) {
     mqttClient.on('reconnect', () => {
         console.log('🔄 MQTT Reconnexion...');
     });
-    mqttClient.on('offline', () => {
-        console.log('⚠️ MQTT Offline');
-    });
 }
 
 // ============================================================================
@@ -156,18 +130,6 @@ async function handleAlert(data) {
         const type = data.type || rawStatus;
         const operator = data.operator || 'Unknown';
         const timestamp = data.timestamp || Date.now();
-
-        // ✅ VALIDATION: ignorer les messages sans machine_id
-        if (!machineId) {
-            console.warn('⚠️ Message MQTT sans machine_id, ignoré');
-            return;
-        }
-
-        // ✅ DEDUPLICATION: ignorer les messages identiques récents
-        if (isDuplicate(machineId, rawStatus, type)) {
-            console.log(`[MQTT] ⏭️ Message dupliqué ignoré: ${machineId} | ${rawStatus}`);
-            return;
-        }
 
         console.log(`[ALERT] ${machineId} | Status: ${rawStatus} | Type: ${type} | Op: ${operator}`);
 
@@ -227,35 +189,8 @@ async function resolveAlert(machine, resolvedBy, timestamp) {
     try {
         const now = new Date();
 
-        // ✅ CORRECTION CRITIQUE : Vérifier d'abord si un log actif existe
-        const checkQuery = `
-            SELECT id FROM downtime_logs 
-            WHERE machine = $1 AND status != 'Resolved'
-            ORDER BY created_at DESC 
-            LIMIT 1
-        `;
-        const checkResult = await poolRef.query(checkQuery, [machine]);
-
-        if (checkResult.rows.length === 0) {
-            console.log(`[MQTT→DB] ⚠️ Aucun log actif à résoudre pour ${machine}`);
-            // Même si pas de log, on force le reset dashboard
-            if (ioRef) {
-                ioRef.emit('alert_resolved', {
-                    code: machine,
-                    status: 'operational',
-                    type: 'Resolved',
-                    color: 'green',
-                    operator: resolvedBy,
-                    timestamp: timestamp,
-                    resolved_at: now.toISOString()
-                });
-            }
-            return;
-        }
-
-        const logId = checkResult.rows[0].id;
-
-        // ✅ CORRECTION: UPDATE direct avec l'ID connu (pas de sous-requête dans WHERE)
+        // ⚠️ CORRECTION CRITIQUE : PostgreSQL n'accepte pas ORDER BY dans UPDATE
+        // On utilise une sous-requête SELECT pour trouver l'ID du dernier log
         const query = `
             UPDATE downtime_logs 
             SET 
@@ -265,11 +200,16 @@ async function resolveAlert(machine, resolvedBy, timestamp) {
                 duration = GREATEST(0, EXTRACT(EPOCH FROM ($2 - date_panne)) / 60)::INTEGER,
                 heure_arret_technicien = COALESCE(heure_arret_technicien, $2),
                 updated_at = $2
-            WHERE id = $3
+            WHERE id = (
+                SELECT id FROM downtime_logs 
+                WHERE machine = $3 AND status != 'Resolved'
+                ORDER BY created_at DESC 
+                LIMIT 1
+            )
             RETURNING *;
         `;
 
-        const result = await poolRef.query(query, [resolvedBy, now, logId]);
+        const result = await poolRef.query(query, [resolvedBy, now, machine]);
 
         if (result.rows.length > 0) {
             const row = result.rows[0];
@@ -287,6 +227,19 @@ async function resolveAlert(machine, resolvedBy, timestamp) {
                     resolved_at: now.toISOString(),
                     duration: row.duration,
                     log_id: row.id
+                });
+            }
+        } else {
+            console.log(`[MQTT→DB] ⚠️ Aucun log actif à résoudre pour ${machine}`);
+            // Même si pas de log, on force le reset dashboard
+            if (ioRef) {
+                ioRef.emit('alert_resolved', {
+                    code: machine,
+                    status: 'operational',
+                    type: 'Resolved',
+                    color: 'green',
+                    operator: resolvedBy,
+                    timestamp: timestamp
                 });
             }
         }
@@ -341,15 +294,14 @@ async function upsertMachineState(machineId, zone, status, type) {
 function emitToDashboard(machineId, zone, status, type, color, operator, timestamp, logId = null) {
     if (!ioRef) return;
 
-    // ✅ CORRECTION: Valeurs par défaut sécurisées pour éviter les null/undefined
     const payload = {
-        code: machineId || 'UNKNOWN',
-        zone: zone || 'KA',
-        status: status || 'downtime',        // 'downtime' | 'maintenance' | 'break' | 'material' | 'operational'
-        type: type || 'Panne',               // 'Panne' | 'Maintenance' | 'Break / Pause' | 'Material' | 'Resolved'
-        color: color || 'red',               // 'red' | 'blue' | 'yellow' | 'orange' | 'green'
-        operator: operator || 'Unknown',
-        timestamp: timestamp || Date.now(),
+        code: machineId,
+        zone: zone,
+        status: status,        // 'downtime' | 'maintenance' | 'break' | 'material' | 'operational'
+        type: type,            // 'Panne' | 'Maintenance' | 'Break / Pause' | 'Material' | 'Resolved'
+        color: color,        // 'red' | 'blue' | 'yellow' | 'orange' | 'green'
+        operator: operator,
+        timestamp: timestamp,
         updated_at: new Date().toISOString(),
         log_id: logId,
         criticite: 'Moyenne',
@@ -375,34 +327,11 @@ function emitToDashboard(machineId, zone, status, type, color, operator, timesta
 // HEARTBEAT (Optionnel)
 // ============================================================================
 async function handleHeartbeat(data) {
-    try {
-        // Traitement du heartbeat si nécessaire
-        if (data && data.machine_id) {
-            console.log('[HEARTBEAT]', data.machine_id, data.status || 'alive');
-        }
-    } catch (err) {
-        console.error('❌ Erreur heartbeat:', err.message);
-    }
-}
-
-// ============================================================================
-// CLEANUP / SHUTDOWN
-// ============================================================================
-function cleanup() {
-    console.log('[MQTT] Nettoyage...');
-    if (mqttClient) {
-        mqttClient.publish(TOPIC_STATUS, JSON.stringify({
-            machine_id: 'BRIDGE',
-            status: 'OFFLINE',
-            timestamp: Date.now()
-        }), { qos: 1, retain: true });
-        mqttClient.end(true);
-    }
-    lastMessageTimestamps.clear();
-    messageQueue = [];
+    // Traitement du heartbeat si nécessaire
+    // console.log('[HEARTBEAT]', data.machine_id, data.status);
 }
 
 // ============================================================================
 // EXPORTS
 // ============================================================================
-module.exports = { init, cleanup, getConnectionState: () => isConnected };
+module.exports = { init };

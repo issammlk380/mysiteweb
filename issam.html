@@ -1383,6 +1383,10 @@
 </style>
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
+<base target="_blank">
+<base target="_blank">
+<base target="_blank">
 </head>
 <body class="overflow-x-hidden">
 
@@ -1801,15 +1805,6 @@
     </div>
 
     <script>
-
-// XSS Sanitization Helper
-function sanitizeHTML(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
-
         // ==================== BACKEND CONFIGURATION ====================
         const API_BASE_URL = 'https://mysiteweb-production.up.railway.app';
 
@@ -1983,15 +1978,14 @@ function sanitizeHTML(str) {
        // ==================== MACHINE INITIALIZATION ====================
 async function initializeMachines() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/historique`, { signal: AbortSignal.timeout(10000) });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const response = await fetch(`${API_BASE_URL}/api/historique`);
         const realLogs = await response.json();
 
         for (const [zone, config] of Object.entries(appState.zoneConfig)) {
             for (let i = 1; i <= config.count; i++) {
                 const machineID = `${zone}${String(i).padStart(2, '0')}`;
 
-                if (!appState.machines || !appState.machines[machineID]) {
+                if (!appState.machines[machineID]) {
                     appState.machines[machineID] = {
                         id: machineID,
                         zone: zone,
@@ -2081,8 +2075,7 @@ async function initializeMachines() {
     }
 }
 
-const initIntervalId = setInterval(initializeMachines, 5000);
-    window.addEventListener("beforeunload", () => clearInterval(initIntervalId));
+setInterval(initializeMachines, 5000);
         // ==================== TIME MANAGEMENT & SIMULATION ====================
         function updateAllMachineTimers() {
             for (const machineID in appState.machines) {
@@ -2364,7 +2357,6 @@ async function assignTechnician() {
     } catch(e) { 
         console.error("Error sending to DB:", e); 
     }
-    // Continue même si l'API échoue - l'UI est déjà mise à jour
 
     const pendingLog = appState.logs.find(l => l.machineID === machineID && l.status === 'Pending');
     if (pendingLog) {
@@ -2589,14 +2581,12 @@ async function updateKPIs() {
 
     // MTTR dynamique
     const mttrElement = document.getElementById('kpiMTTR');
-    if (mttrElement) mttrElement.textContent = mttrDisplay;
+    mttrElement.textContent = mttrDisplay;
     mttrElement.style.color = mttrColor;
 
     // Label dynamique
-    if (mttrElement) {
-        const mttrLabel = mttrElement.parentElement.querySelector('.kpi-trend');
-        if (mttrLabel) mttrLabel.textContent = mttrLabelText;
-    }
+    const mttrLabel = mttrElement.parentElement.querySelector('.kpi-trend');
+    if (mttrLabel) mttrLabel.textContent = mttrLabelText;
 
     const oeeImpact = Math.round((downTimeMachines / totalMachines) * 25);
     document.getElementById('kpiOEE').textContent = `${Math.max(0, 100 - oeeImpact)}%`;
@@ -3209,8 +3199,7 @@ async function updateKPIs() {
             }
         }
 
-        const fetchIntervalId = setInterval(fetchUniqueMachinesEnPanne, 30000);
-    window.addEventListener("beforeunload", () => clearInterval(fetchIntervalId));
+        setInterval(fetchUniqueMachinesEnPanne, 30000);
 
         async function sendLogToServer(machineID, status, technician, duration = 0) {
             try {
@@ -3332,11 +3321,6 @@ async function updateKPIs() {
 
     socket.on("panne_mise_a_jour", (data) => {
         console.log("📢 [GMAO] Mise à jour panne reçue:", data);
-        initializeMachines();
-    });
-
-    socket.on("machineStatusChanged", (data) => {
-        console.log("📢 [GMAO] Statut machine changé:", data);
         initializeMachines();
     });
 

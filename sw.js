@@ -11,12 +11,12 @@ const urlsToCache = [
 // ═══════════════════════════════════════════
 self.addEventListener('install', (event) => {
     self.skipWaiting(); // B7al "seb9ni" bach ykhdem daba
-
+    
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
                 console.log('[SW] Cache t7el:', CACHE_NAME);
-
+                
                 // Hna: koul fichier b7alo, ila fache w7ed ma yw9efch lba9i
                 return Promise.all(
                     urlsToCache.map((url) => 
@@ -51,10 +51,10 @@ self.addEventListener('fetch', (event) => {
         (async () => {
             try {
                 const cache = await caches.open(CACHE_NAME);
-
+                
                 // Jareb men cache lwl
                 const cachedResponse = await cache.match(request);
-
+                
                 if (cachedResponse) {
                     // Rje3 men cache, w f background jareb t7edded
                     fetch(request.clone())
@@ -64,25 +64,25 @@ self.addEventListener('fetch', (event) => {
                             }
                         })
                         .catch(() => { /* ma3lich ila fache f background */ });
-
+                    
                     return cachedResponse;
                 }
 
                 // Cache miss → jareb men network
                 const networkResponse = await fetch(request.clone());
-
+                
                 // Ila s7i7, cacheih bach ykhdem offline
                 if (networkResponse?.ok) {
                     cache.put(request, networkResponse.clone());
                 }
-
+                
                 return networkResponse;
 
             } catch (error) {
                 console.error('[SW] Fetch fache:', error);
 
                 // HNA L7AJA LMOHIMMA: Khas nrje3 chi response, walo walo!
-
+                
                 // Ila navigate (page kamla), rje3 technicien.html
                 if (request.mode === 'navigate') {
                     const fallback = await caches.match('/technicien.html');
@@ -123,16 +123,7 @@ self.addEventListener('activate', (event) => {
             );
         })
     );
-
+    
     // Hadi bach ykhdem daba 3la lpage li hna
     event.waitUntil(self.clients.claim());
-});
-
-// ═══════════════════════════════════════════
-// MESSAGE — Ila technicien.html bghat ywsel lSW
-// ═══════════════════════════════════════════
-self.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'SKIP_WAITING') {
-        self.skipWaiting();
-    }
 });

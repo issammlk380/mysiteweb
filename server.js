@@ -19,9 +19,6 @@ const cors       = require('cors');
 const mqttBridge = require('./mqtt-bridge');
 const path       = require('path');
 
-// ✅ ACTIVATION express-rate-limit (déjà dans package.json)
-const { rateLimit } = require('express-rate-limit');
-
 const app = express();
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -41,28 +38,6 @@ const CONFIG = {
     maxLimit:     500,
   }
 };
-
-/* ═══════════════════════════════════════════════════════════════════
-   2b. RATE LIMITING (Minimal Change — activation uniquement)
-═══════════════════════════════════════════════════════════════════ */
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 200,               // 200 requêtes par IP par fenêtre
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  message: { success: false, message: 'Trop de requêtes. Veuillez réessayer plus tard.' }
-});
-
-const strictLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000,  // 5 minutes
-  limit: 20,                // 20 requêtes par IP pour routes sensibles
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  message: { success: false, message: 'Trop de requêtes sur cette route. Veuillez patienter.' }
-});
-
-// Appliquer le rate limiting global sur les routes API
-app.use('/api/', apiLimiter);
 
 /* ═══════════════════════════════════════════════════════════════════
    3. CORS
@@ -94,18 +69,6 @@ app.use((req, res, next) => {
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
-    next();
-});
-
-/* ═══════════════════════════════════════════════════════════════════
-   ✅ SECURITY HEADERS (sans Helmet — inline, pas de nouvelle dépendance)
-═══════════════════════════════════════════════════════════════════ */
-app.use((req, res, next) => {
-    res.set('X-Content-Type-Options', 'nosniff');
-    res.set('X-Frame-Options', 'DENY');
-    res.set('X-XSS-Protection', '1; mode=block');
-    res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
     next();
 });
 
@@ -152,7 +115,7 @@ let dbHealthy = false;
 let dbError = null;
 
 /* ═══════════════════════════════════════════════════════════════════
-   5. SCHEMA MIGRATION + INDEXES
+   5. SCHEMA MIGRATION
 ═══════════════════════════════════════════════════════════════════ */
 async function runMigrations() {
     const client = await pool.connect();
@@ -221,27 +184,6 @@ async function runMigrations() {
             )
         `);
         console.log('[DB] Table machines ready');
-
-        // ✅ INDEXES — Performance optimization (idempotent, pas de changement de logic)
-        const indexes = [
-            { name: 'idx_downtime_logs_machine', query: `CREATE INDEX IF NOT EXISTS idx_downtime_logs_machine ON downtime_logs(machine)` },
-            { name: 'idx_downtime_logs_status', query: `CREATE INDEX IF NOT EXISTS idx_downtime_logs_status ON downtime_logs(status)` },
-            { name: 'idx_downtime_logs_created_at', query: `CREATE INDEX IF NOT EXISTS idx_downtime_logs_created_at ON downtime_logs(created_at DESC)` },
-            { name: 'idx_downtime_logs_date_panne', query: `CREATE INDEX IF NOT EXISTS idx_downtime_logs_date_panne ON downtime_logs(date_panne)` },
-            { name: 'idx_downtime_logs_alert_type', query: `CREATE INDEX IF NOT EXISTS idx_downtime_logs_alert_type ON downtime_logs(alert_type)` },
-            { name: 'idx_downtime_logs_atelier', query: `CREATE INDEX IF NOT EXISTS idx_downtime_logs_atelier ON downtime_logs(atelier)` },
-            { name: 'idx_machines_code', query: `CREATE INDEX IF NOT EXISTS idx_machines_code ON machines(code)` },
-            { name: 'idx_machines_status', query: `CREATE INDEX IF NOT EXISTS idx_machines_status ON machines(status)` },
-        ];
-
-        for (const idx of indexes) {
-            try {
-                await client.query(idx.query);
-                console.log(`[DB] Index '${idx.name}' ready`);
-            } catch (e) {
-                console.warn(`[DB] Index '${idx.name}': ${e.message}`);
-            }
-        }
 
         await client.query(`
             UPDATE downtime_logs 
@@ -439,7 +381,7 @@ app.get('/api/debug', async (_req, res) => {
     } catch (err) { return res.status(500).json({ success: false, error: err.message }); }
 });
 
-app.post('/api/login', strictLimiter, (req, res) => {
+app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   if (!isPresent(username) || !isPresent(password)) return sendError(res, 400, 'Les champs "username" et "password" sont obligatoires.');
   const isValid = username.trim() === CONFIG.auth.adminUsername && password === CONFIG.auth.adminPassword;
@@ -447,7 +389,7 @@ app.post('/api/login', strictLimiter, (req, res) => {
   console.log(`[AUTH] Connexion reussie - "${username}"`); return sendSuccess(res, { username: username.trim(), role: 'admin' }, 'Connexion reussie');
 });
 
-app.post('/api/logs', strictLimiter, validateLogPayload, async (req, res) => {
+app.post('/api/logs', validateLogPayload, async (req, res) => {
     const body = req.body;
     const machine = sanitizeStr(body.machine || body.machineID);
     const status = sanitizeStr(body.status, 'En attente');
@@ -497,7 +439,7 @@ app.get('/api/logs/:id', async (req, res) => {
   catch (err) { return sendError(res, 500, 'Erreur recherche log.', err.message); }
 });
 
-app.put('/api/logs/:id', strictLimiter, async (req, res) => {
+app.put('/api/logs/:id', async (req, res) => {
   const { id } = req.params;
   const { status, technician, duration, criticite, resolved_by } = req.body;
   if (!isPresent(id)) return sendError(res, 400, 'ID requis.');
@@ -574,7 +516,7 @@ app.get('/api/sessions', async (req, res) => {
   catch (err) { return sendError(res, 500, 'Erreur recuperation sessions.', err.message); }
 });
 
-app.post('/api/intervention', strictLimiter, async (req, res) => {
+app.post('/api/intervention', async (req, res) => {
   const idPanne = req.body.idPanne || req.body.id;
   const criticite = req.body.criticiteRaw || req.body.criticite;
   const heureIntervention = req.body.heureIntervention || req.body.heure;
@@ -603,7 +545,7 @@ app.post('/api/intervention', strictLimiter, async (req, res) => {
   } catch (err) { console.error('[INTERVENTION] Erreur:', err); return res.status(500).json({ success: false, message: 'Erreur interne serveur.', detail: err.message }); }
 });
 
-app.post('/api/machines/update-status', strictLimiter, async (req, res) => {
+app.post('/api/machines/update-status', async (req, res) => {
   const { code, status, type_erreur } = req.body;
   if (!isPresent(code) || !isPresent(status)) return sendError(res, 400, 'Les champs "code" et "status" sont obligatoires.');
   try {
