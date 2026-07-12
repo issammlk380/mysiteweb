@@ -305,6 +305,11 @@ function emitToDashboard(machineId, zone, status, type, color, operator, timesta
 
     // Événement legacy pour compatibilité
     ioRef.emit('status_update', payload);
+
+    // ✅ CORRECTION CRITIQUE : Émettre aussi 'updateMachines' pour que le Dashboard issam.html reçoive l'événement
+    // Le Dashboard issam.html n'écoute que 'updateMachines', pas 'machine_status_updated'
+    ioRef.emit('updateMachines', [payload]);
+    console.log('[MQTT→Socket] 📡 Emit updateMachines:', [payload]);
 }
 
 // ============================================================================
