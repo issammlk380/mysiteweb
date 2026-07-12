@@ -161,6 +161,7 @@ async function runMigrations() {
             { name: 'piece_observation', type: 'TEXT', default: 'NULL' },
             { name: 'atelier', type: 'VARCHAR(50)', default: 'NULL' },
             { name: 'updated_at', type: 'TIMESTAMP', default: 'CURRENT_TIMESTAMP' },
+            { name: 'resolved_by', type: 'VARCHAR(100)', default: 'NULL' },
         ];
 
         for (const col of columnsToAdd) {

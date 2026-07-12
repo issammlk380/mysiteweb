@@ -287,6 +287,8 @@ async function upsertMachineState(machineId, zone, status, type) {
 // ============================================================================
 function emitToDashboard(machineId, zone, status, type, color, operator, timestamp, logId = null) {
     if (!ioRef) return;
+    // 🔒 Real-Time Control: only KA01 receives Socket.IO updates
+    if (machineId !== 'KA01') return;
 
     const payload = {
         code: machineId,
