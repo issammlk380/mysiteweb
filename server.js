@@ -441,14 +441,14 @@ app.get('/api/logs/:id', async (req, res) => {
 
 app.put('/api/logs/:id', async (req, res) => {
   const { id } = req.params;
-  const { status, technician, duration, criticite } = req.body;
+  const { status, technician, duration, criticite, resolved_by } = req.body;
   if (!isPresent(id)) return sendError(res, 400, 'ID requis.');
   if (!isPresent(status)) return sendError(res, 400, 'Champ "status" obligatoire.');
   try {
     const dateReparation = status === 'Termine' ? new Date() : null;
     const result = await safeQuery(
-      `UPDATE downtime_logs SET status = $1, technician = COALESCE($2, technician), duration = COALESCE($3, duration), date_reparation = COALESCE($4, date_reparation), criticite = COALESCE($5, criticite), updated_at = NOW() WHERE id = $6 RETURNING *;`,
-      [sanitizeStr(status), isPresent(technician) ? sanitizeStr(technician) : null, isPresent(duration) ? sanitizeInt(duration) : null, dateReparation, isPresent(criticite) ? sanitizeStr(criticite) : null, sanitizeStr(id)]
+      `UPDATE downtime_logs SET status = $1, technician = COALESCE($2, technician), duration = COALESCE($3, duration), date_reparation = COALESCE($4, date_reparation), criticite = COALESCE($5, criticite), resolved_by = COALESCE($6, resolved_by), updated_at = NOW() WHERE id = $7 RETURNING *;`,
+      [sanitizeStr(status), isPresent(technician) ? sanitizeStr(technician) : null, isPresent(duration) ? sanitizeInt(duration) : null, dateReparation, isPresent(criticite) ? sanitizeStr(criticite) : null, isPresent(resolved_by) ? sanitizeStr(resolved_by) : null, sanitizeStr(id)]
     );
     if (!result.rows.length) return sendError(res, 404, `Log "${id}" introuvable.`);
     const updatedLog = result.rows[0];
@@ -468,14 +468,15 @@ app.get('/api/historique', async (req, res) => {
 
 app.get('/api/stats', async (req, res) => {
   try {
-    const [total, byStatus, mttrResult, topMachines, today, weekly, pendingCount] = await Promise.all([
+    const [total, byStatus, mttrResult, topMachines, today, weekly, pendingCount, tempsResult] = await Promise.all([
       safeQuery('SELECT COUNT(*) AS count FROM downtime_logs'),
       safeQuery('SELECT status, COUNT(*) AS count FROM downtime_logs GROUP BY status ORDER BY count DESC'),
       safeQuery(`SELECT COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM (date_reparation - date_panne)) / 60), 2), 0) AS mttr_minutes, COUNT(*) AS pannes_resolues FROM downtime_logs WHERE status = 'Termine' AND date_panne IS NOT NULL AND date_reparation IS NOT NULL`),
       safeQuery('SELECT machine, COUNT(*) AS pannes FROM downtime_logs GROUP BY machine ORDER BY pannes DESC LIMIT 5'),
       safeQuery('SELECT COUNT(*) AS count FROM downtime_logs WHERE DATE(created_at) = CURRENT_DATE'),
       safeQuery(`SELECT DATE(created_at) AS jour, COUNT(*) AS total FROM downtime_logs WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY DATE(created_at) ORDER BY jour ASC`),
-      safeQuery(`SELECT COUNT(*) AS count FROM downtime_logs WHERE status IN ('En attente', 'En cours')`)
+      safeQuery(`SELECT COUNT(*) AS count FROM downtime_logs WHERE status IN ('En attente', 'En cours')`),
+      safeQuery(`SELECT COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM (heure_arret_technicien::timestamp - date_panne)) / 60), 2), 0) AS temps_reaction_minutes, COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM (date_reparation - heure_arret_technicien::timestamp)) / 60), 2), 0) AS temps_reparation_minutes FROM downtime_logs WHERE status = 'Termine' AND date_panne IS NOT NULL AND heure_arret_technicien IS NOT NULL AND date_reparation IS NOT NULL`)
     ]);
     const totalInterventions = parseInt(total.rows[0].count, 10) || 0;
     const mttrMinutes = parseFloat(mttrResult.rows[0].mttr_minutes) || 0;
@@ -485,7 +486,10 @@ app.get('/api/stats', async (req, res) => {
     if (pannesResolues === 0) mttrDisplay = 'N/A';
     else if (mttrMinutes >= 60) { const hours = Math.floor(mttrMinutes / 60); const mins = Math.round(mttrMinutes % 60); mttrDisplay = `${hours}h ${mins}m`; }
     else mttrDisplay = `${Math.round(mttrMinutes)}m`;
-    return res.json({ downtime: totalInterventions, mttr: mttrDisplay, mttrMinutes, mttrAvailable: pannesResolues > 0, pannesResolues, pannesPending, mtbf: '120h', availability: '98.5%', total: totalInterventions, today: parseInt(today.rows[0].count, 10) || 0, avgDuration: mttrMinutes, byStatus: byStatus.rows, topMachines: topMachines.rows, weekly: weekly.rows });
+    const tempsReactionMinutes = parseFloat(tempsResult.rows[0].temps_reaction_minutes) || 0;
+    const tempsReparationMinutes = parseFloat(tempsResult.rows[0].temps_reparation_minutes) || 0;
+    const formatTemps = (mins) => { if (mins >= 60) { const h = Math.floor(mins / 60); const m = Math.round(mins % 60); return `${h}h ${m}m`; } return `${Math.round(mins)}m`; };
+    return res.json({ downtime: totalInterventions, mttr: mttrDisplay, mttrMinutes, mttrAvailable: pannesResolues > 0, pannesResolues, pannesPending, tempsReaction: formatTemps(tempsReactionMinutes), tempsReparation: formatTemps(tempsReparationMinutes), tempsReactionMinutes, tempsReparationMinutes, mtbf: '120h', availability: '98.5%', total: totalInterventions, today: parseInt(today.rows[0].count, 10) || 0, avgDuration: mttrMinutes, byStatus: byStatus.rows, topMachines: topMachines.rows, weekly: weekly.rows });
   } catch (err) { console.error('[STATS] Erreur:', err.message); return res.status(500).json({ success: false, message: err.message, downtime: 0, mttr: 'Erreur', mtbf: '0h', availability: '0%', total: 0, today: 0, avgDuration: 0, byStatus: [], topMachines: [], weekly: [] }); }
 });
 
@@ -502,7 +506,7 @@ app.post('/api/intervention', async (req, res) => {
   const { observation } = req.body;
   if (!idPanne || !criticite || !heureIntervention || !observation) return res.status(400).json({ success: false, message: 'Tous les champs sont obligatoires !' });
   try {
-    const result = await safeQuery(`UPDATE downtime_logs SET criticite = $1, heure_arret_technicien = $2, piece_observation = $3 WHERE id = $4 RETURNING *`, [criticite, heureIntervention, observation, idPanne]);
+    const result = await safeQuery(`UPDATE downtime_logs SET criticite = $1, heure_arret_technicien = $2, piece_observation = $3, resolved_by = COALESCE($4, resolved_by) WHERE id = $5 RETURNING *`, [criticite, heureIntervention, observation, req.body.technician || null, idPanne]);
     if (result.rowCount === 0) return res.status(404).json({ success: false, message: 'Aucun enregistrement trouve !' });
     const updatedLog = result.rows[0];
     const io = req.app.get('io');
