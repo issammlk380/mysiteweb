@@ -114,7 +114,6 @@
         };
     </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
@@ -326,7 +325,6 @@
         .value-crit { color: #ef4444; }
         .value-info { color: #3b82f6; }
     </style>
-<base target="_blank">
 <base target="_blank">
 <base target="_blank">
 </head>
@@ -1423,6 +1421,20 @@
 <script>
 'use strict';
 
+
+/* ════════════════════════════════════════════════════════════
+   BROWSER COMPATIBILITY HELPERS
+════════════════════════════════════════════════════════════ */
+function createTimeoutSignal(ms) {
+    // Fallback for browsers without AbortSignal.timeout (Safari <16, Firefox <112)
+    if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+        return AbortSignal.timeout(ms);
+    }
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), ms);
+    return controller.signal;
+}
+
 /* ════════════════════════════════════════════════════════════
    GLOBAL FETCH INTERCEPTOR — Railway
 ════════════════════════════════════════════════════════════ */
@@ -1443,6 +1455,17 @@ window.fetch = async function(...args) {
 
     return _originalFetch(url, options);
 };
+
+
+/* ════════════════════════════════════════════════════════════
+   XSS SANITIZATION HELPER
+════════════════════════════════════════════════════════════ */
+function sanitizeHTML(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
 
 /* ════════════════════════════════════════════════════════════
    UTILITAIRES DOM & UI
@@ -1648,7 +1671,7 @@ const DEMO_DATA = [
 ════════════════════════════════════════════════════════════ */
 async function fetchStats() {
     try {
-        const res = await fetch('/api/stats', { signal: AbortSignal.timeout(5000) });
+        const res = await fetch('/api/stats', { signal: createTimeoutSignal(5000) });
         const json = await res.json();
         return json.data || json.stats || json;
     } catch (e) {
@@ -1659,7 +1682,7 @@ async function fetchStats() {
 
 async function fetchHistorique() {
     try {
-        const res = await fetch('/api/historique', { signal: AbortSignal.timeout(8000) });
+        const res = await fetch('/api/historique', { signal: createTimeoutSignal(8000) });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const raw = Array.isArray(json) ? json : (json.data || json.logs || json.results || []);
@@ -2367,7 +2390,7 @@ async function doHealthCheck() {
     toast('Vérification de la connectivité API…', 'info', 2000);
     try {
         const t0 = Date.now();
-        const res = await fetch('/api/health', { signal: AbortSignal.timeout(5000) });
+        const res = await fetch('/api/health', { signal: createTimeoutSignal(5000) });
         const ms = Date.now() - t0;
         if (res.ok) {
             toast(`✅ API opérationnelle — réponse en ${ms} ms`, 'success');
@@ -2623,7 +2646,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     loadAll(false);
-    setInterval(() => loadAll(true), CFG.REFRESH_INTERVAL);
+    const refreshIntervalId = setInterval(() => loadAll(true), CFG.REFRESH_INTERVAL);
+    // Cleanup on page unload
+    window.addEventListener("beforeunload", () => clearInterval(refreshIntervalId));
 });
 </script>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>

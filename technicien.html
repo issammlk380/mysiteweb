@@ -338,6 +338,7 @@
     }
   </style>
 <base target="_blank">
+<base target="_blank">
 </head>
 
 <body class="min-h-screen flex flex-col">
@@ -577,6 +578,15 @@
   <script>
     'use strict';
 
+
+    // XSS Sanitization Helper
+    function sanitizeHTML(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
     (function initClock() {
       const el = document.getElementById('liveTime');
       const dateEl = document.getElementById('sessionDate');
@@ -754,6 +764,7 @@
 
     function envoyerData() {
       const idPanne = document.getElementById('idPanne').value.trim();
+      const idPanneNum = parseInt(idPanne, 10);
       const criticite = document.querySelector('input[name="criticite"]:checked');
       const heure = document.getElementById('heureIntervention').value;
       const obs = document.getElementById('observation').value.trim();
@@ -766,7 +777,7 @@
       let isValid = true;
       let errCount = 0;
 
-      if (!idPanne || Number(idPanne) <= 0) { setFieldError('idPanne', 'err-idPanne'); isValid = false; errCount++; }
+      if (!idPanne || isNaN(idPanneNum) || idPanneNum <= 0) { setFieldError('idPanne', 'err-idPanne'); isValid = false; errCount++; }
       else { setFieldValid('idPanne'); }
 
       if (!criticite) { document.getElementById('err-criticite').classList.add('show'); isValid = false; errCount++; }
@@ -787,12 +798,12 @@
 
       const criticiteMap = { basse: '🟢 Basse', moyenne: '🟡 Moyenne', haute: '🔴 Haute' };
       const payload = {
-        idPanne: Number(idPanne),
+        idPanne: idPanneNum,
         criticite: criticiteMap[criticite.value],
         criticiteRaw: criticite.value,
         heureIntervention: heure,
         observation: obs,
-        technicien: 'TC - Dupont Jean',
+        technician: 'TC - Dupont Jean',
         sessionDate: new Date().toLocaleDateString('fr-FR'),
         timestamp: new Date().toISOString(),
         version: 'GMAO v3.2.1'
@@ -811,7 +822,11 @@
         body: JSON.stringify(payload)
       })
       .then(response => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        if (!response.ok) {
+          return response.text().then(text => {
+            throw new Error(`HTTP ${response.status}: ${text || response.statusText}`);
+          });
+        }
         return response.json();
       })
       .then(data => {
@@ -849,7 +864,11 @@
       .catch(error => {
         console.error('[GMAO] ❌ Erreur:', error);
         Btn.reset();
-        Toast.show('error', 'Erreur de connexion', error.message || 'Impossible de joindre le serveur GMAO.', 5000);
+        let errMsg = error.message || 'Impossible de joindre le serveur GMAO.';
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          errMsg = 'Serveur injoignable. Vérifiez votre connexion ou réessayez.';
+        }
+        Toast.show('error', 'Erreur de connexion', errMsg, 5000);
       });
     }
   </script>
@@ -860,7 +879,7 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-navigator.serviceWorker.register('/sw.js', { scope: '/technicien.html' })          .then(registration => {
+navigator.serviceWorker.register('/sw.js', { scope: '/' })          .then(registration => {
             console.log('✅ Service Worker enregistré:', registration.scope);
             registration.addEventListener('updatefound', () => {
               const newWorker = registration.installing;
