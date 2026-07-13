@@ -132,7 +132,6 @@ async function runMigrations() {
                 technician VARCHAR(100) DEFAULT 'Non assigne',
                 status VARCHAR(50) DEFAULT 'En attente',
                 alert_type VARCHAR(100),
-                resolved_by VARCHAR(100),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
@@ -179,11 +178,9 @@ async function runMigrations() {
 
         await client.query(`
             CREATE TABLE IF NOT EXISTS machines (
-                machine_id VARCHAR(20) PRIMARY KEY,
-                zone VARCHAR(10) DEFAULT 'KA',
-                current_status VARCHAR(50) DEFAULT 'operational',
-                current_type VARCHAR(100),
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                code VARCHAR(10) PRIMARY KEY,
+                status VARCHAR(50) DEFAULT 'operational',
+                type_erreur VARCHAR(100)
             )
         `);
         console.log('[DB] Table machines ready');
@@ -427,7 +424,7 @@ app.get('/api/logs', async (req, res) => {
     if (status) { conditions.push(`LOWER(status) = LOWER($${idx++})`); params.push(status); }
     if (machine) { conditions.push(`LOWER(machine) LIKE LOWER($${idx++})`); params.push(`%${machine}%`); }
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const dataQuery = `SELECT * FROM downtime_logs ${whereClause} ORDER BY created_at DESC LIMIT $${idx++} OFFSET $${idx++};`;
+    const dataQuery = `SELECT * FROM downtime_logs ${whereClause} ORDER BY GREATEST(created_at, updated_at) DESC LIMIT $${idx++} OFFSET $${idx++};`;
     const countQuery = `SELECT COUNT(*) AS total FROM downtime_logs ${whereClause};`;
     params.push(limit, offset);
     const [dataResult, countResult] = await Promise.all([safeQuery(dataQuery, params), safeQuery(countQuery, params.slice(0, -2))]);
@@ -515,7 +512,7 @@ app.get('/api/analysis', async (req, res) => {
 
 app.get('/api/sessions', async (req, res) => {
   const limit = Math.min(sanitizeInt(req.query.limit, 200), CONFIG.pagination.maxLimit);
-  try { const result = await safeQuery(`SELECT id AS log_id, machine AS name, alert_type AS type, status, duration, technician AS service, created_at AS date FROM downtime_logs ORDER BY created_at DESC LIMIT $1`, [limit]); return res.status(200).json(result.rows); }
+  try { const result = await safeQuery(`SELECT id AS log_id, machine AS name, alert_type AS type, status, duration, technician AS service, created_at AS date FROM downtime_logs ORDER BY GREATEST(created_at, updated_at) DESC LIMIT $1`, [limit]); return res.status(200).json(result.rows); }
   catch (err) { return sendError(res, 500, 'Erreur recuperation sessions.', err.message); }
 });
 
