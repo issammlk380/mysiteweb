@@ -1,28 +1,3 @@
-// ═══════════════════════════════════════════════════════════════════════════
-// ANDON SYSTEM - SERVER.JS (VERSION CORRIGÉE)
-// ═══════════════════════════════════════════════════════════════════════════
-// Date de correction : 2026-07-13
-// Corrections apportées :
-//   1. Ajout de 'resolved_by' dans CREATE TABLE downtime_logs (ligne ~137)
-//   2. Correction complète de CREATE TABLE machines (ligne ~179)
-//      - Avant : code, status, type_erreur
-//      - Après : machine_id, zone, current_status, current_type, last_updated
-//   3. Ces corrections assurent la compatibilité avec mqtt-bridge.js
-//
-// PROBLÈME RÉSOLU :
-//   - Le bouton RESOLVE (vert) ne persistait pas car resolved_by manquait
-//     dans le schéma initial, causant un échec silencieux de resolveAlert()
-//   - La table machines avait des colonnes incompatibles avec upsertMachineState()
-//     (machine_id ≠ code, current_status ≠ status, etc.)
-//
-// DÉPLOIEMENT :
-//   1. Remplacer server.js sur Railway par ce fichier
-//   2. Redémarrer le service (les migrations s'exécutent automatiquement)
-//   3. Vérifier dans les logs : [DB] Column 'resolved_by' ready
-//   4. Tester le bouton RESOLVE sur Wokwi - la carte doit rester VERTE
-//
-// ═══════════════════════════════════════════════════════════════════════════
-
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
  * ║     SMI ENTERPRISE — BACKEND API SERVER v2.8 (RAILWAY)        ║
@@ -490,7 +465,7 @@ app.put('/api/logs/:id', async (req, res) => {
 app.get('/api/historique', async (req, res) => {
   const limit = Math.min(sanitizeInt(req.query.limit, CONFIG.pagination.defaultLimit), CONFIG.pagination.maxLimit);
   const offset = sanitizeInt(req.query.offset, 0);
-  try { const result = await safeQuery('SELECT * FROM downtime_logs ORDER BY created_at DESC LIMIT $1 OFFSET $2', [limit, offset]); return res.json(result.rows); }
+  try { const result = await safeQuery('SELECT * FROM downtime_logs ORDER BY GREATEST(created_at, updated_at) DESC LIMIT $1 OFFSET $2', [limit, offset]); return res.json(result.rows); }
   catch (err) { console.error('[HISTORIQUE] Erreur:', err.message); return res.status(500).json({ success: false, message: 'Erreur recuperation historique.', detail: CONFIG.server.env !== 'production' ? err.message : undefined, data: [] }); }
 });
 
