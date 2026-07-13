@@ -189,8 +189,8 @@ async function resolveAlert(machine, resolvedBy, timestamp) {
     try {
         const now = new Date();
 
-        // ⚠️ CORRECTION CRITIQUE : PostgreSQL n'accepte pas ORDER BY dans UPDATE
-        // On utilise une sous-requête SELECT pour trouver l'ID du dernier log
+        // ✅ CORRECTION CRITIQUE : Utiliser updated_at DESC au lieu de created_at DESC
+        // pour trouver le dernier log actif, même s'il a été modifié récemment
         const query = `
             UPDATE downtime_logs 
             SET 
@@ -203,8 +203,7 @@ async function resolveAlert(machine, resolvedBy, timestamp) {
             WHERE id = (
                 SELECT id FROM downtime_logs 
                 WHERE machine = $3 AND status != 'Resolved'
-                ORDER BY created_at DESC 
-                LIMIT 1
+                ORDER BY updated_at DESC LIMIT 1
             )
             RETURNING *;
         `;

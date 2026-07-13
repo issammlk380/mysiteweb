@@ -2012,8 +2012,7 @@ async function initializeMachines() {
         realLogs.forEach(log => {
             if (!log.machine) return;
             const id = log.machine.trim().toUpperCase();
-const ts = new Date(log.updated_at || log.created_at || log.startTime || 0).getTime() || 0;
-            if (!latestLogByMachine[id] || ts >= latestLogByMachine[id]._ts) {
+const ts = new Date(log.updated_at || log.created_at || log.startTime || 0).getTime() || 0;            if (!latestLogByMachine[id] || ts >= latestLogByMachine[id]._ts) {
                 latestLogByMachine[id] = { ...log, _ts: ts };
             }
         });
