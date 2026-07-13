@@ -1,3 +1,28 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// ANDON SYSTEM - SERVER.JS (VERSION CORRIGÉE)
+// ═══════════════════════════════════════════════════════════════════════════
+// Date de correction : 2026-07-13
+// Corrections apportées :
+//   1. Ajout de 'resolved_by' dans CREATE TABLE downtime_logs (ligne ~137)
+//   2. Correction complète de CREATE TABLE machines (ligne ~179)
+//      - Avant : code, status, type_erreur
+//      - Après : machine_id, zone, current_status, current_type, last_updated
+//   3. Ces corrections assurent la compatibilité avec mqtt-bridge.js
+//
+// PROBLÈME RÉSOLU :
+//   - Le bouton RESOLVE (vert) ne persistait pas car resolved_by manquait
+//     dans le schéma initial, causant un échec silencieux de resolveAlert()
+//   - La table machines avait des colonnes incompatibles avec upsertMachineState()
+//     (machine_id ≠ code, current_status ≠ status, etc.)
+//
+// DÉPLOIEMENT :
+//   1. Remplacer server.js sur Railway par ce fichier
+//   2. Redémarrer le service (les migrations s'exécutent automatiquement)
+//   3. Vérifier dans les logs : [DB] Column 'resolved_by' ready
+//   4. Tester le bouton RESOLVE sur Wokwi - la carte doit rester VERTE
+//
+// ═══════════════════════════════════════════════════════════════════════════
+
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
  * ║     SMI ENTERPRISE — BACKEND API SERVER v2.8 (RAILWAY)        ║
@@ -132,6 +157,7 @@ async function runMigrations() {
                 technician VARCHAR(100) DEFAULT 'Non assigne',
                 status VARCHAR(50) DEFAULT 'En attente',
                 alert_type VARCHAR(100),
+                resolved_by VARCHAR(100),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
@@ -178,9 +204,11 @@ async function runMigrations() {
 
         await client.query(`
             CREATE TABLE IF NOT EXISTS machines (
-                code VARCHAR(10) PRIMARY KEY,
-                status VARCHAR(50) DEFAULT 'operational',
-                type_erreur VARCHAR(100)
+                machine_id VARCHAR(20) PRIMARY KEY,
+                zone VARCHAR(10) DEFAULT 'KA',
+                current_status VARCHAR(50) DEFAULT 'operational',
+                current_type VARCHAR(100),
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
         console.log('[DB] Table machines ready');
