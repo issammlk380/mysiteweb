@@ -1387,6 +1387,7 @@
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body class="overflow-x-hidden">
 
@@ -2395,7 +2396,7 @@ async function resolveAlert() {
     machine.totalDowntimeMinutes += downtimeMinutes;
     const techName = (machine.assignedTech && machine.assignedTech.name) ? machine.assignedTech.name : 'Unassigned';
 
-    // Mise à jour visuelle immédiate
+    // Mise a jour visuelle immediate
     machine.status = 'operational';
     machine.alertType = null;
     machine.assignedTech = null;
@@ -2405,11 +2406,11 @@ async function resolveAlert() {
     updateMachineCardUI(machineID);
 
     try {
-        // ✅ FIX: جلب آخر سجل نشط لـ KA01 ثم تحديثه بـ PUT
+        // FIX: Jeb akher sejil nachet le KA01 thum m3adaltou b PUT
         const logsResponse = await fetch(`${API_BASE_URL}/api/logs?machine=${machineID}&limit=5`);
         const logsData = await logsResponse.json();
-        
-        // البحث عن آخر سجل غير Resolved
+
+        // Recherche akher sejil ghayr Resolved
         const logs = logsData.data?.logs || logsData || [];
         const latestActiveLog = logs.find(l => {
             const s = (l.status || '').toString().toLowerCase();
@@ -2417,8 +2418,8 @@ async function resolveAlert() {
         });
 
         if (latestActiveLog && latestActiveLog.id) {
-            // ✅ تحديث السجل القديم بـ PUT
-            await fetch(`${API_BASE_URL}/api/logs/${latestActiveLog.id}`, {
+            // PUT m3a await le response
+            const putResponse = await fetch(`${API_BASE_URL}/api/logs/${latestActiveLog.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -2427,12 +2428,24 @@ async function resolveAlert() {
                     duration: downtimeMinutes
                 })
             });
-            console.log(`✅ [RESOLVE] Log ${latestActiveLog.id} updated to Resolved`);
-        } else {
-            console.warn(`⚠️ No active log found for ${machineID}`);
-        }
 
-        // تحديث machines table
+            const putData = await putResponse.json();
+            console.log('PUT result:', putData);
+
+            if (!putResponse.ok) {
+                console.error('PUT failed:', putData);
+            } else {
+                console.log(`[RESOLVE] Log ${latestActiveLog.id} updated`);
+            }
+        } else {
+            console.warn(`No active log found for ${machineID}`);
+        }
+    } catch(e) { 
+        console.error("Erreur PUT:", e); 
+    }
+
+    // FIX: update-status mofareq (mayw9afch PUT ila fachal)
+    try {
         await fetch(`${API_BASE_URL}/api/machines/update-status`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2442,9 +2455,8 @@ async function resolveAlert() {
                 type_erreur: null
             })
         });
-
-    } catch(e) { 
-        console.error("❌ Erreur lors de la résolution:", e); 
+    } catch(e) {
+        console.warn("update-status failed (non-critical):", e);
     }
 
     const logEntry = appState.logs.find(l => l.machineID === machineID && (l.status === 'In Progress' || l.status === 'Escalated'));
@@ -2461,9 +2473,9 @@ async function resolveAlert() {
     if(typeof updateKPIs === 'function') updateKPIs();
     if(typeof ChartOptimizer !== 'undefined') ChartOptimizer.debouncedChartUpdate();
 
-    if(typeof showAlert === 'function') showAlert(`✓ Alert resolved for ${machineID}. Machine returned to production.`);
+    if(typeof showAlert === 'function') showAlert(`Alert resolved for ${machineID}. Machine returned to production.`);
 }
-// ==================== 3. ESCALATE ALERT ====================
+
 async function escalateAlert() {
     const machineID = appState.currentSelectedMachine;
     if (!machineID) return;
