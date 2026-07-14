@@ -2395,7 +2395,7 @@ async function resolveAlert() {
     machine.totalDowntimeMinutes += downtimeMinutes;
     const techName = (machine.assignedTech && machine.assignedTech.name) ? machine.assignedTech.name : 'Unassigned';
 
-    // Mise à jour visuelle immédiate (carte -> vert) avant l'appel réseau
+    // Mise à jour visuelle immédiate
     machine.status = 'operational';
     machine.alertType = null;
     machine.assignedTech = null;
@@ -2405,13 +2405,37 @@ async function resolveAlert() {
     updateMachineCardUI(machineID);
 
     try {
-        await sendLogToServer(machineID, 'Resolved', techName, downtimeMinutes);
+        // ✅ FIX: جلب آخر سجل نشط لـ KA01 ثم تحديثه بـ PUT
+        const logsResponse = await fetch(`${API_BASE_URL}/api/logs?machine=${machineID}&limit=5`);
+        const logsData = await logsResponse.json();
+        
+        // البحث عن آخر سجل غير Resolved
+        const logs = logsData.data?.logs || logsData || [];
+        const latestActiveLog = logs.find(l => {
+            const s = (l.status || '').toString().toLowerCase();
+            return s !== 'resolved' && s !== 'termine' && s !== 'completed';
+        });
 
-        const response = await fetch('https://mysiteweb-production.up.railway.app/api/machines/update-status', {
+        if (latestActiveLog && latestActiveLog.id) {
+            // ✅ تحديث السجل القديم بـ PUT
+            await fetch(`${API_BASE_URL}/api/logs/${latestActiveLog.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    status: 'Resolved',
+                    resolved_by: techName,
+                    duration: downtimeMinutes
+                })
+            });
+            console.log(`✅ [RESOLVE] Log ${latestActiveLog.id} updated to Resolved`);
+        } else {
+            console.warn(`⚠️ No active log found for ${machineID}`);
+        }
+
+        // تحديث machines table
+        await fetch(`${API_BASE_URL}/api/machines/update-status`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 code: machineID,
                 status: 'Operational',
@@ -2419,15 +2443,8 @@ async function resolveAlert() {
             })
         });
 
-        const data = await response.json();
-        if (data.success) {
-            console.log(`✅ [PGAdmin] Synchro réussie. Machine ${machineID} est maintenant opérationnelle.`);
-        } else {
-            console.warn(`⚠️ [PGAdmin] Échec de la synchro pour ${machineID}:`, data.message);
-        }
-
     } catch(e) { 
-        console.error("❌ Erreur lors de l'envoi à la base de données :", e); 
+        console.error("❌ Erreur lors de la résolution:", e); 
     }
 
     const logEntry = appState.logs.find(l => l.machineID === machineID && (l.status === 'In Progress' || l.status === 'Escalated'));
@@ -2446,7 +2463,6 @@ async function resolveAlert() {
 
     if(typeof showAlert === 'function') showAlert(`✓ Alert resolved for ${machineID}. Machine returned to production.`);
 }
-
 // ==================== 3. ESCALATE ALERT ====================
 async function escalateAlert() {
     const machineID = appState.currentSelectedMachine;
