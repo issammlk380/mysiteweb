@@ -1978,7 +1978,7 @@
        // ==================== MACHINE INITIALIZATION ====================
 async function initializeMachines() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/historique?limit=500`);        const realLogs = await response.json();
+       const response = await fetch(`${API_BASE_URL}/api/historique?limit=1000`);       const realLogs = await response.json();
 
         for (const [zone, config] of Object.entries(appState.zoneConfig)) {
             for (let i = 1; i <= config.count; i++) {
