@@ -462,8 +462,7 @@ app.put('/api/logs/:id', async (req, res) => {
 app.get('/api/historique', async (req, res) => {
   const limit = Math.min(sanitizeInt(req.query.limit, CONFIG.pagination.defaultLimit), CONFIG.pagination.maxLimit);
   const offset = sanitizeInt(req.query.offset, 0);
-  try { const result = await safeQuery('SELECT * FROM downtime_logs ORDER BY GREATEST(created_at, updated_at) DESC LIMIT $1 OFFSET $2', [limit, offset]); return res.json(result.rows); }
-  catch (err) { console.error('[HISTORIQUE] Erreur:', err.message); return res.status(500).json({ success: false, message: 'Erreur recuperation historique.', detail: CONFIG.server.env !== 'production' ? err.message : undefined, data: [] }); }
+try { const result = await safeQuery('SELECT * FROM downtime_logs ORDER BY GREATEST(created_at, COALESCE(updated_at, created_at)) DESC, id DESC LIMIT $1 OFFSET $2', [limit, offset]); return res.json(result.rows); }  catch (err) { console.error('[HISTORIQUE] Erreur:', err.message); return res.status(500).json({ success: false, message: 'Erreur recuperation historique.', detail: CONFIG.server.env !== 'production' ? err.message : undefined, data: [] }); }
 });
 
 app.get('/api/stats', async (req, res) => {

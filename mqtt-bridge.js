@@ -200,11 +200,14 @@ async function resolveAlert(machine, resolvedBy, timestamp) {
                 duration = GREATEST(0, EXTRACT(EPOCH FROM ($2 - date_panne)) / 60)::INTEGER,
                 heure_arret_technicien = COALESCE(heure_arret_technicien, $2),
                 updated_at = $2
-            WHERE id = (
-                SELECT id FROM downtime_logs 
-                WHERE machine = $3 AND status != 'Resolved'
-                ORDER BY updated_at DESC LIMIT 1
-            )
+           WHERE id = (
+    SELECT id FROM downtime_logs 
+    WHERE machine = $3 
+      AND status NOT IN ('Resolved', 'Termine', 'Completed', 'resolved', 'termine', 'completed')
+      AND status IS NOT NULL
+    ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC 
+    LIMIT 1
+)
             RETURNING *;
         `;
 
