@@ -2581,25 +2581,51 @@ function renderLogs() {
 async function updateKPIs() {
     const totalMachines = Object.keys(appState.machines).length;
     const activeMachines = Object.values(appState.machines).filter(m => m.status === 'operational').length;
-    // ✅ COMPTE TOUTES LES MACHINES NON-OPÉRATIONNELLES (5 états)
+    // COMPTE TOUTES LES MACHINES NON-OPERATIONNELLES (5 etats)
     const downTimeMachines = Object.values(appState.machines).filter(m => m.status !== 'operational').length;
 
-    // Fetch MTTR depuis l'API backend
+    // Fetch MTTR depuis l'API backend — avec fallback si 500
     let mttrDisplay = 'N/A';
     let mttrColor = '#fbbf24'; // jaune
-    let mttrLabelText = 'Aucune panne résolue';
+    let mttrLabelText = 'API indisponible';
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/stats`);
-        const statsData = await response.json();
 
-        if (statsData.mttrAvailable && statsData.pannesResolues > 0) {
-            mttrDisplay = statsData.mttr; // "53m"
-            mttrColor = '#0ea5e9'; // cyan
-            mttrLabelText = `Moyenne (${statsData.pannesResolues} pannes)`;
+        // Si response.ok (200-299)
+        if (response.ok) {
+            const statsData = await response.json();
+
+            // Verifier que les donnees sont valides
+            if (statsData && statsData.mttrAvailable && statsData.pannesResolues > 0) {
+                mttrDisplay = statsData.mttr;
+                mttrColor = '#0ea5e9'; // cyan
+                mttrLabelText = `Moyenne (${statsData.pannesResolues} pannes)`;
+            } else {
+                mttrLabelText = 'Aucune panne resolue';
+            }
+        } else {
+            // Response pas OK (400, 500, etc.) — ne pas bloquer le dashboard
+            console.warn(`⚠️ /api/stats returned ${response.status} — using local fallback`);
+            // Calcul local approximatif
+            const resolvedLogs = appState.logs.filter(l => l.status === 'Resolved');
+            if (resolvedLogs.length > 0) {
+                const avgLocal = Math.round(resolvedLogs.reduce((sum, l) => sum + l.duration, 0) / resolvedLogs.length);
+                mttrDisplay = `${avgLocal}m`;
+                mttrColor = '#0ea5e9';
+                mttrLabelText = `Local (${resolvedLogs.length} pannes)`;
+            }
         }
     } catch (err) {
-        console.warn('⚠️ Failed to fetch MTTR:', err);
+        console.warn('⚠️ /api/stats indisponible:', err.message);
+        // Fallback local
+        const resolvedLogs = appState.logs.filter(l => l.status === 'Resolved');
+        if (resolvedLogs.length > 0) {
+            const avgLocal = Math.round(resolvedLogs.reduce((sum, l) => sum + l.duration, 0) / resolvedLogs.length);
+            mttrDisplay = `${avgLocal}m`;
+            mttrColor = '#0ea5e9';
+            mttrLabelText = `Local (${resolvedLogs.length} pannes)`;
+        }
     }
 
     document.getElementById('kpiActive').textContent = activeMachines;
@@ -2650,7 +2676,8 @@ async function updateKPIs() {
         document.getElementById(`zone${zone}Status`).textContent = `${zones[zone]}/${zoneTotal[zone]}`;
     }
 }
-        // ==================== CHART MANAGEMENT ====================
+
+// ==================== CHART MANAGEMENT ====================
         async function fetchAnalysisData() {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/analysis`);
