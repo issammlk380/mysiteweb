@@ -1387,7 +1387,6 @@
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
-<base target="_blank">
 </head>
 <body class="overflow-x-hidden">
 
@@ -2396,7 +2395,7 @@ async function resolveAlert() {
     machine.totalDowntimeMinutes += downtimeMinutes;
     const techName = (machine.assignedTech && machine.assignedTech.name) ? machine.assignedTech.name : 'Unassigned';
 
-    // Mise a jour visuelle immediate
+    // Mise à jour visuelle immédiate
     machine.status = 'operational';
     machine.alertType = null;
     machine.assignedTech = null;
@@ -2406,11 +2405,11 @@ async function resolveAlert() {
     updateMachineCardUI(machineID);
 
     try {
-        // FIX: Jeb akher sejil nachet le KA01 thum m3adaltou b PUT
+        // ✅ FIX: جلب آخر سجل نشط لـ KA01 ثم تحديثه بـ PUT
         const logsResponse = await fetch(`${API_BASE_URL}/api/logs?machine=${machineID}&limit=5`);
         const logsData = await logsResponse.json();
-
-        // Recherche akher sejil ghayr Resolved
+        
+        // البحث عن آخر سجل غير Resolved
         const logs = logsData.data?.logs || logsData || [];
         const latestActiveLog = logs.find(l => {
             const s = (l.status || '').toString().toLowerCase();
@@ -2418,8 +2417,8 @@ async function resolveAlert() {
         });
 
         if (latestActiveLog && latestActiveLog.id) {
-            // PUT m3a await le response
-            const putResponse = await fetch(`${API_BASE_URL}/api/logs/${latestActiveLog.id}`, {
+            // ✅ تحديث السجل القديم بـ PUT
+            await fetch(`${API_BASE_URL}/api/logs/${latestActiveLog.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -2428,24 +2427,12 @@ async function resolveAlert() {
                     duration: downtimeMinutes
                 })
             });
-
-            const putData = await putResponse.json();
-            console.log('PUT result:', putData);
-
-            if (!putResponse.ok) {
-                console.error('PUT failed:', putData);
-            } else {
-                console.log(`[RESOLVE] Log ${latestActiveLog.id} updated`);
-            }
+            console.log(`✅ [RESOLVE] Log ${latestActiveLog.id} updated to Resolved`);
         } else {
-            console.warn(`No active log found for ${machineID}`);
+            console.warn(`⚠️ No active log found for ${machineID}`);
         }
-    } catch(e) { 
-        console.error("Erreur PUT:", e); 
-    }
 
-    // FIX: update-status mofareq (mayw9afch PUT ila fachal)
-    try {
+        // تحديث machines table
         await fetch(`${API_BASE_URL}/api/machines/update-status`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2455,8 +2442,9 @@ async function resolveAlert() {
                 type_erreur: null
             })
         });
-    } catch(e) {
-        console.warn("update-status failed (non-critical):", e);
+
+    } catch(e) { 
+        console.error("❌ Erreur lors de la résolution:", e); 
     }
 
     const logEntry = appState.logs.find(l => l.machineID === machineID && (l.status === 'In Progress' || l.status === 'Escalated'));
@@ -2473,9 +2461,9 @@ async function resolveAlert() {
     if(typeof updateKPIs === 'function') updateKPIs();
     if(typeof ChartOptimizer !== 'undefined') ChartOptimizer.debouncedChartUpdate();
 
-    if(typeof showAlert === 'function') showAlert(`Alert resolved for ${machineID}. Machine returned to production.`);
+    if(typeof showAlert === 'function') showAlert(`✓ Alert resolved for ${machineID}. Machine returned to production.`);
 }
-
+// ==================== 3. ESCALATE ALERT ====================
 async function escalateAlert() {
     const machineID = appState.currentSelectedMachine;
     if (!machineID) return;
@@ -2581,51 +2569,25 @@ function renderLogs() {
 async function updateKPIs() {
     const totalMachines = Object.keys(appState.machines).length;
     const activeMachines = Object.values(appState.machines).filter(m => m.status === 'operational').length;
-    // COMPTE TOUTES LES MACHINES NON-OPERATIONNELLES (5 etats)
+    // ✅ COMPTE TOUTES LES MACHINES NON-OPÉRATIONNELLES (5 états)
     const downTimeMachines = Object.values(appState.machines).filter(m => m.status !== 'operational').length;
 
-    // Fetch MTTR depuis l'API backend — avec fallback si 500
+    // Fetch MTTR depuis l'API backend
     let mttrDisplay = 'N/A';
     let mttrColor = '#fbbf24'; // jaune
-    let mttrLabelText = 'API indisponible';
+    let mttrLabelText = 'Aucune panne résolue';
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/stats`);
+        const statsData = await response.json();
 
-        // Si response.ok (200-299)
-        if (response.ok) {
-            const statsData = await response.json();
-
-            // Verifier que les donnees sont valides
-            if (statsData && statsData.mttrAvailable && statsData.pannesResolues > 0) {
-                mttrDisplay = statsData.mttr;
-                mttrColor = '#0ea5e9'; // cyan
-                mttrLabelText = `Moyenne (${statsData.pannesResolues} pannes)`;
-            } else {
-                mttrLabelText = 'Aucune panne resolue';
-            }
-        } else {
-            // Response pas OK (400, 500, etc.) — ne pas bloquer le dashboard
-            console.warn(`⚠️ /api/stats returned ${response.status} — using local fallback`);
-            // Calcul local approximatif
-            const resolvedLogs = appState.logs.filter(l => l.status === 'Resolved');
-            if (resolvedLogs.length > 0) {
-                const avgLocal = Math.round(resolvedLogs.reduce((sum, l) => sum + l.duration, 0) / resolvedLogs.length);
-                mttrDisplay = `${avgLocal}m`;
-                mttrColor = '#0ea5e9';
-                mttrLabelText = `Local (${resolvedLogs.length} pannes)`;
-            }
+        if (statsData.mttrAvailable && statsData.pannesResolues > 0) {
+            mttrDisplay = statsData.mttr; // "53m"
+            mttrColor = '#0ea5e9'; // cyan
+            mttrLabelText = `Moyenne (${statsData.pannesResolues} pannes)`;
         }
     } catch (err) {
-        console.warn('⚠️ /api/stats indisponible:', err.message);
-        // Fallback local
-        const resolvedLogs = appState.logs.filter(l => l.status === 'Resolved');
-        if (resolvedLogs.length > 0) {
-            const avgLocal = Math.round(resolvedLogs.reduce((sum, l) => sum + l.duration, 0) / resolvedLogs.length);
-            mttrDisplay = `${avgLocal}m`;
-            mttrColor = '#0ea5e9';
-            mttrLabelText = `Local (${resolvedLogs.length} pannes)`;
-        }
+        console.warn('⚠️ Failed to fetch MTTR:', err);
     }
 
     document.getElementById('kpiActive').textContent = activeMachines;
@@ -2676,8 +2638,7 @@ async function updateKPIs() {
         document.getElementById(`zone${zone}Status`).textContent = `${zones[zone]}/${zoneTotal[zone]}`;
     }
 }
-
-// ==================== CHART MANAGEMENT ====================
+        // ==================== CHART MANAGEMENT ====================
         async function fetchAnalysisData() {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/analysis`);
