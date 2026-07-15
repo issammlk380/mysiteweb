@@ -550,11 +550,19 @@ app.post('/api/machines/update-status', async (req, res) => {
   try {
     await safeQuery('UPDATE machines SET status = $1, type_erreur = $2 WHERE code = $3', [status, status.toLowerCase() === 'operational' ? null : (type_erreur || null), code]);
     console.log(`[Machines] ${code} -> status: "${status}"`);
+    
+    const wokwiStatus = (status === 'Operational' || status === 'Termine') ? 'operational' : status.toLowerCase();
+    
+    // ✅ FIX GREEN BUTTON: Update mqtt-bridge state tracker to prevent reversion
+    const bridge = req.app.get('mqttBridge');
+    if (bridge && bridge.updateMachineStateTracker) {
+        bridge.updateMachineStateTracker(code, wokwiStatus, type_erreur || 'Resolved');
+    }
+    
     const io = req.app.get('io');
     if (io) {
         io.emit('machineStatusChanged', { machine: code, status: status, alert_type: type_erreur || null });
         // ✅ EMIT updateMachines pour temps réel (5 états Wokwi)
-        const wokwiStatus = (status === 'Operational' || status === 'Termine') ? 'operational' : status.toLowerCase();
         io.emit('updateMachines', [{
             code: code,
             status: wokwiStatus,

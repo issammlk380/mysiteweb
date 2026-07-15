@@ -16,6 +16,9 @@ let mqttClient = null;
 let isConnected = false;
 let messageQueue = [];
 
+// ✅ FIX GREEN BUTTON: Track last known state per machine to avoid reverting manual interventions
+let lastKnownMachineState = {};
+
 // Mapping des statuts ESP32 → Dashboard
 const STATUS_MAP = {
     'DOWNTIME':      { db: 'downtime',    color: 'red',    label: 'Panne' },
@@ -313,6 +316,20 @@ function emitToDashboard(machineId, zone, status, type, color, operator, timesta
         resolved_by: null
     };
 
+    // ✅ FIX GREEN BUTTON PERSISTENCE:
+    // Only emit if the state has ACTUALLY CHANGED from what we last sent
+    // This prevents Wokwi MQTT messages from reverting manual "Green" interventions
+    const lastState = lastKnownMachineState[machineId];
+    
+    if (lastState && lastState.status === status && lastState.type === type) {
+        // State hasn't changed - don't emit duplicate event
+        console.log(`[MQTT→Socket] ⏭️  Skip duplicate - ${machineId} already at ${status}`);
+        return;
+    }
+
+    // Update our tracking
+    lastKnownMachineState[machineId] = { status, type, timestamp: Date.now() };
+
     console.log('[MQTT→Socket] 📡 Emit machine_status_updated:', payload);
     ioRef.emit('machine_status_updated', payload);
 
@@ -336,4 +353,13 @@ async function handleHeartbeat(data) {
 // ============================================================================
 // EXPORTS
 // ============================================================================
-module.exports = { init };
+module.exports = { 
+    init,
+    // ✅ FIX GREEN BUTTON: Export function to update state tracker when manual interventions occur
+    updateMachineStateTracker: function(machineId, status, type) {
+        if (machineId && status) {
+            lastKnownMachineState[machineId] = { status, type, timestamp: Date.now() };
+            console.log(`[STATE TRACKER] ✅ Updated ${machineId} -> ${status} (${type})`);
+        }
+    }
+};
