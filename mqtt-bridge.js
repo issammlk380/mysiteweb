@@ -192,8 +192,8 @@ async function resolveAlert(machine, resolvedBy, timestamp) {
     try {
         const now = new Date();
 
-        // ✅ CORRECTION CRITIQUE : Utiliser updated_at DESC au lieu de created_at DESC
-        // pour trouver le dernier log actif, même s'il a été modifié récemment
+        // ✅ FIX: Don't update heure_arret_technicien to avoid VARCHAR->TIMESTAMP conflicts
+        // Only set it if it's NULL and leave it as-is otherwise
         const query = `
             UPDATE downtime_logs 
             SET 
@@ -201,7 +201,6 @@ async function resolveAlert(machine, resolvedBy, timestamp) {
                 resolved_by = $1,
                 date_reparation = $2,
                 duration = GREATEST(0, EXTRACT(EPOCH FROM ($2 - date_panne)) / 60)::INTEGER,
-                heure_arret_technicien = COALESCE(heure_arret_technicien, $2),
                 updated_at = $2
            WHERE id = (
     SELECT id FROM downtime_logs 
@@ -270,22 +269,31 @@ async function resolveAlert(machine, resolvedBy, timestamp) {
 // ============================================================================
 async function upsertMachineState(machineId, zone, status, type) {
     try {
-        // Vérifie si la table machines existe, sinon on ignore silencieusement
-        const query = `
-            INSERT INTO machines (machine_id, zone, current_status, current_type, last_updated)
-            VALUES ($1, $2, $3, $4, NOW())
-            ON CONFLICT (machine_id) 
-            DO UPDATE SET 
-                zone = EXCLUDED.zone,
-                current_status = EXCLUDED.current_status,
-                current_type = EXCLUDED.current_type,
-                last_updated = NOW();
-        `;
-        await poolRef.query(query, [machineId, zone, status, type]);
+        // ✅ FIX: Use actual column names from Railway schema (code, status, type_erreur)
+        // First check if machine exists
+        const checkQuery = `SELECT code FROM machines WHERE code = $1`;
+        const existing = await poolRef.query(checkQuery, [machineId]);
+        
+        if (existing.rows.length > 0) {
+            // Update existing machine
+            const updateQuery = `
+                UPDATE machines 
+                SET status = $1, type_erreur = $2
+                WHERE code = $3
+            `;
+            await poolRef.query(updateQuery, [status, type, machineId]);
+        } else {
+            // Insert new machine (use default columns: code, status, type_erreur)
+            const insertQuery = `
+                INSERT INTO machines (code, status, type_erreur)
+                VALUES ($1, $2, $3)
+            `;
+            await poolRef.query(insertQuery, [machineId, status, type]);
+        }
+        console.log(`[DB] Machine ${machineId} state updated: ${status} (${type})`);
     } catch (err) {
         // Si la table n'existe pas, ce n'est pas bloquant
         if (err.message.includes('relation "machines" does not exist')) {
-            // Création silencieuse si besoin, ou on ignore
             console.log('[DB] Table machines non trouvée (optionnelle)');
         } else {
             console.error('❌ Erreur updateMachineState:', err.message);

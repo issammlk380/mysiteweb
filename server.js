@@ -467,15 +467,14 @@ try { const result = await safeQuery('SELECT * FROM downtime_logs ORDER BY GREAT
 
 app.get('/api/stats', async (req, res) => {
   try {
-    const [total, byStatus, mttrResult, topMachines, today, weekly, pendingCount, tempsResult] = await Promise.all([
+    const [total, byStatus, mttrResult, topMachines, today, weekly, pendingCount] = await Promise.all([
       safeQuery('SELECT COUNT(*) AS count FROM downtime_logs'),
       safeQuery('SELECT status, COUNT(*) AS count FROM downtime_logs GROUP BY status ORDER BY count DESC'),
       safeQuery(`SELECT COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM (date_reparation - date_panne)) / 60), 2), 0) AS mttr_minutes, COUNT(*) AS pannes_resolues FROM downtime_logs WHERE status = 'Termine' AND date_panne IS NOT NULL AND date_reparation IS NOT NULL`),
       safeQuery('SELECT machine, COUNT(*) AS pannes FROM downtime_logs GROUP BY machine ORDER BY pannes DESC LIMIT 5'),
       safeQuery('SELECT COUNT(*) AS count FROM downtime_logs WHERE DATE(created_at) = CURRENT_DATE'),
       safeQuery(`SELECT DATE(created_at) AS jour, COUNT(*) AS total FROM downtime_logs WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY DATE(created_at) ORDER BY jour ASC`),
-      safeQuery(`SELECT COUNT(*) AS count FROM downtime_logs WHERE status IN ('En attente', 'En cours')`),
-      safeQuery(`SELECT COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM (heure_arret_technicien::timestamp - date_panne)) / 60), 2), 0) AS temps_reaction_minutes, COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM (date_reparation - heure_arret_technicien::timestamp)) / 60), 2), 0) AS temps_reparation_minutes FROM downtime_logs WHERE status = 'Termine' AND date_panne IS NOT NULL AND heure_arret_technicien IS NOT NULL AND date_reparation IS NOT NULL`)
+      safeQuery(`SELECT COUNT(*) AS count FROM downtime_logs WHERE status IN ('En attente', 'En cours')`)
     ]);
     const totalInterventions = parseInt(total.rows[0].count, 10) || 0;
     const mttrMinutes = parseFloat(mttrResult.rows[0].mttr_minutes) || 0;
@@ -485,10 +484,7 @@ app.get('/api/stats', async (req, res) => {
     if (pannesResolues === 0) mttrDisplay = 'N/A';
     else if (mttrMinutes >= 60) { const hours = Math.floor(mttrMinutes / 60); const mins = Math.round(mttrMinutes % 60); mttrDisplay = `${hours}h ${mins}m`; }
     else mttrDisplay = `${Math.round(mttrMinutes)}m`;
-    const tempsReactionMinutes = parseFloat(tempsResult.rows[0].temps_reaction_minutes) || 0;
-    const tempsReparationMinutes = parseFloat(tempsResult.rows[0].temps_reparation_minutes) || 0;
-    const formatTemps = (mins) => { if (mins >= 60) { const h = Math.floor(mins / 60); const m = Math.round(mins % 60); return `${h}h ${m}m`; } return `${Math.round(mins)}m`; };
-    return res.json({ downtime: totalInterventions, mttr: mttrDisplay, mttrMinutes, mttrAvailable: pannesResolues > 0, pannesResolues, pannesPending, tempsReaction: formatTemps(tempsReactionMinutes), tempsReparation: formatTemps(tempsReparationMinutes), tempsReactionMinutes, tempsReparationMinutes, mtbf: '120h', availability: '98.5%', total: totalInterventions, today: parseInt(today.rows[0].count, 10) || 0, avgDuration: mttrMinutes, byStatus: byStatus.rows, topMachines: topMachines.rows, weekly: weekly.rows });
+    return res.json({ downtime: totalInterventions, mttr: mttrDisplay, mttrMinutes, mttrAvailable: pannesResolues > 0, pannesResolues, pannesPending, tempsReaction: 'N/A', tempsReparation: 'N/A', tempsReactionMinutes: 0, tempsReparationMinutes: 0, mtbf: '120h', availability: '98.5%', total: totalInterventions, today: parseInt(today.rows[0].count, 10) || 0, avgDuration: mttrMinutes, byStatus: byStatus.rows, topMachines: topMachines.rows, weekly: weekly.rows });
   } catch (err) { console.error('[STATS] Erreur:', err.message); return res.status(500).json({ success: false, message: err.message, downtime: 0, mttr: 'Erreur', mtbf: '0h', availability: '0%', total: 0, today: 0, avgDuration: 0, byStatus: [], topMachines: [], weekly: [] }); }
 });
 
