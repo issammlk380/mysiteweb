@@ -681,13 +681,62 @@
         <!-- ══ TAB: DASHBOARD ════════════════════════════════ -->
         <section id="tab-dashboard" class="tab-panel space-y-6">
 
-            <!-- KPI Cards -->
+            <!-- ✅ Enhanced Lifecycle-Aware KPI Cards -->
            <div id="kpiContainer"
-                 class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+                 class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                 <div class="skeleton h-40 rounded-3xl"></div>
                 <div class="skeleton h-40 rounded-3xl"></div>
                 <div class="skeleton h-40 rounded-3xl"></div>
                 <div class="skeleton h-40 rounded-3xl"></div>
+                <div class="skeleton h-40 rounded-3xl"></div>
+                <div class="skeleton h-40 rounded-3xl"></div>
+                <div class="skeleton h-40 rounded-3xl"></div>
+                <div class="skeleton h-40 rounded-3xl"></div>
+            </div>
+
+            <!-- ✅ NEW: Real-Time Breakdown Status Panel -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800
+                        rounded-3xl shadow-card overflow-hidden">
+                <!-- Header -->
+                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800
+                            flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3
+                            bg-gradient-to-r from-slate-50 to-slate-100/50 dark:from-slate-800 dark:to-slate-800/50">
+                    <div class="flex items-center gap-3">
+                        <div class="flex flex-col gap-0.5">
+                            <h3 class="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
+                                <span class="w-1.5 h-6 rounded-full bg-red-600 block animate-pulse"></span>
+                                Pannes actives - Vue temps réel
+                            </h3>
+                            <p class="text-xs text-slate-400 pl-4">
+                                Suivi du cycle de vie complet (Détection → Intervention → Résolution)
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="btnRefreshBreakdowns"
+                                class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700
+                                       text-white text-xs font-bold transition-all
+                                       flex items-center gap-1.5">
+                            <i class="fa-solid fa-rotate text-[10px]"></i>
+                            Actualiser
+                        </button>
+                        <span id="activeBreakdownCount"
+                              class="px-3 py-1 rounded-lg bg-red-100 dark:bg-red-900/25
+                                     text-xs font-bold text-red-700 dark:text-red-300">
+                            0 active
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Real-time breakdown list -->
+                <div id="activeBreakdownsList" class="divide-y divide-slate-100 dark:divide-slate-800">
+                    <!-- This will be populated by JavaScript -->
+                    <div class="px-6 py-8 text-center text-slate-400">
+                        <i class="fa-solid fa-check-circle text-4xl mb-3 text-emerald-400"></i>
+                        <p class="text-sm font-medium">Aucune panne active</p>
+                        <p class="text-xs mt-1">Toutes les machines fonctionnent normalement</p>
+                    </div>
+                </div>
             </div>
 
 <div class="mw-scope" id="mwScope" style="margin-top: 24px;">
@@ -954,6 +1003,13 @@
                                         <i class="fa-solid fa-arrow-up sort-icon"></i>
                                     </div>
                                 </th>
+                                <th data-sort="lifecycle_phase"
+                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-2">
+                                        Phase Cycle
+                                        <i class="fa-solid fa-arrow-up sort-icon"></i>
+                                    </div>
+                                </th>
                                 <th data-sort="atelier"
                                     class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
                                     <div class="flex items-center gap-2">
@@ -971,27 +1027,34 @@
                                 <th data-sort="jour"
                                     class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
                                     <div class="flex items-center gap-2">
-                                        Date
+                                        Date Détection
                                         <i class="fa-solid fa-arrow-up sort-icon"></i>
                                     </div>
                                 </th>
                                 <th class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    Déclaration
+                                    Heure Panne
                                 </th>
                                 <th class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    Arr. tech.
+                                    Arrivée Tech.
                                 </th>
-                                <th data-sort="temps_attente"
+                                <th data-sort="temps_reaction"
                                     class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
                                     <div class="flex items-center gap-2">
-                                        Attente
+                                        MTTA (Réaction)
                                         <i class="fa-solid fa-arrow-up sort-icon"></i>
                                     </div>
                                 </th>
                                 <th data-sort="temps_reparation"
                                     class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
                                     <div class="flex items-center gap-2">
-                                        Réparation
+                                        Temps Répar.
+                                        <i class="fa-solid fa-arrow-up sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th data-sort="temps_total"
+                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-2">
+                                        MTTR Total
                                         <i class="fa-solid fa-arrow-up sort-icon"></i>
                                     </div>
                                 </th>
@@ -1624,34 +1687,122 @@ const STATE = {
 };
 
 /* ════════════════════════════════════════════════════════════
-   DONNÉES DE DÉMONSTRATION (Fallback)
+   DONNÉES DE DÉMONSTRATION ENRICHIES (Fallback) - 120 entrées
 ════════════════════════════════════════════════════════════ */
-const DEMO_DATA = [
-    { machine: 'KA01', atelier: 'Atelier A', status: 'Terminé', jour: '15/06/2025', start_time: '08:30:00', heure_arret_technicien: '08:45:00', temps_attente: 15, temps_reparation: 45, criticite: 'Faible', technicien: 'Ahmed Benali', piece_observation: 'Remplacement capteur proximité', alert_type: 'Électrique' },
-    { machine: 'KB03', atelier: 'Atelier B', status: 'Pending', jour: '15/06/2025', start_time: '09:15:00', heure_arret_technicien: null, temps_attente: 0, temps_reparation: 0, criticite: 'Majeure', technicien: '—', piece_observation: 'Surchauffe moteur principal', alert_type: 'Mécanique' },
-    { machine: 'KC07', atelier: 'Atelier C', status: 'En réparation', jour: '14/06/2025', start_time: '14:20:00', heure_arret_technicien: '14:35:00', temps_attente: 15, temps_reparation: 120, criticite: 'Critique', technicien: 'Karim Fassi', piece_observation: "Changement carte d'axe", alert_type: 'Électrique' },
-    { machine: 'KD02', atelier: 'Atelier D', status: 'Terminé', jour: '14/06/2025', start_time: '10:00:00', heure_arret_technicien: '10:10:00', temps_attente: 10, temps_reparation: 30, criticite: 'Modérée', technicien: 'Youssef Amrani', piece_observation: 'Lubrification glissières', alert_type: 'Hydraulique' },
-    { machine: 'KX01', atelier: 'Atelier X', status: 'Pending', jour: '15/06/2025', start_time: '11:45:00', heure_arret_technicien: null, temps_attente: 0, temps_reparation: 0, criticite: 'Majeure', technicien: '—', piece_observation: 'Fuite hydraulique détectée', alert_type: 'Hydraulique' },
-    { machine: 'KA05', atelier: 'Atelier A', status: 'Terminé', jour: '13/06/2025', start_time: '07:30:00', heure_arret_technicien: '07:40:00', temps_attente: 10, temps_reparation: 60, criticite: 'Faible', technicien: 'Ahmed Benali', piece_observation: 'Serrage connexions électriques', alert_type: 'Électrique' },
-    { machine: 'KB08', atelier: 'Atelier B', status: 'Terminé', jour: '13/06/2025', start_time: '16:00:00', heure_arret_technicien: '16:20:00', temps_attente: 20, temps_reparation: 90, criticite: 'Modérée', technicien: 'Karim Fassi', piece_observation: 'Remplacement roulements', alert_type: 'Mécanique' },
-    { machine: 'KC12', atelier: 'Atelier C', status: 'En réparation', jour: '15/06/2025', start_time: '13:10:00', heure_arret_technicien: '13:30:00', temps_attente: 20, temps_reparation: 180, criticite: 'Critique', technicien: 'Youssef Amrani', piece_observation: 'Purge circuit hydraulique', alert_type: 'Hydraulique' },
-    { machine: 'KD05', atelier: 'Atelier D', status: 'Terminé', jour: '12/06/2025', start_time: '09:00:00', heure_arret_technicien: '09:15:00', temps_attente: 15, temps_reparation: 40, criticite: 'Faible', technicien: 'Ahmed Benali', piece_observation: 'Nettoyage filtre à air', alert_type: 'Mécanique' },
-    { machine: 'KA09', atelier: 'Atelier A', status: 'Pending', jour: '15/06/2025', start_time: '15:30:00', heure_arret_technicien: null, temps_attente: 0, temps_reparation: 0, criticite: 'Majeure', technicien: '—', piece_observation: 'Changement joint étanchéité', alert_type: 'Hydraulique' },
-    { machine: 'KB01', atelier: 'Atelier B', status: 'Terminé', jour: '11/06/2025', start_time: '08:00:00', heure_arret_technicien: '08:20:00', temps_attente: 20, temps_reparation: 55, criticite: 'Modérée', technicien: 'Karim Fassi', piece_observation: 'Remplacement fusible bloc alimentation', alert_type: 'Électrique' },
-    { machine: 'KC03', atelier: 'Atelier C', status: 'Terminé', jour: '10/06/2025', start_time: '10:30:00', heure_arret_technicien: '10:45:00', temps_attente: 15, temps_reparation: 35, criticite: 'Faible', technicien: 'Youssef Amrani', piece_observation: 'Ajustement paramètres pression', alert_type: 'Hydraulique' },
-    { machine: 'KD07', atelier: 'Atelier D', status: 'En réparation', jour: '15/06/2025', start_time: '12:00:00', heure_arret_technicien: '12:30:00', temps_attente: 30, temps_reparation: 150, criticite: 'Critique', technicien: 'Ahmed Benali', piece_observation: "Remplacement carte automate contrôle", alert_type: 'Électrique' },
-    { machine: 'KX04', atelier: 'Atelier X', status: 'Terminé', jour: '09/06/2025', start_time: '14:00:00', heure_arret_technicien: '14:10:00', temps_attente: 10, temps_reparation: 25, criticite: 'Faible', technicien: 'Karim Fassi', piece_observation: 'Lubrification axes principaux', alert_type: 'Mécanique' },
-    { machine: 'KA11', atelier: 'Atelier A', status: 'Pending', jour: '15/06/2025', start_time: '17:00:00', heure_arret_technicien: null, temps_attente: 0, temps_reparation: 0, criticite: 'Majeure', technicien: '—', piece_observation: 'Surchauffe détectée sur capteur laser', alert_type: 'Surchauffe' },
-];
+function generateDemoData() {
+    const machines = ['KA01','KA02','KA03','KA04','KA05','KB01','KB02','KB03','KB04','KC01','KC02','KC03','KC04','KD01','KD02','KX01','KX02'];
+    const techniciens = ['Ahmed Benali','Karim Fassi','Youssef Amrani','Mohamed El Amrani','Hassan Alaoui','Omar Benjelloun'];
+    const statuts = ['Terminé','Terminé','Terminé','Terminé','Terminé','En réparation','Pending'];
+    const criticites = ['Faible','Faible','Faible','Modérée','Modérée','Majeure','Critique'];
+    const alertTypes = ['Électrique','Mécanique','Hydraulique','Pneumatique','Logiciel','Capteur','Surchauffe'];
+    const observations = [
+        'Remplacement capteur proximité','Calibration système automatique','Nettoyage filtre à air',
+        'Lubrification axes principaux','Serrage connexions électriques','Changement joint étanchéité',
+        'Remplacement roulements','Ajustement paramètres pression','Purge circuit hydraulique',
+        'Remplacement fusible protection','Changement carte électronique','Réparation vérin hydraulique',
+        'Nettoyage système refroidissement','Calibration capteurs température','Remplacement courroie transmission'
+    ];
+    
+    const data = [];
+    const now = new Date('2025-07-15');
+    
+    for (let i = 0; i < 120; i++) {
+        const daysAgo = Math.floor(Math.random() * 90);
+        const date = new Date(now);
+        date.setDate(date.getDate() - daysAgo);
+        
+        const machine = machines[Math.floor(Math.random() * machines.length)];
+        const atelier = machine.startsWith('KA') ? 'Atelier A' : 
+                       machine.startsWith('KB') ? 'Atelier B' :
+                       machine.startsWith('KC') ? 'Atelier C' :
+                       machine.startsWith('KD') ? 'Atelier D' : 'Atelier X';
+        
+        const status = statuts[Math.floor(Math.random() * statuts.length)];
+        const criticite = criticites[Math.floor(Math.random() * criticites.length)];
+        const alertType = alertTypes[Math.floor(Math.random() * alertTypes.length)];
+        const observation = observations[Math.floor(Math.random() * observations.length)];
+        
+        const heurePanne = `${String(Math.floor(Math.random() * 16) + 6).padStart(2,'0')}:${String(Math.floor(Math.random() * 60)).padStart(2,'0')}:00`;
+        
+        let technicien = '—';
+        let heureArrivee = null;
+        let tempsAttente = 0;
+        let tempsReparation = 0;
+        
+        if (status !== 'Pending') {
+            technicien = techniciens[Math.floor(Math.random() * techniciens.length)];
+            tempsAttente = Math.floor(Math.random() * 45) + 5;
+            
+            const [h, m] = heurePanne.split(':').map(Number);
+            const arrivalMinutes = (h * 60 + m + tempsAttente) % 1440;
+            heureArrivee = `${String(Math.floor(arrivalMinutes / 60)).padStart(2,'0')}:${String(arrivalMinutes % 60).padStart(2,'0')}:00`;
+            
+            if (status === 'Terminé') {
+                const baseRepair = criticite === 'Critique' ? 120 : criticite === 'Majeure' ? 75 : criticite === 'Modérée' ? 45 : 25;
+                tempsReparation = baseRepair + Math.floor(Math.random() * 30);
+            } else {
+                tempsReparation = Math.floor(Math.random() * 60) + 30;
+            }
+        }
+        
+        data.push({
+            machine, atelier, status, 
+            jour: date.toLocaleDateString('fr-FR'),
+            start_time: heurePanne,
+            heure_arret_technicien: heureArrivee,
+            temps_attente: tempsAttente,
+            temps_reparation: tempsReparation,
+            duration: tempsReparation,
+            criticite, technicien,
+            piece_observation: observation,
+            alert_type: alertType
+        });
+    }
+    
+    return data;
+}
+
+const DEMO_DATA = generateDemoData();
 
 /* ════════════════════════════════════════════════════════════
    FETCH API
 ════════════════════════════════════════════════════════════ */
 async function fetchStats() {
     try {
-        const res = await fetch('/api/stats', { signal: AbortSignal.timeout(5000) });
+        // ✅ Enhanced stats API call with lifecycle KPIs
+        const res = await fetch('/api/kpi/realtime?period=24h', { signal: AbortSignal.timeout(5000) });
         const json = await res.json();
-        return json.data || json.stats || json;
+        
+        if (json.success && json.data) {
+            return {
+                // Legacy compatibility
+                totalInterventions: json.data.kpi?.total_breakdowns || 0,
+                pannesPending: json.data.kpi?.pending_breakdowns || 0,
+                machinesEnPanne: json.data.kpi?.pending_breakdowns || 0,
+                pannesResolues: json.data.kpi?.resolved_breakdowns || 0,
+                acknowledgedBreakdowns: json.data.kpi?.acknowledged_breakdowns || 0,
+                
+                // Enhanced KPIs
+                mttr: formatDuration(json.data.kpi?.mttr_minutes) || '—',
+                mttrMinutes: json.data.kpi?.mttr_minutes || 0,
+                mtta: formatDuration(json.data.kpi?.mtta_minutes) || '—',
+                mttaMinutes: json.data.kpi?.mtta_minutes || 0,
+                meanRepairTime: formatDuration(json.data.kpi?.repair_time_minutes) || '—',
+                repairTimeMinutes: json.data.kpi?.repair_time_minutes || 0,
+                availability: json.data.kpi?.availability_display || '—',
+                availabilityPercentage: json.data.kpi?.availability_percentage || 0,
+                
+                uniqueTechs: json.data.technician_performance?.length || 0,
+                
+                // Raw data for other uses
+                raw: json.data
+            };
+        }
+        
+        // Fallback to legacy API
+        const legacyRes = await fetch('/api/stats', { signal: AbortSignal.timeout(5000) });
+        const legacyJson = await legacyRes.json();
+        return legacyJson.data || legacyJson.stats || legacyJson;
     } catch (e) {
         console.warn('⚠️ /api/stats indisponible :', e.message);
         return null;
@@ -1695,28 +1846,38 @@ function computeStatsFromData(data) {
 }
 
 /* ════════════════════════════════════════════════════════════
-   RENDU KPI CARDS
+   ✅ ENHANCED LIFECYCLE-AWARE KPI CARDS
 ════════════════════════════════════════════════════════════ */
 function renderKPICards(stats, dataStats) {
     const container = $('kpiContainer');
     if (!container) return;
 
+    // ✅ Extract comprehensive KPI data with fallbacks
     const totalInterventions = stats?.totalInterventions ?? stats?.total_interventions ?? stats?.count ?? dataStats.totalInterventions;
-    const machinesEnPanne = stats?.machinesEnPanne ?? stats?.machines_en_panne ?? dataStats.machinesEnPanne;
-    const mttr = stats?.mttr ?? dataStats.mttr;
+    const activeBreakdowns = stats?.pannesPending ?? stats?.pending_breakdowns ?? stats?.machinesEnPanne ?? dataStats.machinesEnPanne;
+    const resolvedBreakdowns = stats?.pannesResolues ?? stats?.resolved_breakdowns ?? dataStats.resolvedBreakdowns ?? 0;
+    const acknowledgedBreakdowns = stats?.acknowledgedBreakdowns ?? stats?.acknowledged_breakdowns ?? 0;
+    
+    // ✅ Enhanced KPI metrics
+    const mttr = stats?.mttr ?? stats?.mttrDisplay ?? dataStats.mttr;
+    const mtta = stats?.mtta ?? stats?.mttaDisplay ?? stats?.tempsReaction ?? dataStats.mtta ?? '—';
+    const repairTime = stats?.meanRepairTime ?? stats?.repairTimeDisplay ?? stats?.tempsReparation ?? '—';
+    const availability = stats?.availability ?? stats?.availabilityDisplay ?? stats?.disponibilite ?? dataStats.availability;
+    
     const uniqueTechs = stats?.uniqueTechs ?? stats?.techniciens ?? dataStats.uniqueTechs;
-    const availability = stats?.availability ?? stats?.disponibilite ?? dataStats.availability;
 
+    // ✅ Update hero section
     const heroA = $('heroAvailability'); if (heroA) heroA.textContent = availability || '—';
     const heroM = $('heroMTTR'); if (heroM) heroM.textContent = mttr || '—';
     const heroI = $('heroInterventions'); if (heroI) heroI.textContent = totalInterventions ?? '—';
     const heroT = $('heroTechs'); if (heroT) heroT.textContent = uniqueTechs ?? '—';
 
-    const alertCount = $('sidebarAlertCount'); if (alertCount) alertCount.textContent = machinesEnPanne ?? 0;
+    // ✅ Update sidebar alert counter
+    const alertCount = $('sidebarAlertCount'); if (alertCount) alertCount.textContent = activeBreakdowns ?? 0;
     const notifBadge = $('notifBadge');
     if (notifBadge) {
-        notifBadge.textContent = machinesEnPanne ?? 0;
-        if ((machinesEnPanne ?? 0) > 0) {
+        notifBadge.textContent = activeBreakdowns ?? 0;
+        if ((activeBreakdowns ?? 0) > 0) {
             notifBadge.classList.remove('hidden');
             notifBadge.classList.add('flex');
         } else {
@@ -1725,30 +1886,119 @@ function renderKPICards(stats, dataStats) {
         }
     }
 
+    // ✅ Enhanced KPI cards with lifecycle metrics
     const cards = [
         {
-            icon: 'fa-list-check', iconBg: 'bg-brand-500/10', iconColor: 'text-brand-600',
-            label: 'Total interventions', value: totalInterventions ?? '—',
-            sub: 'Enregistrées dans la base', accent: 'from-brand-500/5 to-brand-600/10',
-            border: 'border-brand-500/20', valueClass: 'text-brand-700 dark:text-brand-300',
-        },
-        {
             icon: 'fa-triangle-exclamation', iconBg: 'bg-red-500/10', iconColor: 'text-red-600',
-            label: 'Machines en panne', value: machinesEnPanne ?? '—',
-            sub: 'Machines uniques (statut Pending)', accent: 'from-red-500/5 to-red-600/10',
+            label: 'Pannes actives', value: activeBreakdowns ?? '—',
+            sub: 'En attente d\'intervention', accent: 'from-red-500/5 to-red-600/10',
             border: 'border-red-500/20', valueClass: 'text-red-600 dark:text-red-400',
+            kpiType: 'active', pulseActive: (activeBreakdowns ?? 0) > 0
         },
         {
             icon: 'fa-clock-rotate-left', iconBg: 'bg-amber-500/10', iconColor: 'text-amber-600',
-            label: 'MTTR moyen', value: mttr || '—',
-            sub: 'Durée moyenne de réparation', accent: 'from-amber-500/5 to-amber-600/10',
+            label: 'MTTA (Temps de réaction)', value: mtta || '—',
+            sub: 'Détection → Arrivée technicien', accent: 'from-amber-500/5 to-amber-600/10',
             border: 'border-amber-500/20', valueClass: 'text-amber-700 dark:text-amber-300',
+            kpiType: 'mtta'
         },
         {
-            icon: 'fa-users-gear', iconBg: 'bg-emerald-500/10', iconColor: 'text-emerald-600',
-            label: 'Techniciens actifs', value: uniqueTechs ?? '—',
-            sub: 'Intervenants distincts', accent: 'from-emerald-500/5 to-emerald-600/10',
+            icon: 'fa-screwdriver-wrench', iconBg: 'bg-blue-500/10', iconColor: 'text-blue-600',
+            label: 'MTTR (Temps total)', value: mttr || '—',
+            sub: 'Détection → Résolution complète', accent: 'from-blue-500/5 to-blue-600/10',
+            border: 'border-blue-500/20', valueClass: 'text-blue-700 dark:text-blue-300',
+            kpiType: 'mttr'
+        },
+        {
+            icon: 'fa-gauge-high', iconBg: 'bg-emerald-500/10', iconColor: 'text-emerald-600',
+            label: 'Disponibilité', value: availability || '—',
+            sub: 'Taux de fonctionnement global', accent: 'from-emerald-500/5 to-emerald-600/10',
             border: 'border-emerald-500/20', valueClass: 'text-emerald-700 dark:text-emerald-300',
+            kpiType: 'availability'
+        },
+        {
+            icon: 'fa-tools', iconBg: 'bg-purple-500/10', iconColor: 'text-purple-600',
+            label: 'Temps de réparation', value: repairTime || '—',
+            sub: 'Arrivée technicien → Résolution', accent: 'from-purple-500/5 to-purple-600/10',
+            border: 'border-purple-500/20', valueClass: 'text-purple-700 dark:text-purple-300',
+            kpiType: 'repair_time'
+        },
+        {
+            icon: 'fa-check-circle', iconBg: 'bg-green-500/10', iconColor: 'text-green-600',
+            label: 'Pannes résolues', value: resolvedBreakdowns ?? '—',
+            sub: 'Interventions terminées', accent: 'from-green-500/5 to-green-600/10',
+            border: 'border-green-500/20', valueClass: 'text-green-700 dark:text-green-300',
+            kpiType: 'resolved'
+        },
+        {
+            icon: 'fa-user-check', iconBg: 'bg-cyan-500/10', iconColor: 'text-cyan-600',
+            label: 'En cours d\'intervention', value: acknowledgedBreakdowns ?? '—',
+            sub: 'Techniciens sur site', accent: 'from-cyan-500/5 to-cyan-600/10',
+            border: 'border-cyan-500/20', valueClass: 'text-cyan-700 dark:text-cyan-300',
+            kpiType: 'acknowledged'
+        },
+        {
+            icon: 'fa-users-gear', iconBg: 'bg-indigo-500/10', iconColor: 'text-indigo-600',
+            label: 'Techniciens actifs', value: uniqueTechs ?? '—',
+            sub: 'Intervenants distincts', accent: 'from-indigo-500/5 to-indigo-600/10',
+            border: 'border-indigo-500/20', valueClass: 'text-indigo-700 dark:text-indigo-300',
+            kpiType: 'technicians'
+        }
+    ];
+
+    container.innerHTML = cards.map((card, index) => `
+        <div class="kpi-card bg-white dark:bg-slate-900 border ${card.border} dark:border-slate-800
+                    rounded-3xl p-6 shadow-card hover:-translate-y-1 hover:shadow-lg
+                    transition-all duration-300 relative overflow-hidden group"
+             data-kpi="${card.kpiType}">
+            
+            <!-- Background gradient -->
+            <div class="absolute inset-0 bg-gradient-to-br ${card.accent} opacity-0 
+                        group-hover:opacity-100 transition-opacity duration-300"></div>
+            
+            <!-- Content -->
+            <div class="relative">
+                <!-- Header -->
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 rounded-2xl ${card.iconBg} ${card.pulseActive ? 'animate-pulse' : ''}
+                                flex items-center justify-center">
+                        <i class="fa-solid ${card.icon} ${card.iconColor} text-lg"></i>
+                    </div>
+                    ${card.pulseActive ? `
+                        <div class="w-3 h-3 rounded-full bg-red-400 animate-pulse"></div>
+                    ` : ''}
+                </div>
+                
+                <!-- Value -->
+                <div class="mb-3">
+                    <p class="kpi-value text-3xl font-extrabold ${card.valueClass} tracking-tight">
+                        ${card.value}
+                    </p>
+                </div>
+                
+                <!-- Label & Subtitle -->
+                <div>
+                    <p class="font-bold text-slate-800 dark:text-slate-200 text-sm leading-tight">
+                        ${card.label}
+                    </p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        ${card.sub}
+                    </p>
+                </div>
+                
+                <!-- Lifecycle indicator -->
+                ${card.kpiType === 'active' || card.kpiType === 'acknowledged' ? `
+                    <div class="mt-3 flex items-center gap-2 text-xs">
+                        <div class="w-2 h-2 rounded-full ${card.pulseActive ? 'bg-red-400 animate-pulse' : 'bg-slate-300'}"></div>
+                        <span class="text-slate-500 dark:text-slate-400 font-medium">
+                            ${card.kpiType === 'active' ? 'Temps réel' : 'Intervention en cours'}
+                        </span>
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `).join('');
+}
         },
     ];
 
@@ -1974,7 +2224,7 @@ function renderTable() {
     }
 
     if (slice.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="12" class="px-5 py-12 text-center text-slate-400 text-sm">
+        tbody.innerHTML = `<tr><td colspan="14" class="px-5 py-12 text-center text-slate-400 text-sm">
             <i class="fa-solid fa-database mr-2 opacity-40"></i>Aucune intervention trouvée avec ces filtres.
         </td></tr>`;
         if (paginInfo) paginInfo.textContent = '—';
@@ -1984,22 +2234,49 @@ function renderTable() {
 
     tbody.innerHTML = slice.map((r, idx) => {
         const rowNum = start + idx + 1;
+        const lifecyclePhase = r.lifecycle_phase || 'detected';
+        const tempsReaction = r.temps_reaction_minutes || r.temps_reaction || 0;
+        const tempsReparation = r.temps_reparation_minutes || r.temps_reparation || r.duration || 0;
+        const tempsTotal = r.temps_total_arret_minutes || r.temps_total || tempsReparation;
+        
         return `
         <tr class="table-row-hover transition-colors">
             <td class="px-5 py-4 text-slate-400 text-xs font-mono">${rowNum}</td>
             <td class="px-5 py-4">
                 <span class="font-bold text-slate-800 dark:text-slate-200">${r.machine}</span>
             </td>
-            <td class="px-5 py-4 text-slate-500 dark:text-slate-400">${r.atelier}</td>
+            <td class="px-5 py-4">
+                <span class="lifecycle-badge lifecycle-${lifecyclePhase}">
+                    ${getLifecycleBadge(lifecyclePhase)}
+                </span>
+            </td>
+            <td class="px-5 py-4 text-slate-500 dark:text-slate-400">${r.atelier || '—'}</td>
             <td class="px-5 py-4">${statusBadge(r.status)}</td>
-            <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs">${r.jour}</td>
-            <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs">${r.heure_declaration || r.start_time || '—'}</td>
-            <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs">${r.heure_arret_technicien || '—'}</td>
-            <td class="px-5 py-4 text-xs font-semibold text-amber-600 dark:text-amber-400">${fmtMin(r.temps_attente)}</td>
-            <td class="px-5 py-4 text-xs font-semibold text-blue-600 dark:text-blue-400">${fmtMin(r.temps_reparation ?? r.duration)}</td>
+            <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs">${r.jour || '—'}</td>
+            <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs">
+                ${r.heure_panne || r.start_time || '—'}
+            </td>
+            <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs">
+                ${r.heure_arrivee || r.heure_arret_technicien || 
+                  (r.date_arrivee_technicien ? new Date(r.date_arrivee_technicien).toLocaleTimeString('fr-FR') : '—')}
+            </td>
+            <td class="px-5 py-4 text-xs font-semibold ${tempsReaction > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}">
+                ${tempsReaction > 0 ? fmtMin(tempsReaction) : '—'}
+            </td>
+            <td class="px-5 py-4 text-xs font-semibold ${tempsReparation > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}">
+                ${tempsReparation > 0 ? fmtMin(tempsReparation) : '—'}
+            </td>
+            <td class="px-5 py-4 text-xs font-semibold ${tempsTotal > 0 ? 'text-purple-600 dark:text-purple-400' : 'text-slate-400'}">
+                ${tempsTotal > 0 ? fmtMin(tempsTotal) : '—'}
+            </td>
             <td class="px-5 py-4">${critBadge(r.criticite)}</td>
-            <td class="px-5 py-4 font-medium text-slate-700 dark:text-slate-300">${r.technicien || r.technician || '—'}</td>
-            <td class="px-5 py-4 text-slate-400 text-xs max-w-[180px] truncate" title="${r.piece_observation}">${r.piece_observation}</td>
+            <td class="px-5 py-4 font-medium text-slate-700 dark:text-slate-300">
+                ${r.technicien || r.technician || '—'}
+            </td>
+            <td class="px-5 py-4 text-slate-400 text-xs max-w-[180px] truncate" 
+                title="${r.piece_observation || r.observation || ''}">
+                ${r.piece_observation || r.observation || '—'}
+            </td>
         </tr>`;
     }).join('');
 
@@ -2458,6 +2735,20 @@ const APP = {
     },
 
     refresh() { return loadAll(false); },
+
+    // ✅ NEW: Refresh alert counts from API
+    async refreshAlertCounts() {
+        try {
+            const res = await fetch('/api/breakdowns/active');
+            const json = await res.json();
+            
+            if (json.success && json.data) {
+                updateActiveBreakdownsDisplay(json.data);
+            }
+        } catch (err) {
+            console.warn('Failed to refresh alert counts:', err);
+        }
+    },
 };
 
 /* ════════════════════════════════════════════════════════════
@@ -2629,33 +2920,509 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
-    // 🚀 Connexion Socket.IO avec fallback silencieux
-    const SOCKET_URL = 'https://mysiteweb-production.up.railway.app';
+    // 🚀 Enhanced Socket.IO Connection with Lifecycle Tracking
+    const SOCKET_URL = window.location.origin;
+    let socket = null;
+    let isSocketConnected = false;
+
     try {
-        const socket = io(SOCKET_URL, {
+        socket = io(SOCKET_URL, {
             transports: ['polling', 'websocket'],
             extraHeaders: {},
             timeout: 5000,
-            reconnectionAttempts: 3
+            reconnectionAttempts: 5,
+            reconnectionDelay: 2000
         });
 
         socket.on('connect', () => {
-            console.log("⚡ [Live] Connexion Socket.IO réussie !");
+            console.log("⚡ [Live] Socket.IO connected!");
+            isSocketConnected = true;
+            updateConnectionStatus(true);
+            
+            // ✅ REQUEST INITIAL DATA
+            socket.emit('request_breakdown_status');
+            socket.emit('request_kpi_update', { period: '24h' });
         });
 
-        socket.on('panne_mise_a_jour', (data) => {
-            console.log("🔄 [Live] Mise à jour reçue :", data);
+        // ✅ BREAKDOWN LIFECYCLE EVENTS
+        socket.on('breakdown_detected', (data) => {
+            console.log("🚨 [Live] New breakdown detected:", data);
+            handleBreakdownDetected(data);
             if (typeof APP !== 'undefined' && APP.refresh) {
                 APP.refresh();
             }
         });
 
-        socket.on('connect_error', (err) => {
-            console.warn("❌ [Live] Socket.IO indisponible :", err.message);
+        socket.on('technician_acknowledged', (data) => {
+            console.log("👨‍🔧 [Live] Technician acknowledged:", data);
+            handleTechnicianAcknowledged(data);
+            if (typeof APP !== 'undefined' && APP.refresh) {
+                APP.refresh();
+            }
         });
+
+        socket.on('breakdown_resolved', (data) => {
+            console.log("✅ [Live] Breakdown resolved:", data);
+            handleBreakdownResolved(data);
+            if (typeof APP !== 'undefined' && APP.refresh) {
+                APP.refresh();
+            }
+        });
+
+        socket.on('alert_resolved', (data) => {
+            console.log("🔄 [Live] Alert resolved:", data);
+            // Same as breakdown_resolved but with different semantics
+        });
+
+        // ✅ REAL-TIME KPI UPDATES
+        socket.on('kpi_update', (data) => {
+            console.log("📊 [Live] KPI update received:", data);
+            updateKPICards(data.kpi);
+            updateHeroStats(data.kpi);
+        });
+
+        socket.on('breakdown_status_update', (data) => {
+            console.log("📋 [Live] Breakdown status update:", data);
+            updateActiveBreakdownsDisplay(data.active_breakdowns);
+        });
+
+        // ✅ LEGACY EVENTS (for compatibility)
+        socket.on('panne_mise_a_jour', (data) => {
+            console.log("🔄 [Live] Legacy update received:", data);
+            if (typeof APP !== 'undefined' && APP.refresh) {
+                APP.refresh();
+            }
+        });
+
+        socket.on('machineStatusChanged', (data) => {
+            console.log("🏭 [Live] Machine status changed:", data);
+            // Handle machine status updates
+        });
+
+        socket.on('updateMachines', (machines) => {
+            console.log("🔄 [Live] Machines update:", machines);
+            // Handle bulk machine updates
+        });
+
+        socket.on('connect_error', (err) => {
+            console.warn("❌ [Live] Socket.IO connection error:", err.message);
+            isSocketConnected = false;
+            updateConnectionStatus(false);
+        });
+
+        socket.on('disconnect', (reason) => {
+            console.warn("⚠️ [Live] Socket.IO disconnected:", reason);
+            isSocketConnected = false;
+            updateConnectionStatus(false);
+        });
+
+        socket.on('reconnect', (attemptNumber) => {
+            console.log(`🔄 [Live] Socket.IO reconnected after ${attemptNumber} attempts`);
+            isSocketConnected = true;
+            updateConnectionStatus(true);
+            
+            // Request fresh data after reconnection
+            socket.emit('request_breakdown_status');
+            socket.emit('request_kpi_update', { period: '24h' });
+        });
+
     } catch (e) {
-        console.warn('Socket.IO non initialisé :', e);
+        console.warn('Socket.IO initialization failed:', e);
+        isSocketConnected = false;
+        updateConnectionStatus(false);
     }
+
+    // ✅ LIFECYCLE EVENT HANDLERS
+    function handleBreakdownDetected(data) {
+        // Show real-time notification
+        showToast(`🚨 Nouvelle panne détectée sur ${data.code}`, 'error');
+        
+        // Update alert counters
+        updateAlertCounters();
+        
+        // Flash the affected machine if visible
+        flashMachineRow(data.code);
+    }
+
+    function handleTechnicianAcknowledged(data) {
+        showToast(`👨‍🔧 Technicien ${data.technicianName} arrivé sur ${data.code}`, 'info');
+        
+        // Update with acknowledgment info
+        updateMachineStatus(data.code, 'acknowledged', data);
+        updateAlertCounters();
+    }
+
+    function handleBreakdownResolved(data) {
+        showToast(`✅ Panne résolue sur ${data.code} (${data.tempsTotal || 0}min)`, 'success');
+        
+        // Update machine to operational
+        updateMachineStatus(data.code, 'resolved', data);
+        updateAlertCounters();
+    }
+
+    function updateConnectionStatus(connected) {
+        const statusDot = document.getElementById('apiStatusDot');
+        const statusText = document.getElementById('apiStatusText');
+        
+        if (statusDot) {
+            statusDot.className = connected 
+                ? 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse'
+                : 'w-2 h-2 rounded-full bg-red-400 animate-pulse';
+        }
+        
+        if (statusText) {
+            statusText.textContent = connected ? 'Temps réel actif' : 'Mode hors ligne';
+        }
+        
+        // Update mode badge
+        const modeBadge = document.getElementById('modeBadge');
+        if (modeBadge) {
+            modeBadge.textContent = connected ? 'Mode Temps Réel' : 'Mode Démonstration';
+            modeBadge.className = connected 
+                ? 'px-3 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/25 dark:text-emerald-300'
+                : 'px-3 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/25 dark:text-amber-300';
+        }
+    }
+
+    function updateAlertCounters() {
+        // Update sidebar alert counter
+        const sidebarCounter = document.getElementById('sidebarAlertCount');
+        const notifBadge = document.getElementById('notifBadge');
+        
+        // This would typically fetch from API or maintain local counter
+        // For now, trigger a refresh to get accurate counts
+        if (typeof APP !== 'undefined' && APP.refreshAlertCounts) {
+            APP.refreshAlertCounts();
+        }
+    }
+
+    function flashMachineRow(machineCode) {
+        // Find and flash the machine row in the table
+        const rows = document.querySelectorAll('#historyTableBody tr');
+        rows.forEach(row => {
+            const machineCell = row.querySelector('td:nth-child(2)');
+            if (machineCell && machineCell.textContent.trim() === machineCode) {
+                row.classList.add('bg-red-50', 'dark:bg-red-900/10');
+                setTimeout(() => {
+                    row.classList.remove('bg-red-50', 'dark:bg-red-900/10');
+                }, 3000);
+            }
+        });
+    }
+
+    function updateMachineStatus(machineCode, phase, data) {
+        // Update machine status in the interface
+        // This would update any machine status displays
+        console.log(`Machine ${machineCode} phase updated to: ${phase}`, data);
+    }
+
+    function showToast(message, type = 'info') {
+        // Simple toast notification
+        const toast = document.createElement('div');
+        toast.className = `fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-white text-sm font-medium shadow-lg transition-all transform translate-x-full`;
+        
+        switch (type) {
+            case 'success':
+                toast.classList.add('bg-emerald-500');
+                break;
+            case 'error':
+                toast.classList.add('bg-red-500');
+                break;
+            case 'warning':
+                toast.classList.add('bg-amber-500');
+                break;
+            default:
+                toast.classList.add('bg-blue-500');
+        }
+        
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        // Slide in
+        setTimeout(() => {
+            toast.classList.remove('translate-x-full');
+        }, 100);
+        
+        // Slide out and remove
+        setTimeout(() => {
+            toast.classList.add('translate-x-full');
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 300);
+        }, 4000);
+    }
+
+    // ✅ ENHANCED KPI FUNCTIONS
+    function updateKPICards(kpiData) {
+        // Update MTTR
+        const mttrEl = document.querySelector('[data-kpi="mttr"] .kpi-value');
+        if (mttrEl && kpiData.mttr_minutes !== undefined) {
+            mttrEl.textContent = formatDuration(kpiData.mttr_minutes);
+        }
+        
+        // Update MTTA
+        const mttaEl = document.querySelector('[data-kpi="mtta"] .kpi-value');
+        if (mttaEl && kpiData.mtta_minutes !== undefined) {
+            mttaEl.textContent = formatDuration(kpiData.mtta_minutes);
+        }
+        
+        // Update availability
+        const availEl = document.querySelector('[data-kpi="availability"] .kpi-value');
+        if (availEl && kpiData.availability_percentage !== undefined) {
+            availEl.textContent = `${kpiData.availability_percentage.toFixed(1)}%`;
+        }
+        
+        // Update breakdown counts
+        const breakdownEl = document.querySelector('[data-kpi="breakdowns"] .kpi-value');
+        if (breakdownEl && kpiData.total_breakdowns !== undefined) {
+            breakdownEl.textContent = kpiData.total_breakdowns;
+        }
+    }
+
+    function updateHeroStats(kpiData) {
+        // Update hero section stats
+        const heroMTTR = document.getElementById('heroMTTR');
+        if (heroMTTR && kpiData.mttr_minutes !== undefined) {
+            heroMTTR.textContent = formatDuration(kpiData.mttr_minutes);
+        }
+        
+        const heroAvailability = document.getElementById('heroAvailability');
+        if (heroAvailability && kpiData.availability_percentage !== undefined) {
+            heroAvailability.textContent = `${kpiData.availability_percentage.toFixed(1)}%`;
+        }
+        
+        const heroInterventions = document.getElementById('heroInterventions');
+        if (heroInterventions && kpiData.total_breakdowns !== undefined) {
+            heroInterventions.textContent = kpiData.total_breakdowns;
+        }
+    }
+
+    function formatDuration(minutes) {
+        if (!minutes || minutes === 0) return '—';
+        if (minutes >= 60) {
+            const hours = Math.floor(minutes / 60);
+            const mins = Math.round(minutes % 60);
+            return `${hours}h ${mins}m`;
+        }
+        return `${Math.round(minutes)}m`;
+    }
+
+    function updateActiveBreakdownsDisplay(activeBreakdowns) {
+        // Update any active breakdowns display
+        console.log('Active breakdowns updated:', activeBreakdowns);
+        
+        // Update sidebar counter
+        const sidebarCounter = document.getElementById('sidebarAlertCount');
+        if (sidebarCounter) {
+            sidebarCounter.textContent = activeBreakdowns.length;
+        }
+        
+        // Update notification badge
+        const notifBadge = document.getElementById('notifBadge');
+        if (notifBadge) {
+            if (activeBreakdowns.length > 0) {
+                notifBadge.textContent = activeBreakdowns.length;
+                notifBadge.classList.remove('hidden');
+                notifBadge.classList.add('flex');
+            } else {
+                notifBadge.classList.add('hidden');
+                notifBadge.classList.remove('flex');
+            }
+        }
+    }
+
+    // ✅ EXPOSE SOCKET FOR GLOBAL USE
+    window.dashboardSocket = socket;
+    window.socketConnected = () => isSocketConnected;
+
+    // ✅ ACTIVE BREAKDOWNS MANAGEMENT
+    function updateActiveBreakdownsDisplay(activeBreakdowns) {
+        const container = document.getElementById('activeBreakdownsList');
+        const counter = document.getElementById('activeBreakdownCount');
+        
+        if (counter) {
+            counter.textContent = `${activeBreakdowns.length} active${activeBreakdowns.length !== 1 ? 's' : ''}`;
+        }
+        
+        // Update sidebar counter
+        const sidebarCounter = document.getElementById('sidebarAlertCount');
+        if (sidebarCounter) {
+            sidebarCounter.textContent = activeBreakdowns.length;
+        }
+        
+        // Update notification badge
+        const notifBadge = document.getElementById('notifBadge');
+        if (notifBadge) {
+            if (activeBreakdowns.length > 0) {
+                notifBadge.textContent = activeBreakdowns.length;
+                notifBadge.classList.remove('hidden');
+                notifBadge.classList.add('flex');
+            } else {
+                notifBadge.classList.add('hidden');
+                notifBadge.classList.remove('flex');
+            }
+        }
+        
+        if (!container) return;
+        
+        if (activeBreakdowns.length === 0) {
+            container.innerHTML = `
+                <div class="px-6 py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-check-circle text-4xl mb-3 text-emerald-400"></i>
+                    <p class="text-sm font-medium">Aucune panne active</p>
+                    <p class="text-xs mt-1">Toutes les machines fonctionnent normalement</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = activeBreakdowns.map(breakdown => {
+            const elapsedMinutes = breakdown.elapsed_time_minutes || breakdown.elapsed_minutes || 0;
+            const phase = breakdown.lifecycle_phase || 'detected';
+            const criticite = breakdown.criticite || 'Moyenne';
+            
+            return `
+                <div class="px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <!-- Machine & Status -->
+                            <div class="flex flex-col">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-slate-900 dark:text-slate-100 text-lg">
+                                        ${breakdown.machine}
+                                    </span>
+                                    <span class="lifecycle-badge lifecycle-${phase}">
+                                        ${getLifecycleBadge(phase)}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-1">
+                                    ${breakdown.alert_type || breakdown.type || 'Type non spécifié'} • 
+                                    ${breakdown.atelier || 'Atelier non défini'}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-4 text-right">
+                            <!-- Criticité -->
+                            <div class="flex flex-col items-end">
+                                <span class="crit-badge crit-${criticite.toLowerCase()}">
+                                    ${criticite}
+                                </span>
+                            </div>
+                            
+                            <!-- Temps écoulé -->
+                            <div class="flex flex-col items-end">
+                                <span class="text-lg font-bold ${elapsedMinutes > 60 ? 'text-red-600' : elapsedMinutes > 30 ? 'text-amber-600' : 'text-slate-600'}">
+                                    ${formatDuration(elapsedMinutes)}
+                                </span>
+                                <p class="text-xs text-slate-400">écoulé</p>
+                            </div>
+                            
+                            <!-- Technicien -->
+                            <div class="flex flex-col items-end min-w-[120px]">
+                                ${breakdown.technician && breakdown.technician !== 'Non assigne' ? `
+                                    <span class="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                        ${breakdown.technician}
+                                    </span>
+                                    <p class="text-xs text-slate-400">
+                                        ${breakdown.elapsed_since_acknowledgment ? 
+                                          `Sur site: ${formatDuration(breakdown.elapsed_since_acknowledgment)}` : 
+                                          'En intervention'}
+                                    </p>
+                                ` : `
+                                    <span class="text-sm text-amber-600 font-medium">En attente</span>
+                                    <p class="text-xs text-slate-400">Technicien requis</p>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    function getLifecycleBadge(phase) {
+        const badges = {
+            'detected': '<i class="fa-solid fa-exclamation-triangle mr-1"></i>Détectée',
+            'acknowledged': '<i class="fa-solid fa-user-check mr-1"></i>En cours',
+            'resolved': '<i class="fa-solid fa-check-circle mr-1"></i>Résolue'
+        };
+        return badges[phase] || badges.detected;
+    }
+    
+    // ✅ REFRESH ACTIVE BREAKDOWNS
+    function refreshActiveBreakdowns() {
+        if (socket && isSocketConnected) {
+            socket.emit('request_breakdown_status');
+        } else {
+            // Fallback to API call
+            fetch('/api/breakdowns/active')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        updateActiveBreakdownsDisplay(data.data);
+                    }
+                })
+                .catch(err => console.warn('Failed to fetch active breakdowns:', err));
+        }
+    }
+    
+    // ✅ BIND REFRESH BUTTON
+    document.addEventListener('DOMContentLoaded', () => {
+        const refreshBtn = document.getElementById('btnRefreshBreakdowns');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', refreshActiveBreakdowns);
+        }
+        
+        // Initial load
+        setTimeout(refreshActiveBreakdowns, 1000);
+        
+        // Auto-refresh every 30 seconds
+        setInterval(refreshActiveBreakdowns, 30000);
+    });
+
+    // ✅ ADD LIFECYCLE BADGE STYLES
+    const lifecycleStyles = document.createElement('style');
+    lifecycleStyles.textContent = `
+        .lifecycle-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .lifecycle-detected {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        .lifecycle-acknowledged {
+            background: rgba(59, 130, 246, 0.1);
+            color: #2563eb;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+        .lifecycle-resolved {
+            background: rgba(16, 185, 129, 0.1);
+            color: #059669;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        .dark .lifecycle-detected {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+        }
+        .dark .lifecycle-acknowledged {
+            background: rgba(59, 130, 246, 0.15);
+            color: #93c5fd;
+        }
+        .dark .lifecycle-resolved {
+            background: rgba(16, 185, 129, 0.15);
+            color: #6ee7b7;
+        }
+    `;
+    document.head.appendChild(lifecycleStyles);
 </script>
 </body>
 </html>
