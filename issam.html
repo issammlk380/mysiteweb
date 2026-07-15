@@ -3275,16 +3275,11 @@ async function updateKPIs() {
         const machinesEnPanne = Array.isArray(payload) ? payload : (payload ? [payload] : []);
         const changedMachineIDs = new Set();
 
-        // 🔒 REMOVED: Global reset of ALL machines on every Socket.IO event
-        // Only KA01 is controlled via Real-Time; other machines keep their state
-        // from initializeMachines() polling every 5s
-
         const panneSet = new Set();
         machinesEnPanne.forEach(m => {
             const code = (m.code || m.machine || m.id || '').toString().trim().toUpperCase();
             if (!code || !appState.machines[code]) return;
-            // 🔒 Real-Time Control: only KA01 accepts Socket.IO updates
-            if (code !== 'KA01') return;
+            
             panneSet.add(code);
             changedMachineIDs.add(code);
 
