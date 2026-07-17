@@ -141,10 +141,7 @@ async function runMigrations() {
         await client.query(`
             CREATE TABLE IF NOT EXISTS downtime_logs (
                 id SERIAL PRIMARY KEY,
-                log_id VARCHAR(50),
                 machine VARCHAR(20) NOT NULL DEFAULT 'KA01',
-                start_time VARCHAR(20),
-                duration INTEGER DEFAULT 0,
                 technician VARCHAR(100) DEFAULT 'Non assigne',
                 status VARCHAR(50) DEFAULT 'En attente',
                 alert_type VARCHAR(100),
