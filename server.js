@@ -524,24 +524,51 @@ app.post('/api/logs', validateLogPayload, async (req, res) => {
     const machine = sanitizeStr(body.machine || body.machineID);
     const status = sanitizeStr(body.status, 'En attente');
     const alert_type = sanitizeStr(body.alertType || body.alert_type, null) || null;
-    const start_time = sanitizeStr(body.startTime || body.start_time, new Date().toLocaleTimeString('fr-FR'));
-    const duration = sanitizeInt(body.duration, 0);
     const technician = sanitizeStr(body.technician || body.technicianName, 'Non assigne');
     const criticite = sanitizeStr(body.criticite, 'Moyenne');
-    const heure_arret_technicien = sanitizeStr(body.heureArretTechnicien || body.heure_arret_technicien, null) || null;
     const piece_observation = sanitizeStr(body.observation || body.piece_observation, null) || null;
+    const operator = sanitizeStr(body.operator, 'Unknown');
+    
+    // ✅ استخدام الأعمدة الصحيحة (بعد cleanup)
+    const heure_panne = sanitizeStr(body.startTime || body.heure_panne, new Date().toLocaleTimeString('fr-FR'));
+    const date_panne = new Date();
+    const atelier = deriveAtelier(machine);
 
     try {
+        // ✅ INSERT بالأعمدة الصحيحة فقط (بدون start_time و duration المحذوفة)
         const result = await safeQuery(
-            `INSERT INTO downtime_logs (machine, start_time, duration, technician, status, criticite, alert_type, heure_arret_technicien, piece_observation, atelier, date_panne) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *;`,
-            [machine, start_time, duration, technician, status, criticite, alert_type, heure_arret_technicien, piece_observation, deriveAtelier(machine), new Date()]
+            `INSERT INTO downtime_logs 
+            (machine, status, alert_type, operator, technician, criticite, piece_observation, atelier, 
+             date_panne, heure_panne, lifecycle_phase, created_at, updated_at) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $9, $9) 
+            RETURNING *;`,
+            [machine, status, alert_type, operator, technician, criticite, piece_observation, atelier, 
+             date_panne, heure_panne, 'detected']
         );
+        
         const newLog = result.rows[0];
-        console.log(`[LOGS] Nouveau log cree - Machine: ${newLog.machine} | Statut: "${newLog.status}"`);
+        console.log(`[LOGS] ✅ Log créé - Machine: ${newLog.machine} | Status: "${newLog.status}" | ID: ${newLog.id}`);
+        
+        // ✅ Socket.IO notification
         const io = req.app.get('io');
-        if (io) io.emit('machineStatusChanged', { machine: newLog.machine, status: newLog.status, alert_type: newLog.alert_type, criticite: newLog.criticite, logId: newLog.id });
-        return sendSuccess(res, newLog, 'Log cree avec succes.', 201);
-    } catch (err) { console.error('[LOGS] Erreur insertion :', err.message); return sendError(res, 500, "Erreur interne lors de l'insertion.", err.message); }
+        if (io) {
+            io.emit('machineStatusChanged', { 
+                machine: newLog.machine, 
+                status: newLog.status, 
+                alert_type: newLog.alert_type, 
+                criticite: newLog.criticite, 
+                logId: newLog.id,
+                source: 'api_post'
+            });
+        }
+        
+        return sendSuccess(res, newLog, 'Log créé avec succès', 201);
+        
+    } catch (err) { 
+        console.error('[LOGS] ❌ Erreur insertion:', err.message); 
+        console.error('[LOGS] Stack:', err.stack);
+        return sendError(res, 500, "Erreur interne lors de l'insertion", err.message); 
+    }
 });
 
 // ═══════════════════════════════════════════════════════════════════
