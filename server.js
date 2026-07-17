@@ -292,13 +292,14 @@ async function runMigrations() {
             WHERE status IN ('Completed', 'completed', 'Resolved', 'resolved', 'termine')
         `);
 
+        // ✅ FIXED: Use temps_total_arret_minutes instead of deleted 'duration' column
         await client.query(`
             UPDATE downtime_logs 
-            SET date_reparation = created_at + (CAST(duration AS VARCHAR) || ' minutes')::INTERVAL
+            SET date_reparation = created_at + (CAST(temps_total_arret_minutes AS VARCHAR) || ' minutes')::INTERVAL
             WHERE date_reparation IS NULL 
               AND status = 'Termine' 
-              AND CAST(duration AS VARCHAR) != '0' 
-              AND CAST(duration AS VARCHAR) != ''
+              AND temps_total_arret_minutes IS NOT NULL
+              AND temps_total_arret_minutes > 0
         `);
 
         const countResult = await client.query('SELECT COUNT(*) FROM downtime_logs');
@@ -306,14 +307,25 @@ async function runMigrations() {
 
         if (count === 0) {
             console.log('[DB] Seeding demo data...');
+            // ✅ FIXED: Removed 'duration' and 'start_time' columns (deleted in cleanup)
             await client.query(`
                 INSERT INTO downtime_logs 
-                (machine, start_time, duration, technician, status, criticite, alert_type, heure_arret_technicien, piece_observation, atelier, date_panne, date_reparation)
+                (machine, technician, status, criticite, alert_type, piece_observationatelier, atelier, date_panne, date_reparation, 
+                 heure_panne, heure_arrivee, temps_reaction_minutes, temps_reparation_minutes, temps_total_arret_minutes,
+                 breakdown_category, root_cause)
                 VALUES 
-                ('KA01', '08:30:00', 45, 'Ahmed Benali', 'Termine', 'Faible', 'Electrique', '08:45:00', 'Remplacement capteur proximite', 'Atelier A', NOW() - INTERVAL '2 hours', NOW() - INTERVAL '75 minutes'),
-                ('KB03', '09:15:00', 0, 'Non assigne', 'En attente', 'Majeure', 'Mecanique', NULL, 'Surchauffe moteur principal', 'Atelier B', NOW() - INTERVAL '30 minutes', NULL),
-                ('KC07', '14:20:00', 120, 'Karim Fassi', 'Termine', 'Critique', 'Electrique', '14:35:00', 'Changement carte d axe', 'Atelier C', NOW() - INTERVAL '5 hours', NOW() - INTERVAL '3 hours'),
-                ('KD02', '10:00:00', 30, 'Youssef Amrani', 'Termine', 'Moderee', 'Hydraulique', '10:10:00', 'Lubrification glissieres', 'Atelier D', NOW() - INTERVAL '4 hours', NOW() - INTERVAL '3.5 hours'),
+                ('KA01', 'Ahmed Benali', 'Résolu', 'Faible', 'Electrique', 'Remplacement capteur proximite', 'Atelier A', 
+                 NOW() - INTERVAL '2 hours', NOW() - INTERVAL '75 minutes', '08:30', '08:45', 15, 45, 60,
+                 'Electrical', 'Faulty sensor'),
+                ('KB03', 'Non assigne', 'En attente', 'Majeure', 'Mecanique', 'Surchauffe moteur principal', 'Atelier B', 
+                 NOW() - INTERVAL '30 minutes', NULL, '09:15', NULL, 0, 0, 0,
+                 'Mechanical', 'Motor overheating'),
+                ('KC07', 'Karim Fassi', 'Résolu', 'Critique', 'Electrique', 'Changement carte d axe', 'Atelier C', 
+                 NOW() - INTERVAL '5 hours', NOW() - INTERVAL '3 hours', '14:20', '14:35', 15, 120, 135,
+                 'Electrical', 'Axis card failure'),
+                ('KD02', 'Youssef Amrani', 'Résolu', 'Moderee', 'Hydraulique', 'Lubrification glissieres', 'Atelier D', 
+                 NOW() - INTERVAL '4 hours', NOW() - INTERVAL '3.5 hours', '10:00', '10:10', 10, 30, 40,
+                 'Hydraulic', 'Lubrication needed'),
                 ('KX01', '11:45:00', 0, 'Non assigne', 'En attente', 'Majeure', 'Hydraulique', NULL, 'Fuite hydraulique detectee', 'Atelier X', NOW() - INTERVAL '1 hour', NULL)
             `);
             console.log('[DB] 5 demo records inserted');
