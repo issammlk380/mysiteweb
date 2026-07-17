@@ -544,22 +544,131 @@ app.post('/api/logs', validateLogPayload, async (req, res) => {
     } catch (err) { console.error('[LOGS] Erreur insertion :', err.message); return sendError(res, 500, "Erreur interne lors de l'insertion.", err.message); }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// GET /api/logs - Bulletproof logs retrieval with pagination
+// ═══════════════════════════════════════════════════════════════════
 app.get('/api/logs', async (req, res) => {
-  const limit = Math.min(sanitizeInt(req.query.limit, CONFIG.pagination.defaultLimit), CONFIG.pagination.maxLimit);
+  // Sanitize and validate inputs
+  const limit = Math.min(
+    sanitizeInt(req.query.limit, CONFIG.pagination.defaultLimit), 
+    CONFIG.pagination.maxLimit
+  );
   const offset = sanitizeInt(req.query.offset, 0);
   const status = sanitizeStr(req.query.status);
   const machine = sanitizeStr(req.query.machine);
+  
   try {
-    const conditions = []; const params = []; let idx = 1;
-    if (status) { conditions.push(`LOWER(status) = LOWER($${idx++})`); params.push(status); }
-    if (machine) { conditions.push(`LOWER(machine) LIKE LOWER($${idx++})`); params.push(`%${machine}%`); }
-    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const dataQuery = `SELECT * FROM downtime_logs ${whereClause} ORDER BY GREATEST(created_at, updated_at) DESC LIMIT $${idx++} OFFSET $${idx++};`;
-    const countQuery = `SELECT COUNT(*) AS total FROM downtime_logs ${whereClause};`;
-    params.push(limit, offset);
-    const [dataResult, countResult] = await Promise.all([safeQuery(dataQuery, params), safeQuery(countQuery, params.slice(0, -2))]);
-    return sendSuccess(res, { logs: dataResult.rows, pagination: { total: parseInt(countResult.rows[0].total, 10), limit, offset, returned: dataResult.rows.length } });
-  } catch (err) { return sendError(res, 500, 'Erreur recuperation logs.', err.message); }
+    // Build dynamic WHERE clause with proper parameter indexing
+    const conditions = [];
+    const params = [];
+    let paramIndex = 1;
+    
+    if (status && status.trim() !== '') {
+      conditions.push(`LOWER(COALESCE(status, '')) = LOWER($${paramIndex})`);
+      params.push(status.trim());
+      paramIndex++;
+    }
+    
+    if (machine && machine.trim() !== '') {
+      conditions.push(`LOWER(COALESCE(machine, '')) LIKE LOWER($${paramIndex})`);
+      params.push(`%${machine.trim()}%`);
+      paramIndex++;
+    }
+    
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    
+    // Separate params for data query (includes limit/offset) and count query
+    const dataParams = [...params, limit, offset];
+    const countParams = [...params]; // Count query doesn't need limit/offset
+    
+    // Data query with NULL-safe ordering
+    const dataQuery = `
+      SELECT 
+        id,
+        machine,
+        status,
+        alert_type,
+        operator,
+        technician,
+        criticite,
+        atelier,
+        zone,
+        breakdown_category,
+        root_cause,
+        actions_taken,
+        preventive_actions,
+        resolved_by,
+        date_panne,
+        heure_panne,
+        date_arrivee_technicien,
+        heure_arrivee,
+        date_reparation,
+        heure_reparation,
+        temps_reaction_minutes,
+        temps_reparation_minutes,
+        temps_total_arret_minutes,
+        temps_intervention_minutes,
+        lifecycle_phase,
+        piece_observation,
+        spare_parts_used,
+        rfid_uid,
+        created_at,
+        updated_at
+      FROM downtime_logs 
+      ${whereClause} 
+      ORDER BY COALESCE(updated_at, created_at, NOW()) DESC 
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+    
+    // Count query
+    const countQuery = `
+      SELECT COUNT(*) AS total 
+      FROM downtime_logs 
+      ${whereClause}
+    `;
+    
+    // Execute both queries in parallel
+    const [dataResult, countResult] = await Promise.all([
+      safeQuery(dataQuery, dataParams),
+      safeQuery(countQuery, countParams)
+    ]);
+    
+    // Handle NULL values in response
+    const sanitizedLogs = (dataResult.rows || []).map(log => ({
+      ...log,
+      machine: log.machine || '—',
+      status: log.status || 'Unknown',
+      alert_type: log.alert_type || '—',
+      operator: log.operator || '—',
+      technician: log.technician || 'Unassigned',
+      criticite: log.criticite || 'Moyenne',
+      atelier: log.atelier || '—',
+      breakdown_category: log.breakdown_category || '—',
+      root_cause: log.root_cause || '—',
+      temps_reaction_minutes: log.temps_reaction_minutes || 0,
+      temps_reparation_minutes: log.temps_reparation_minutes || 0,
+      temps_total_arret_minutes: log.temps_total_arret_minutes || 0,
+    }));
+    
+    const total = parseInt(countResult.rows[0]?.total || 0, 10);
+    
+    return sendSuccess(res, {
+      logs: sanitizedLogs,
+      pagination: {
+        total: total,
+        limit: limit,
+        offset: offset,
+        returned: sanitizedLogs.length,
+        hasNext: offset + sanitizedLogs.length < total,
+        hasPrev: offset > 0
+      }
+    });
+    
+  } catch (err) {
+    console.error('[API] /api/logs error:', err.message);
+    console.error('[API] Stack:', err.stack);
+    return sendError(res, 500, 'Erreur récupération logs', err.message);
+  }
 });
 
 app.get('/api/logs/:id', async (req, res) => {

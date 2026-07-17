@@ -141,6 +141,14 @@ const BREAKDOWN_TYPES = {
 
 const STATUS_OPTIONS = ['downtime', 'maintenance', 'break', 'material'];
 
+// ✅ Enhanced: Category labels for better logging
+const STATUS_LABELS = {
+  'downtime': 'Panne',
+  'maintenance': 'Maintenance', 
+  'break': 'Break (Micro-arrêt)',
+  'material': 'Manque Matériel'
+};
+
 // Target: 5-20 machines in non-operational state
 const MIN_NON_OPERATIONAL = 5;
 const MAX_NON_OPERATIONAL = 20;
@@ -488,7 +496,7 @@ async function resolveOldestBreakdown() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MAIN SIMULATION LOGIC
+// MAIN SIMULATION LOGIC - Enhanced Auto-Balancing with Category Mixing
 // ═══════════════════════════════════════════════════════════════════
 
 async function balanceFactory() {
@@ -501,13 +509,22 @@ async function balanceFactory() {
     const currentNonOp = await getCurrentNonOperationalCount();
     const activeMachines = await getActiveMachines();
     
+    console.log('');
+    console.log('═══════════════════════════════════════════════════════════════');
     console.log(`[DATA-GEN] 🏭 Factory Status: ${currentNonOp} non-operational machines`);
-    console.log(`[DATA-GEN] Target range: ${MIN_NON_OPERATIONAL} - ${MAX_NON_OPERATIONAL}`);
+    console.log(`[DATA-GEN] 🎯 Target range: ${MIN_NON_OPERATIONAL}-${MAX_NON_OPERATIONAL}`);
+    console.log(`[DATA-GEN] 📊 Active machines: ${activeMachines.length}`);
+    console.log('═══════════════════════════════════════════════════════════════');
     
-    // Too few breakdowns? Create new ones
+    // ─────────────────────────────────────────────────────────────────
+    // SCENARIO 1: Too few breakdowns (< 5) → Create new ones
+    // ─────────────────────────────────────────────────────────────────
     if (currentNonOp < MIN_NON_OPERATIONAL) {
       const needed = randomInt(MIN_NON_OPERATIONAL, MAX_NON_OPERATIONAL) - currentNonOp;
-      console.log(`[DATA-GEN] 📈 Creating ${needed} new breakdowns`);
+      console.log(`[DATA-GEN] 📈 BALANCING: Need ${needed} more breakdowns (current: ${currentNonOp})`);
+      
+      // Track category distribution for balanced mixing
+      const categoryCount = { downtime: 0, maintenance: 0, break: 0, material: 0 };
       
       for (let i = 0; i < needed; i++) {
         // Pick a machine that is NOT currently broken
@@ -519,11 +536,33 @@ async function balanceFactory() {
         }
         
         const machine = randomChoice(availableMachines);
-        const status = randomChoice(STATUS_OPTIONS);
+        
+        // ✅ Enhanced: Smart category selection for balanced distribution
+        // Ensure we have a good mix of all 4 categories
+        let status;
+        const totalCreated = Object.values(categoryCount).reduce((a, b) => a + b, 0);
+        
+        if (totalCreated === 0) {
+          // First breakdown: random
+          status = randomChoice(STATUS_OPTIONS);
+        } else {
+          // Subsequent: prefer underrepresented categories
+          const sortedCategories = STATUS_OPTIONS.sort((a, b) => 
+            categoryCount[a] - categoryCount[b]
+          );
+          
+          // 70% chance to pick least used, 30% random
+          status = Math.random() < 0.7 ? sortedCategories[0] : randomChoice(STATUS_OPTIONS);
+        }
+        
+        categoryCount[status]++;
+        
         const breakdownData = generateBreakdownData(machine, status);
         
-        // Insert breakdown (this will automatically update machines table via insertRealisticBreakdown)
+        // Insert breakdown (this will automatically update machines table)
         await insertRealisticBreakdown(breakdownData);
+        
+        console.log(`[DATA-GEN] ✅ Created: ${machine} | ${STATUS_LABELS[status]} | ${breakdownData.alert_type} | ${breakdownData.criticite}`);
         
         // Emit Socket.IO event
         if (ioRef) {
@@ -538,24 +577,46 @@ async function balanceFactory() {
         
         activeMachines.push(machine);
       }
+      
+      // Log category distribution
+      console.log('[DATA-GEN] 📊 Category distribution:');
+      Object.entries(categoryCount).forEach(([cat, count]) => {
+        if (count > 0) {
+          console.log(`[DATA-GEN]    - ${STATUS_LABELS[cat]}: ${count}`);
+        }
+      });
     }
     
-    // Too many breakdowns? Resolve some
+    // ─────────────────────────────────────────────────────────────────
+    // SCENARIO 2: Too many breakdowns (> 20) → Resolve oldest
+    // ─────────────────────────────────────────────────────────────────
     else if (currentNonOp > MAX_NON_OPERATIONAL) {
       const excess = currentNonOp - MAX_NON_OPERATIONAL;
-      console.log(`[DATA-GEN] 📉 Resolving ${excess} breakdowns`);
+      console.log(`[DATA-GEN] 📉 BALANCING: Resolving ${excess} oldest breakdowns (current: ${currentNonOp})`);
       
       for (let i = 0; i < excess; i++) {
-        await resolveOldestBreakdown();
+        const resolved = await resolveOldestBreakdown();
+        if (resolved) {
+          console.log(`[DATA-GEN] ✅ Resolved: ${resolved}`);
+        }
       }
     }
     
+    // ─────────────────────────────────────────────────────────────────
+    // SCENARIO 3: Balanced (5-20) → Dynamic simulation (30% chance)
+    // ─────────────────────────────────────────────────────────────────
     else {
       console.log(`[DATA-GEN] ✅ Factory balanced (${currentNonOp} non-operational)`);
       
-      // Randomly resolve 1-2 breakdowns and create new ones (simulate dynamic factory)
+      // Randomly resolve 1 breakdown and create a new one (simulate dynamic factory)
+      // This keeps the dashboard "alive" without breaking the balance
       if (Math.random() < 0.3 && currentNonOp > MIN_NON_OPERATIONAL) {
-        await resolveOldestBreakdown();
+        console.log('[DATA-GEN] 🔄 Dynamic simulation: Rotating 1 breakdown');
+        
+        const resolved = await resolveOldestBreakdown();
+        if (resolved) {
+          console.log(`[DATA-GEN] ✅ Resolved: ${resolved}`);
+        }
         
         // Create a new breakdown to maintain balance
         const availableMachines = ALL_MACHINES.filter(m => !activeMachines.includes(m));
@@ -564,8 +625,9 @@ async function balanceFactory() {
           const status = randomChoice(STATUS_OPTIONS);
           const breakdownData = generateBreakdownData(machine, status);
           
-          // Insert breakdown (automatically updates machines table)
           await insertRealisticBreakdown(breakdownData);
+          
+          console.log(`[DATA-GEN] ✅ Created: ${machine} | ${STATUS_LABELS[status]} | ${breakdownData.alert_type}`);
           
           if (ioRef) {
             ioRef.emit('machineStatusChanged', {
@@ -580,6 +642,14 @@ async function balanceFactory() {
       }
     }
     
+    console.log('═══════════════════════════════════════════════════════════════');
+    console.log('');
+    
+  } catch (err) {
+    console.error('[DATA-GEN] ❌ Error in balanceFactory:', err.message);
+    console.error('[DATA-GEN] Stack:', err.stack);
+  }
+}    
   } catch (err) {
     console.error('[DATA-GEN] ❌ Error in balanceFactory:', err.message);
   }

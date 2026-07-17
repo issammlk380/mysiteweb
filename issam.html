@@ -1930,6 +1930,23 @@
             }, 4000);
         }
 
+        // ==================== CHART.JS GLOBAL CONFIGURATION ====================
+        // ✅ Disable localStorage to prevent tracking warnings
+        if (typeof Chart !== 'undefined') {
+            Chart.defaults.responsive = true;
+            Chart.defaults.maintainAspectRatio = false;
+            
+            // Disable all data persistence features
+            Chart.defaults.plugins = Chart.defaults.plugins || {};
+            Chart.defaults.plugins.legend = Chart.defaults.plugins.legend || {};
+            Chart.defaults.plugins.tooltip = Chart.defaults.plugins.tooltip || {};
+            
+            // Prevent Chart.js from accessing storage
+            if (Chart.platform) {
+                Chart.platform.disableCSSInjection = true;
+            }
+        }
+
         // ==================== GLOBAL APPLICATION STATE ====================
         const appState = {
             machines: {},
@@ -2405,20 +2422,33 @@ async function resolveAlert() {
     updateMachineCardUI(machineID);
 
     try {
-        // ✅ FIX: جلب آخر سجل نشط لـ KA01 ثم تحديثه بـ PUT
+        // ✅ Enhanced: Robust error handling for /api/logs
         const logsResponse = await fetch(`${API_BASE_URL}/api/logs?machine=${machineID}&limit=5`);
+        
+        if (!logsResponse.ok) {
+            console.error(`[API ERROR] /api/logs returned ${logsResponse.status}`);
+            throw new Error(`HTTP ${logsResponse.status}: ${logsResponse.statusText}`);
+        }
+        
         const logsData = await logsResponse.json();
         
-        // البحث عن آخر سجل غير Resolved
-        const logs = logsData.data?.logs || logsData || [];
+        // Handle different response formats
+        const logs = logsData.data?.logs || logsData.logs || logsData || [];
+        
+        if (!Array.isArray(logs)) {
+            console.warn('[API] Invalid response format from /api/logs:', logsData);
+            return;
+        }
+        
+        // Find latest active log (not Resolved)
         const latestActiveLog = logs.find(l => {
             const s = (l.status || '').toString().toLowerCase();
-            return s !== 'resolved' && s !== 'termine' && s !== 'completed';
+            return s !== 'resolved' && s !== 'termine' && s !== 'completed' && s !== 'résolu';
         });
 
         if (latestActiveLog && latestActiveLog.id) {
-            // ✅ تحديث السجل القديم بـ PUT
-            await fetch(`${API_BASE_URL}/api/logs/${latestActiveLog.id}`, {
+            // ✅ Update old log with PUT
+            const updateResponse = await fetch(`${API_BASE_URL}/api/logs/${latestActiveLog.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -2427,7 +2457,12 @@ async function resolveAlert() {
                     duration: downtimeMinutes
                 })
             });
-            console.log(`✅ [RESOLVE] Log ${latestActiveLog.id} updated to Resolved`);
+            
+            if (!updateResponse.ok) {
+                console.error(`[API ERROR] PUT /api/logs/${latestActiveLog.id} failed:`, updateResponse.status);
+            } else {
+                console.log(`✅ [RESOLVE] Log ${latestActiveLog.id} updated to Resolved`);
+            }
         } else {
             console.warn(`⚠️ No active log found for ${machineID}`);
         }
