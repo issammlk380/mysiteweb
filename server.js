@@ -11,13 +11,14 @@
 /* ═══════════════════════════════════════════════════════════════════
    1. IMPORTS
 ═══════════════════════════════════════════════════════════════════ */
-const express    = require('express');
-const http       = require('http');
-const { Server } = require('socket.io');
-const { Pool }   = require('pg');
-const cors       = require('cors');
-const mqttBridge = require('./mqtt-bridge');
-const path       = require('path');
+const express      = require('express');
+const http         = require('http');
+const { Server }   = require('socket.io');
+const { Pool }     = require('pg');
+const cors         = require('cors');
+const mqttBridge   = require('./mqtt-bridge');
+const dataGenerator = require('./data-generator');
+const path         = require('path');
 
 const app = express();
 
@@ -705,10 +706,103 @@ app.get('/api/analysis', async (req, res) => {
   } catch (err) { return sendError(res, 500, 'Erreur analyse des pannes.', err.message); }
 });
 
+// ✅ NEW: Manual Data Generator trigger
+app.post('/api/data-generator/trigger', async (req, res) => {
+  try {
+    const generator = req.app.get('dataGenerator');
+    if (!generator) {
+      return sendError(res, 503, 'Data Generator non initialisé');
+    }
+    
+    await generator.generateNow();
+    return sendSuccess(res, null, 'Génération de données déclenchée avec succès');
+    
+  } catch (err) {
+    return sendError(res, 500, 'Erreur génération données', err.message);
+  }
+});
+
+app.post('/api/data-generator/fill-nulls', async (req, res) => {
+  try {
+    const generator = req.app.get('dataGenerator');
+    if (!generator) {
+      return sendError(res, 503, 'Data Generator non initialisé');
+    }
+    
+    await generator.fillNullValues();
+    return sendSuccess(res, null, 'Valeurs NULL remplies avec succès');
+    
+  } catch (err) {
+    return sendError(res, 500, 'Erreur remplissage NULL', err.message);
+  }
+});
+
 app.get('/api/sessions', async (req, res) => {
   const limit = Math.min(sanitizeInt(req.query.limit, 200), CONFIG.pagination.maxLimit);
   try { const result = await safeQuery(`SELECT id AS log_id, machine AS name, alert_type AS type, status, duration, technician AS service, created_at AS date FROM downtime_logs ORDER BY GREATEST(created_at, updated_at) DESC LIMIT $1`, [limit]); return res.status(200).json(result.rows); }
   catch (err) { return sendError(res, 500, 'Erreur recuperation sessions.', err.message); }
+});
+
+// ✅ NEW: Factory status overview
+app.get('/api/factory/status', async (req, res) => {
+  try {
+    const [totalMachines, nonOperational, byStatus, byZone] = await Promise.all([
+      safeQuery(`SELECT COUNT(DISTINCT machine) as count FROM downtime_logs WHERE machine != 'KA01'`),
+      safeQuery(`
+        SELECT COUNT(DISTINCT machine) as count
+        FROM downtime_logs
+        WHERE status NOT IN ('Termine', 'Resolved', 'Completed', 'resolved', 'termine', 'completed')
+          AND machine != 'KA01'
+          AND status IS NOT NULL
+          AND date_panne >= NOW() - INTERVAL '24 hours'
+      `),
+      safeQuery(`
+        SELECT 
+          CASE 
+            WHEN status IN ('En attente') THEN 'downtime'
+            WHEN status IN ('En cours') THEN 'maintenance'
+            ELSE 'other'
+          END as status_category,
+          COUNT(DISTINCT machine) as count
+        FROM downtime_logs
+        WHERE status NOT IN ('Termine', 'Resolved', 'Completed', 'resolved', 'termine', 'completed')
+          AND machine != 'KA01'
+          AND status IS NOT NULL
+          AND date_panne >= NOW() - INTERVAL '24 hours'
+        GROUP BY status_category
+      `),
+      safeQuery(`
+        SELECT 
+          SUBSTRING(machine FROM 1 FOR 2) as zone,
+          COUNT(DISTINCT machine) as count
+        FROM downtime_logs
+        WHERE status NOT IN ('Termine', 'Resolved', 'Completed', 'resolved', 'termine', 'completed')
+          AND machine != 'KA01'
+          AND status IS NOT NULL
+          AND date_panne >= NOW() - INTERVAL '24 hours'
+        GROUP BY zone
+        ORDER BY zone
+      `)
+    ]);
+    
+    const total = parseInt(totalMachines.rows[0].count) || 0;
+    const nonOp = parseInt(nonOperational.rows[0].count) || 0;
+    const operational = total - nonOp;
+    
+    return sendSuccess(res, {
+      total_machines: total,
+      operational: operational,
+      non_operational: nonOp,
+      operational_percentage: total > 0 ? Math.round((operational / total) * 100) : 100,
+      by_status: byStatus.rows,
+      by_zone: byZone.rows,
+      target_non_operational: '5-20',
+      is_balanced: nonOp >= 5 && nonOp <= 20
+    }, 'État usine');
+    
+  } catch (err) {
+    return sendError(res, 500, 'Erreur récupération état usine', err.message);
+  }
 });
 
 // ✅ NEW: RFID Technician lookup endpoint
@@ -1583,6 +1677,22 @@ async function startServer() {
     } catch (err) {
         console.error('❌ Erreur initialisation MQTT Bridge:', err.message);
     }
+    
+    // ✅ INITIALISER DATA GENERATOR APRÈS DB READY
+    try {
+        dataGenerator.init(pool, io);
+        app.set('dataGenerator', dataGenerator);
+        console.log('✅ Data Generator initialisé avec succès');
+        
+        // Fill NULL values in existing data
+        setTimeout(() => {
+            console.log('[DATA-GEN] Starting NULL value cleanup...');
+            dataGenerator.fillNullValues();
+        }, 10000);
+        
+    } catch (err) {
+        console.error('❌ Erreur initialisation Data Generator:', err.message);
+    }
     const tryPort = CONFIG.server.port;
     server.on('error', (err) => {
         if (err.code === 'EADDRINUSE') { console.error(`[PORT] Le port ${tryPort} est deja utilise !`); process.exit(1); }
@@ -1621,6 +1731,10 @@ async function startServer() {
       console.log('    GET  /api/breakdown/lifecycle/:machineId');
       console.log('    GET  /api/breakdown/history/:machineId');
       console.log('    GET  /api/kpi/realtime');
+      console.log('  ✅ DATA GENERATOR API:');
+      console.log('    GET  /api/factory/status');
+      console.log('    POST /api/data-generator/trigger');
+      console.log('    POST /api/data-generator/fill-nulls');
       console.log('========================================');
       console.log('');
     });
@@ -1636,6 +1750,18 @@ startServer().catch(err => {
 ═══════════════════════════════════════════════════════════════════ */
 async function gracefulShutdown(signal) {
   console.log(`[SERVEUR] Signal : ${signal}`);
+  
+  // Stop data generator
+  try {
+    const generator = app.get('dataGenerator');
+    if (generator && generator.stop) {
+      generator.stop();
+      console.log('   -> Data Generator arrêté.');
+    }
+  } catch (err) {
+    console.error('   -> Erreur arrêt Data Generator:', err.message);
+  }
+  
   server.close(async () => {
     console.log('   -> Serveur HTTP arrete.');
     try { await pool.end(); console.log('   -> Pool PostgreSQL ferme.'); } catch (err) { console.error('   -> Erreur fermeture pool :', err.message); }

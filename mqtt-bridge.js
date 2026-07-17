@@ -123,7 +123,7 @@ function init(pool, io) {
 }
 
 // ============================================================================
-// GESTION DES ALERTES
+// GESTION DES ALERTES - LIFECYCLE 3 PHASES
 // ============================================================================
 async function handleAlert(data) {
     try {
@@ -133,8 +133,9 @@ async function handleAlert(data) {
         const type = data.type || rawStatus;
         const operator = data.operator || 'Unknown';
         const timestamp = data.timestamp || Date.now();
+        const lifecyclePhase = data.lifecycle_phase || 'detected'; // ← NOUVEAU
 
-        console.log(`[ALERT] ${machineId} | Status: ${rawStatus} | Type: ${type} | Op: ${operator}`);
+        console.log(`[ALERT] ${machineId} | Status: ${rawStatus} | Type: ${type} | Lifecycle: ${lifecyclePhase}`);
 
         const mapped = STATUS_MAP[rawStatus];
         if (!mapped) {
@@ -142,21 +143,33 @@ async function handleAlert(data) {
             return;
         }
 
-        // --- CAS 1: RÉSOLUTION (Bouton Vert) ---
-        if (rawStatus === 'RESOLVED' || rawStatus === 'OPERATIONAL') {
-            await resolveAlert(machineId, operator, timestamp);
-
-            // Mettre à jour l'état machine en DB
-            await upsertMachineState(machineId, zone, 'operational', 'Resolved');
-
-            // ÉMETTRE LE STATUT OPERATIONAL AU DASHBOARD
-            emitToDashboard(machineId, zone, 'operational', 'Resolved', 'green', operator, timestamp);
-        }
-        // --- CAS 2: NOUVELLE ALERTE ---
-        else {
-            const log = await insertDowntimeLog(machineId, zone, mapped.db, type, operator);
+        // ═══════════════════════════════════════════════════════════════════
+        // LIFECYCLE 3 PHASES
+        // ═══════════════════════════════════════════════════════════════════
+        
+        // ─── PHASE 1: DETECTED (Opérateur signale panne) ───
+        if (lifecyclePhase === 'detected') {
+            console.log(`📍 PHASE 1: DETECTED - Opérateur signale ${type}`);
+            const log = await insertDowntimeLog(machineId, zone, mapped.db, type, operator, lifecyclePhase);
             await upsertMachineState(machineId, zone, mapped.db, type);
-            emitToDashboard(machineId, zone, mapped.db, type, mapped.color, operator, timestamp, log.id);
+            emitToDashboard(machineId, zone, mapped.db, type, mapped.color, operator, timestamp, log.id, lifecyclePhase);
+        }
+        
+        // ─── PHASE 2: ACKNOWLEDGED (Technicien arrive) ───
+        else if (lifecyclePhase === 'acknowledged') {
+            console.log(`📍 PHASE 2: ACKNOWLEDGED - Technicien arrive sur ${machineId}`);
+            await acknowledgeTechnician(machineId, operator, timestamp);
+            // État reste 'maintenance' mais lifecycle passe à 'acknowledged'
+            await upsertMachineState(machineId, zone, 'maintenance', 'En cours');
+            emitToDashboard(machineId, zone, 'maintenance', 'En cours', 'blue', operator, timestamp, null, 'acknowledged');
+        }
+        
+        // ─── PHASE 3: RESOLVED (Réparation terminée) ───
+        else if (lifecyclePhase === 'resolved' || rawStatus === 'RESOLVED' || rawStatus === 'OPERATIONAL') {
+            console.log(`📍 PHASE 3: RESOLVED - Réparation terminée sur ${machineId}`);
+            await resolveAlert(machineId, operator, timestamp);
+            await upsertMachineState(machineId, zone, 'operational', 'Resolved');
+            emitToDashboard(machineId, zone, 'operational', 'Resolved', 'green', operator, timestamp, null, 'resolved');
         }
 
     } catch (err) {
@@ -165,18 +178,21 @@ async function handleAlert(data) {
 }
 
 // ============================================================================
-// INSERTION EN BASE (Nouvelle alerte)
+// INSERTION EN BASE (Nouvelle alerte) - PHASE 1: DETECTED
 // ============================================================================
-async function insertDowntimeLog(machine, zone, status, type, operator) {
+async function insertDowntimeLog(machine, zone, status, type, operator, lifecyclePhase = 'detected') {
     const now = new Date();
     const query = `
         INSERT INTO downtime_logs 
-        (machine, status, type, operator, date_panne, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $5, $5)
+        (machine, status, alert_type, operator, date_panne, lifecycle_phase, atelier, created_at, updated_at)
+        VALUES ($1, 'En attente', $2, $3, $4, $5, $6, $4, $4)
         RETURNING *;
     `;
-    const result = await poolRef.query(query, [machine, status, type, operator, now]);
-    console.log(`[MQTT→DB] ✅ Inséré - ID: ${result.rows[0].id} | ${machine} | ${status} | ${type}`);
+    const atelier = deriveAtelier(machine);
+    const result = await poolRef.query(query, [machine, type, operator, now, lifecyclePhase, atelier]);
+    console.log(`[PHASE 1] ✅ Panne détectée - ID: ${result.rows[0].id} | ${machine} | ${type}`);
+    console.log(`   → date_panne: ${now.toISOString()}`);
+    console.log(`   → lifecycle_phase: ${lifecyclePhase}`);
 
     // Update criticite if available
     try {
@@ -186,40 +202,118 @@ async function insertDowntimeLog(machine, zone, status, type, operator) {
 }
 
 // ============================================================================
-// RÉSOLUTION D'ALERTE (Bouton Vert) - SQL CORRIGÉ
+// ACKNOWLEDGMENT TECHNICIEN - PHASE 2: ACKNOWLEDGED
+// ============================================================================
+async function acknowledgeTechnician(machine, technicianName, timestamp) {
+    try {
+        const now = new Date();
+        const heureArrivee = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        const query = `
+            UPDATE downtime_logs 
+            SET 
+                technician = $1,
+                date_arrivee_technicien = $2,
+                heure_arrivee = $3,
+                lifecycle_phase = 'acknowledged',
+                status = 'En cours',
+                -- ✅ Calcul MTTA (Mean Time To Acknowledge)
+                temps_reaction_minutes = GREATEST(0, EXTRACT(EPOCH FROM ($2 - date_panne)) / 60)::INTEGER,
+                updated_at = $2
+            WHERE id = (
+                SELECT id FROM downtime_logs 
+                WHERE machine = $4
+                  AND status = 'En attente'
+                  AND lifecycle_phase = 'detected'
+                ORDER BY date_panne DESC
+                LIMIT 1
+            )
+            RETURNING *;
+        `;
+
+        const result = await poolRef.query(query, [technicianName, now, heureArrivee, machine]);
+
+        if (result.rows.length > 0) {
+            const row = result.rows[0];
+            console.log(`[PHASE 2] ✅ Technicien arrivé - ID: ${row.id} | ${machine}`);
+            console.log(`   → date_arrivee: ${now.toISOString()}`);
+            console.log(`   → temps_reaction (MTTA): ${row.temps_reaction_minutes} minutes`);
+            console.log(`   → lifecycle_phase: acknowledged`);
+            
+            // Emit real-time event
+            if (ioRef) {
+                ioRef.emit('technician_acknowledged', {
+                    code: machine,
+                    logId: row.id,
+                    technician: technicianName,
+                    temps_reaction: row.temps_reaction_minutes,
+                    timestamp: now.toISOString()
+                });
+            }
+        } else {
+            console.log(`[PHASE 2] ⚠️ Aucune panne 'En attente' trouvée pour ${machine}`);
+        }
+
+    } catch (err) {
+        console.error('❌ Erreur acknowledgeTechnician:', err.message);
+    }
+}
+
+function deriveAtelier(machine) {
+    if (!machine) return 'Atelier General';
+    const prefix = String(machine).substring(0, 2).toUpperCase();
+    const map = { 'KA': 'Atelier A', 'KB': 'Atelier B', 'KC': 'Atelier C', 'KD': 'Atelier D', 'KX': 'Atelier X' };
+    return map[prefix] || 'Atelier General';
+}
+
+// ============================================================================
+// RÉSOLUTION D'ALERTE - PHASE 3: RESOLVED
 // ============================================================================
 async function resolveAlert(machine, resolvedBy, timestamp) {
     try {
         const now = new Date();
+        const heureReparation = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-        // ✅ FIX: Don't update heure_arret_technicien to avoid VARCHAR->TIMESTAMP conflicts
-        // Only set it if it's NULL and leave it as-is otherwise
         const query = `
             UPDATE downtime_logs 
             SET 
-                status = 'Resolved', 
+                status = 'Termine', 
                 resolved_by = $1,
                 date_reparation = $2,
+                heure_reparation = $3,
+                lifecycle_phase = 'resolved',
+                -- ✅ Calcul MTTR (Mean Time To Repair) - Temps total
+                temps_total_arret_minutes = GREATEST(0, EXTRACT(EPOCH FROM ($2 - date_panne)) / 60)::INTEGER,
                 duration = GREATEST(0, EXTRACT(EPOCH FROM ($2 - date_panne)) / 60)::INTEGER,
+                -- ✅ Calcul temps réparation (arrivée → fin)
+                temps_reparation_minutes = CASE 
+                    WHEN date_arrivee_technicien IS NOT NULL 
+                    THEN GREATEST(0, EXTRACT(EPOCH FROM ($2 - date_arrivee_technicien)) / 60)::INTEGER
+                    ELSE NULL
+                END,
                 updated_at = $2
-           WHERE id = (
-    SELECT id FROM downtime_logs 
-    WHERE machine = $3 
-      AND status NOT IN ('Resolved', 'Termine', 'Completed', 'resolved', 'termine', 'completed')
-      AND status IS NOT NULL
-    ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC 
-    LIMIT 1
-)
+            WHERE id = (
+                SELECT id FROM downtime_logs 
+                WHERE machine = $4 
+                  AND status NOT IN ('Resolved', 'Termine', 'Completed', 'resolved', 'termine', 'completed')
+                  AND status IS NOT NULL
+                ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC 
+                LIMIT 1
+            )
             RETURNING *;
         `;
 
-        const result = await poolRef.query(query, [resolvedBy, now, machine]);
+        const result = await poolRef.query(query, [resolvedBy, now, heureReparation, machine]);
 
         if (result.rows.length > 0) {
             const row = result.rows[0];
-            console.log(`[MQTT→DB] ✅ Résolu - ID: ${row.id} | ${machine} | Durée: ${row.duration}min`);
+            console.log(`[PHASE 3] ✅ Panne résolue - ID: ${row.id} | ${machine}`);
+            console.log(`   → date_reparation: ${now.toISOString()}`);
+            console.log(`   → temps_total_arret (MTTR): ${row.temps_total_arret_minutes} minutes`);
+            console.log(`   → temps_reparation: ${row.temps_reparation_minutes} minutes`);
+            console.log(`   → lifecycle_phase: resolved`);
 
-            // Émettre aussi un événement spécifique de résolution
+            // Émettre événement de résolution
             if (ioRef) {
                 ioRef.emit('alert_resolved', {
                     code: machine,
@@ -229,13 +323,14 @@ async function resolveAlert(machine, resolvedBy, timestamp) {
                     operator: resolvedBy,
                     timestamp: timestamp,
                     resolved_at: now.toISOString(),
-                    duration: row.duration,
+                    mttr: row.temps_total_arret_minutes,
+                    repair_time: row.temps_reparation_minutes,
                     log_id: row.id
                 });
             }
         } else {
-            console.log(`[MQTT→DB] ⚠️ Aucun log actif à résoudre pour ${machine}`);
-            // Même si pas de log, on force le reset dashboard
+            console.log(`[PHASE 3] ⚠️ Aucun log actif à résoudre pour ${machine}`);
+            // Force reset dashboard
             if (ioRef) {
                 ioRef.emit('alert_resolved', {
                     code: machine,
@@ -250,7 +345,7 @@ async function resolveAlert(machine, resolvedBy, timestamp) {
 
     } catch (err) {
         console.error('❌ Erreur résolution:', err.message);
-        // En cas d'erreur DB, on émet quand même pour ne pas bloquer le dashboard
+        console.error('   Stack:', err.stack);
         if (ioRef) {
             ioRef.emit('alert_resolved', {
                 code: machine,
@@ -302,52 +397,49 @@ async function upsertMachineState(machineId, zone, status, type) {
 }
 
 // ============================================================================
-// ÉMISSION SOCKET.IO VERS LE DASHBOARD
+// ÉMISSION SOCKET.IO VERS LE DASHBOARD - LIFECYCLE AWARE
 // ============================================================================
-function emitToDashboard(machineId, zone, status, type, color, operator, timestamp, logId = null) {
+function emitToDashboard(machineId, zone, status, type, color, operator, timestamp, logId = null, lifecyclePhase = 'detected') {
     if (!ioRef) return;
 
     const payload = {
         code: machineId,
         zone: zone,
-        status: status,        // 'downtime' | 'maintenance' | 'break' | 'material' | 'operational'
-        type: type,            // 'Panne' | 'Maintenance' | 'Break / Pause' | 'Material' | 'Resolved'
-        color: color,        // 'red' | 'blue' | 'yellow' | 'orange' | 'green'
+        status: status,
+        type: type,
+        color: color,
         operator: operator,
+        lifecycle_phase: lifecyclePhase,  // ← NOUVEAU
         timestamp: timestamp,
         updated_at: new Date().toISOString(),
         log_id: logId,
-        criticite: 'Moyenne',
-        date_panne: null,
-        date_reparation: null,
-        heure_arret_technicien: null,
-        resolved_by: null
+        criticite: 'Moyenne'
     };
 
-    // ✅ FIX GREEN BUTTON PERSISTENCE:
-    // Only emit if the state has ACTUALLY CHANGED from what we last sent
-    // This prevents Wokwi MQTT messages from reverting manual "Green" interventions
+    // ✅ FIX GREEN BUTTON: Skip duplicate states
     const lastState = lastKnownMachineState[machineId];
     
-    if (lastState && lastState.status === status && lastState.type === type) {
-        // State hasn't changed - don't emit duplicate event
-        console.log(`[MQTT→Socket] ⏭️  Skip duplicate - ${machineId} already at ${status}`);
+    if (lastState && lastState.status === status && lastState.type === type && lastState.lifecycle_phase === lifecyclePhase) {
+        console.log(`[MQTT→Socket] ⏭️  Skip duplicate - ${machineId} already at ${status} (${lifecyclePhase})`);
         return;
     }
 
-    // Update our tracking
-    lastKnownMachineState[machineId] = { status, type, timestamp: Date.now() };
+    // Update tracking
+    lastKnownMachineState[machineId] = { status, type, lifecycle_phase: lifecyclePhase, timestamp: Date.now() };
 
-    console.log('[MQTT→Socket] 📡 Emit machine_status_updated:', payload);
+    console.log(`[MQTT→Socket] 📡 Emit - ${machineId} | ${status} | Phase: ${lifecyclePhase}`);
     ioRef.emit('machine_status_updated', payload);
-
-    // Événement legacy pour compatibilité
     ioRef.emit('status_update', payload);
-
-    // ✅ CORRECTION CRITIQUE : Émettre aussi 'updateMachines' pour que le Dashboard issam.html reçoive l'événement
-    // Le Dashboard issam.html n'écoute que 'updateMachines', pas 'machine_status_updated'
     ioRef.emit('updateMachines', [payload]);
-    console.log('[MQTT→Socket] 📡 Emit updateMachines:', [payload]);
+    
+    // Événements lifecycle spécifiques
+    if (lifecyclePhase === 'detected') {
+        ioRef.emit('breakdown_detected', payload);
+    } else if (lifecyclePhase === 'acknowledged') {
+        ioRef.emit('technician_acknowledged', payload);
+    } else if (lifecyclePhase === 'resolved') {
+        ioRef.emit('breakdown_resolved', payload);
+    }
 }
 
 // ============================================================================
