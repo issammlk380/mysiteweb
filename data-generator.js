@@ -263,6 +263,15 @@ function mapStatusToDb(status) {
   return map[status] || 'En attente';
 }
 
+// Map internal status to frontend-compatible status
+function mapStatusToFrontend(dbStatus) {
+  const normalized = (dbStatus || '').toLowerCase();
+  if (normalized === 'en attente') return 'downtime';
+  if (normalized === 'en cours') return 'maintenance';
+  if (normalized === 'termine' || normalized === 'resolved') return 'operational';
+  return 'downtime'; // default
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // DATABASE OPERATIONS
 // ═══════════════════════════════════════════════════════════════════
@@ -319,6 +328,10 @@ async function insertRealisticBreakdown(breakdownData) {
     
     console.log(`[DATA-GEN] ✅ Inserted realistic breakdown - ${breakdownData.machine} | ${breakdownData.alert_type} | ${breakdownData.criticite}`);
     
+    // ✅ CRITICAL FIX: Update machine status in machines table (if exists)
+    // This ensures Dashboard shows the breakdown visually
+    await updateMachineStatus(breakdownData.machine, mapStatusToFrontend(breakdownData.status), breakdownData.alert_type);
+    
     return result.rows[0].id;
     
   } catch (err) {
@@ -330,34 +343,52 @@ async function insertRealisticBreakdown(breakdownData) {
 
 async function updateMachineStatus(machine, status, alertType) {
   try {
-    // Try to check if machines table exists with 'code' or 'machine_id'
+    // Skip KA01 (real Wokwi machine)
+    if (machine === 'KA01') {
+      return;
+    }
+    
+    // Try to check if machines table exists with 'machine' column
     let checkQuery = `SELECT 1 FROM machines WHERE machine = $1 LIMIT 1`;
     let existing;
     
     try {
       existing = await poolRef.query(checkQuery, [machine]);
     } catch (err) {
-      // If 'machine' column doesn't exist, table might not exist or use different schema
-      console.log(`[DATA-GEN] machines table not available or different schema`);
+      // machines table doesn't exist or uses different schema - that's OK
+      // Frontend reads from downtime_logs anyway
+      console.log(`[DATA-GEN] machines table not available (expected)`);
       return;
     }
     
     if (existing && existing.rows.length > 0) {
       await poolRef.query(
-        `UPDATE machines SET status = $1 WHERE machine = $2`,
-        [status, machine]
+        `UPDATE machines 
+         SET status = $1, 
+             alert_type = $2,
+             last_alert_at = NOW(),
+             updated_at = NOW()
+         WHERE machine = $3`,
+        [status, alertType, machine]
       );
+      console.log(`[DATA-GEN] ✅ Machine ${machine} status updated: ${status}`);
     } else {
       await poolRef.query(
-        `INSERT INTO machines (machine, status) VALUES ($1, $2)`,
-        [machine, status]
+        `INSERT INTO machines (machine, status, alert_type, last_alert_at, created_at, updated_at) 
+         VALUES ($1, $2, $3, NOW(), NOW(), NOW())
+         ON CONFLICT (machine) DO UPDATE
+         SET status = EXCLUDED.status, 
+             alert_type = EXCLUDED.alert_type, 
+             last_alert_at = NOW(),
+             updated_at = NOW()`,
+        [machine, status, alertType]
       );
+      console.log(`[DATA-GEN] ✅ Machine ${machine} created with status: ${status}`);
     }
     
-    console.log(`[DATA-GEN] Machine ${machine} status updated: ${status}`);
-    
   } catch (err) {
-    console.error('[DATA-GEN] Error updating machine status:', err.message);
+    // Silent fail - machines table is optional since frontend reads from downtime_logs
+    console.log(`[DATA-GEN] Could not update machines table (non-critical): ${err.message}`);
   }
 }
 
@@ -491,8 +522,8 @@ async function balanceFactory() {
         const status = randomChoice(STATUS_OPTIONS);
         const breakdownData = generateBreakdownData(machine, status);
         
+        // Insert breakdown (this will automatically update machines table via insertRealisticBreakdown)
         await insertRealisticBreakdown(breakdownData);
-        await updateMachineStatus(machine, status, breakdownData.alert_type);
         
         // Emit Socket.IO event
         if (ioRef) {
@@ -533,8 +564,8 @@ async function balanceFactory() {
           const status = randomChoice(STATUS_OPTIONS);
           const breakdownData = generateBreakdownData(machine, status);
           
+          // Insert breakdown (automatically updates machines table)
           await insertRealisticBreakdown(breakdownData);
-          await updateMachineStatus(machine, status, breakdownData.alert_type);
           
           if (ioRef) {
             ioRef.emit('machineStatusChanged', {
