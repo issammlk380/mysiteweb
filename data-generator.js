@@ -649,10 +649,6 @@ async function balanceFactory() {
     console.error('[DATA-GEN] ❌ Error in balanceFactory:', err.message);
     console.error('[DATA-GEN] Stack:', err.stack);
   }
-}    
-  } catch (err) {
-    console.error('[DATA-GEN] ❌ Error in balanceFactory:', err.message);
-  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
