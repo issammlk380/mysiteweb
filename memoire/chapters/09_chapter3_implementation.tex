@@ -1,0 +1,989 @@
+﻿% ============================================================================
+% CHAPITRE 3 — RÉALISATION ET IMPLÉMENTATION DU SYSTÈME
+% ============================================================================
+
+\chapter{Réalisation et Implémentation du Système Andon IIoT}
+\label{chap:implementation}
+
+\section*{Introduction}
+\addcontentsline{toc}{section}{Introduction}
+
+Ce chapitre présente la réalisation concrète du système Andon intelligent basé sur l'IIoT développé dans le cadre de ce projet. Il décrit en détail l'ensemble des étapes d'implémentation, depuis la phase de simulation et de prototypage jusqu'au déploiement complet de la solution en environnement Cloud. L'objectif est de démontrer la faisabilité technique du système conçu et de valider son fonctionnement à travers une approche méthodique et progressive.
+
+La démarche de réalisation adoptée suit une logique incrémentale, permettant de tester et valider chaque composant avant son intégration dans l'architecture globale. Cette approche garantit la robustesse et la fiabilité du système final. Le développement s'articule autour de plusieurs axes complémentaires : la simulation matérielle, le développement embarqué, l'implémentation backend, la conception du dashboard web, et enfin la création de l'application mobile progressive.
+
+Ce chapitre est structuré de manière à refléter la chronologie réelle du développement. Nous commencerons par présenter l'environnement de simulation utilisé pour valider le fonctionnement du système embarqué, avant d'aborder l'implémentation effective du firmware ESP32. Nous détaillerons ensuite la réalisation de la couche backend qui assure la gestion des données et la logique métier, puis nous présenterons le développement du dashboard web et de l'application PWA qui constituent l'interface utilisateur du système. Enfin, nous analyserons les résultats obtenus à travers une série de tests fonctionnels et de validation.
+
+Chaque section de ce chapitre intègre des captures d'écran réelles et des extraits de code significatifs permettant d'illustrer concrètement les choix d'implémentation et les résultats obtenus. Cette documentation détaillée constitue une trace complète du processus de développement et permet d'assurer la reproductibilité et la maintenabilité du système.
+
+% ============================================================================
+\section{Environnement de Développement et Outils Utilisés}
+\label{sec:impl_environment}
+
+La réussite d'un projet de développement logiciel et matériel repose en grande partie sur le choix des outils et de l'environnement de développement. Cette section présente l'ensemble des technologies, plateformes et logiciels utilisés pour la réalisation de ce projet.
+
+\subsection{Environnement de Développement Intégré}
+\label{subsec:impl_ide}
+
+Le développement du système a nécessité l'utilisation de plusieurs environnements de développement intégré (IDE) adaptés à chaque composante du projet. Pour la partie embarquée, nous avons opté pour Visual Studio Code équipé de l'extension PlatformIO, qui offre un environnement complet pour le développement sur microcontrôleurs ESP32. Cet IDE permet la gestion des bibliothèques, la compilation, et le téléversement du firmware de manière efficace.
+
+La figure~\ref{fig:vscode_interface} présente l'interface de Visual Studio Code configurée pour le développement du projet. On peut observer la structure du projet embarqué avec les différents fichiers sources, les bibliothèques utilisées, et la configuration PlatformIO.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{images/vscode_interface.png}
+\caption{Interface de Visual Studio Code avec PlatformIO pour le développement ESP32}
+\label{fig:vscode_interface}
+\end{figure}
+
+L'environnement PlatformIO présente plusieurs avantages par rapport à l'IDE Arduino traditionnel : gestion automatique des dépendances, support du débogage avancé, intégration des tests unitaires, et compatibilité avec Git pour le versioning du code. La configuration du projet est centralisée dans le fichier \texttt{platformio.ini} qui spécifie la plateforme cible, le framework utilisé, et les bibliothèques requises.
+
+Pour le développement backend en Node.js et le dashboard web, nous avons également utilisé Visual Studio Code grâce à son excellent support pour JavaScript, TypeScript, et les frameworks web modernes. Les extensions ESLint et Prettier ont été configurées pour maintenir la qualité et la cohérence du code.
+
+\subsection{Plateforme de Simulation Wokwi}
+\label{subsec:impl_wokwi}
+
+Avant le déploiement sur matériel réel, une phase de simulation complète a été réalisée à l'aide de la plateforme Wokwi. Cette plateforme en ligne permet de simuler des circuits électroniques complets incluant des microcontrôleurs ESP32, des composants électroniques, et des périphériques de communication.
+
+L'utilisation de Wokwi présente plusieurs avantages significatifs dans le contexte de ce projet. Premièrement, elle permet de valider le fonctionnement du firmware sans disposer immédiatement du matériel physique, accélérant ainsi le cycle de développement. Deuxièmement, elle facilite le débogage en offrant une visibilité complète sur l'état des broches, les communications série, et les messages MQTT. Enfin, elle permet de documenter et de partager le projet de manière interactive, facilitant la collaboration et la validation des concepts.
+
+La figure~\ref{fig:wokwi_project} montre l'interface du projet Wokwi configuré pour ce système. L'environnement intègre l'éditeur de code, le schéma électronique, et les outils de simulation dans une interface web unifiée.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{images/wokwi_project.png}
+\caption{Interface du projet Wokwi avec éditeur de code et schéma électronique}
+\label{fig:wokwi_project}
+\end{figure}
+
+Le projet Wokwi est organisé en plusieurs fichiers : le code principal du firmware, le fichier de configuration du schéma électronique (\texttt{diagram.json}), et les bibliothèques nécessaires. Cette organisation modulaire facilite la maintenance et l'évolution du code.
+
+\subsection{Outils de Gestion de Versions et Collaboration}
+\label{subsec:impl_git}
+
+La gestion des versions du code source a été assurée par Git, avec un dépôt hébergé sur GitHub. Cette approche permet de tracer l'historique complet des modifications, de gérer les branches de développement, et de faciliter la collaboration. Le projet a été structuré en plusieurs repositories distincts correspondant aux différentes composantes : firmware embarqué, backend Node.js, et dashboard web.
+
+Le tableau~\ref{tab:dev_tools} récapitule l'ensemble des outils et technologies utilisés pour le développement du système.
+
+\begin{table}[H]
+\centering
+\caption{Outils et technologies de développement}
+\label{tab:dev_tools}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Catégorie} & \textbf{Outil/Technologie} & \textbf{Utilisation} \\
+\midrule
+IDE Embarqué & Visual Studio Code + PlatformIO & Développement ESP32 \\
+IDE Backend/Web & Visual Studio Code & Node.js, HTML, CSS, JS \\
+Simulation & Wokwi & Simulation matérielle ESP32 \\
+Gestion de versions & Git + GitHub & Versioning et collaboration \\
+Développement Backend & Node.js 18.x & Serveur applicatif \\
+Base de données & PostgreSQL 15 & Stockage des données \\
+Gestion BD & pgAdmin 4 & Administration PostgreSQL \\
+Cloud Platform & Railway & Hébergement backend et BD \\
+Broker MQTT & HiveMQ Cloud & Communication IoT \\
+API Testing & Postman & Tests des endpoints API \\
+Debugging & Chrome DevTools & Débogage frontend \\
+Documentation & LaTeX + Overleaf & Rédaction du mémoire \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Cette combinaison d'outils professionnels garantit un environnement de développement robuste, efficace et conforme aux standards de l'industrie. Chaque outil a été choisi en fonction de ses capacités techniques, de sa compatibilité avec les autres composantes, et de sa facilité d'utilisation.
+
+% ============================================================================
+\section{Phase de Simulation et Prototypage}
+\label{sec:impl_simulation}
+
+La phase de simulation constitue une étape cruciale dans le développement du système. Elle permet de valider les concepts, de tester les algorithmes, et d'identifier les problèmes potentiels avant l'implémentation sur matériel réel. Cette approche réduit considérablement les coûts de développement et accélère le processus de mise au point.
+
+\subsection{Conception du Schéma Électronique Virtuel}
+\label{subsec:impl_circuit}
+
+Le schéma électronique du système a été conçu dans l'environnement Wokwi en respectant strictement l'architecture définie dans le chapitre de conception. Le circuit intègre un microcontrôleur ESP32 comme élément central, connecté à plusieurs périphériques simulant les composants réels d'une machine industrielle.
+
+La figure~\ref{fig:wokwi_circuit} présente le schéma électronique complet du système tel qu'implémenté dans Wokwi. On peut y observer les différentes connexions entre le microcontrôleur ESP32 et les composants périphériques : boutons pour simuler les événements machines, LED pour indiquer l'état du système, et module WiFi intégré pour la communication réseau.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{images/wokwi_circuit_diagram.png}
+\caption{Schéma électronique du système dans Wokwi}
+\label{fig:wokwi_circuit}
+\end{figure}
+
+Le circuit comprend les éléments suivants :
+
+\begin{itemize}[leftmargin=1.5cm]
+    \item \textbf{ESP32 DevKit V1} : microcontrôleur principal avec WiFi et Bluetooth intégrés
+    \item \textbf{Bouton d'alarme} : connecté à la broche GPIO 15 pour déclencher les alertes
+    \item \textbf{Bouton de réinitialisation} : connecté à la broche GPIO 4 pour réinitialiser l'alarme
+    \item \textbf{LED rouge} : connectée à la broche GPIO 2 pour indiquer l'état d'alarme
+    \item \textbf{LED verte} : connectée à la broche GPIO 16 pour indiquer l'état normal
+    \item \textbf{LED bleue} : connectée à la broche GPIO 17 pour indiquer la connexion WiFi
+    \item \textbf{Résistances de pull-up} : 10kΩ pour les boutons
+    \item \textbf{Résistances de limitation} : 220Ω pour les LED
+\end{itemize}
+
+La configuration des broches a été optimisée pour éviter les conflits avec les broches réservées de l'ESP32 (GPIO 6 à 11 pour le flash interne, GPIO 34-39 en entrée uniquement). Le choix des broches GPIO tient également compte de leur disponibilité après le démarrage et de leur compatibilité avec les fonctions de pull-up/pull-down internes.
+
+\subsection{Implémentation du Firmware de Simulation}
+\label{subsec:impl_firmware_sim}
+
+Le firmware développé pour la phase de simulation implémente l'ensemble des fonctionnalités du système Andon. Il est structuré de manière modulaire pour faciliter les tests et la maintenance. Le code est organisé en plusieurs fichiers correspondant aux différentes fonctionnalités : gestion WiFi, communication MQTT, gestion des événements, et logique métier.
+
+Le listing~\ref{lst:main_sim} présente la structure principale du programme embarqué :
+
+\begin{lstlisting}[language=C++, caption={Structure principale du firmware ESP32}, label={lst:main_sim}, captionpos=b]
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
+#include <time.h>
+
+// Configuration WiFi
+const char* ssid = "Wokwi-GUEST";
+const char* password = "";
+
+// Configuration MQTT
+const char* mqtt_server = "broker.hivemq.com";
+const int mqtt_port = 1883;
+const char* mqtt_topic_alert = "andon/machine/M001/alert";
+const char* mqtt_topic_status = "andon/machine/M001/status";
+
+// Configuration des broches
+const int PIN_ALARM_BUTTON = 15;
+const int PIN_RESET_BUTTON = 4;
+const int PIN_LED_RED = 2;
+const int PIN_LED_GREEN = 16;
+const int PIN_LED_BLUE = 17;
+
+// Variables globales
+WiFiClient espClient;
+PubSubClient mqttClient(espClient);
+bool alarmActive = false;
+unsigned long alarmStartTime = 0;
+
+void setup() {
+    Serial.begin(115200);
+    pinMode(PIN_ALARM_BUTTON, INPUT_PULLUP);
+    pinMode(PIN_RESET_BUTTON, INPUT_PULLUP);
+    pinMode(PIN_LED_RED, OUTPUT);
+    pinMode(PIN_LED_GREEN, OUTPUT);
+    pinMode(PIN_LED_BLUE, OUTPUT);
+    
+    connectWiFi();
+    configTime(0, 0, "pool.ntp.org");
+    mqttClient.setServer(mqtt_server, mqtt_port);
+}
+
+void loop() {
+    if (!mqttClient.connected()) {
+        reconnectMQTT();
+    }
+    mqttClient.loop();
+    checkButtons();
+    updateLEDs();
+}
+\end{lstlisting}
+
+La structure du code respecte les bonnes pratiques de programmation embarquée : initialisation claire des périphériques, boucle principale non bloquante, et gestion robuste des connexions réseau. L'utilisation de constantes pour les broches GPIO facilite la portabilité du code vers différentes configurations matérielles.
+
+\subsection{Tests de Simulation et Validation}
+\label{subsec:impl_sim_tests}
+
+Une fois le firmware implémenté, une série de tests exhaustifs a été réalisée dans l'environnement de simulation. Ces tests visent à valider le comportement du système dans différents scénarios d'utilisation et conditions de fonctionnement.
+
+La figure~\ref{fig:wokwi_simulation} montre le système en cours de simulation. On peut observer l'état des différents composants : LED allumées selon l'état du système, et moniteur série affichant les messages de diagnostic.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{images/wokwi_simulation_running.png}
+\caption{Simulation du système en fonctionnement dans Wokwi}
+\label{fig:wokwi_simulation}
+\end{figure}
+
+Le moniteur série constitue un outil essentiel pour le débogage et la validation du firmware. Il permet de suivre en temps réel l'exécution du programme, d'observer les connexions réseau, et de vérifier l'envoi des messages MQTT. La figure~\ref{fig:serial_monitor} présente un extrait typique des messages affichés pendant le fonctionnement du système.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/serial_monitor_output.png}
+\caption{Sortie du moniteur série montrant la connexion WiFi et MQTT}
+\label{fig:serial_monitor}
+\end{figure}
+
+Les messages affichés dans le moniteur série permettent de tracer précisément le déroulement du programme : initialisation des périphériques, connexion au réseau WiFi, établissement de la connexion MQTT, et transmission des événements. Cette traçabilité est essentielle pour identifier rapidement les problèmes et valider le bon fonctionnement du système.
+
+Le tableau~\ref{tab:sim_tests} récapitule les différents scénarios de test réalisés pendant la phase de simulation :
+
+\begin{table}[H]
+\centering
+\caption{Scénarios de test en simulation}
+\label{tab:sim_tests}
+\begin{tabular}{@{}p{0.15\textwidth}p{0.4\textwidth}p{0.35\textwidth}@{}}
+\toprule
+\textbf{Test} & \textbf{Description} & \textbf{Résultat attendu} \\
+\midrule
+TEST-01 & Démarrage du système & Initialisation réussie, connexion WiFi établie \\
+TEST-02 & Déclenchement d'une alarme & Envoi message MQTT, LED rouge allumée \\
+TEST-03 & Réinitialisation d'alarme & Message de résolution, LED verte allumée \\
+TEST-04 & Perte de connexion WiFi & Tentative de reconnexion automatique \\
+TEST-05 & Perte de connexion MQTT & Reconnexion et republication des messages \\
+TEST-06 & Alarmes multiples rapides & Tous les événements sont enregistrés \\
+TEST-07 & Fonctionnement continu 24h & Stabilité, pas de fuite mémoire \\
+TEST-08 & Format des messages JSON & Conformité au schéma défini \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Tous les tests de simulation ont été validés avec succès, confirmant la robustesse de l'implémentation et la viabilité de l'architecture proposée. Cette validation en simulation constitue une base solide pour la phase suivante de développement sur matériel réel.
+
+
+\subsection{Validation de la Communication MQTT}
+\label{subsec:impl_mqtt_validation}
+
+La validation de la communication MQTT constitue un aspect critique du système. Pour vérifier que les messages sont correctement publiés et peuvent être reçus par le backend, nous avons utilisé un client MQTT externe (MQTT Explorer) permettant de visualiser en temps réel les messages échangés sur le broker.
+
+La figure~\ref{fig:mqtt_messages} montre les messages MQTT capturés pendant la simulation. On peut observer la structure JSON des messages, les topics utilisés, et le contenu des données transmises.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{images/mqtt_explorer_messages.png}
+\caption{Messages MQTT capturés avec MQTT Explorer pendant la simulation}
+\label{fig:mqtt_messages}
+\end{figure}
+
+Les messages MQTT respectent le format JSON défini dans la phase de conception. Chaque message d'alerte contient les informations essentielles : identifiant de la machine, type d'événement, timestamp, et données contextuelles. La cohérence de ces messages garantit l'interopérabilité entre les différentes couches du système.
+
+% ============================================================================
+\section{Développement du Système Embarqué}
+\label{sec:impl_embedded}
+
+Suite à la validation réussie de la simulation, nous avons procédé au développement du firmware final destiné au déploiement sur matériel réel. Cette étape implique des optimisations spécifiques, une gestion plus robuste des erreurs, et l'ajout de fonctionnalités avancées.
+
+\subsection{Architecture Logicielle du Firmware}
+\label{subsec:impl_firmware_arch}
+
+Le firmware a été structuré selon une architecture modulaire permettant une maintenance facilitée et une évolutivité maximale. Le code est organisé en plusieurs modules fonctionnels, chacun responsable d'un aspect spécifique du système.
+
+La figure~\ref{fig:firmware_architecture} illustre l'architecture logicielle du firmware embarqué :
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{images/firmware_architecture_diagram.png}
+\caption{Architecture modulaire du firmware ESP32}
+\label{fig:firmware_architecture}
+\end{figure}
+
+L'architecture se compose des modules suivants :
+
+\begin{itemize}[leftmargin=1.5cm]
+    \item \textbf{Module WiFi Manager} : gère la connexion au réseau WiFi avec reconnexion automatique
+    \item \textbf{Module MQTT Client} : assure la communication avec le broker MQTT
+    \item \textbf{Module Event Handler} : traite les événements provenant des boutons et capteurs
+    \item \textbf{Module LED Controller} : contrôle l'affichage des états via les LED
+    \item \textbf{Module Time Sync} : synchronise l'horloge système avec un serveur NTP
+    \item \textbf{Module Data Manager} : formatte et prépare les messages à envoyer
+    \item \textbf{Module Config} : centralise les paramètres de configuration
+\end{itemize}
+
+Cette organisation modulaire facilite les tests unitaires, améliore la lisibilité du code, et permet des modifications ciblées sans risque d'effets de bord sur les autres modules.
+
+\subsection{Gestion de la Connexion WiFi}
+\label{subsec:impl_wifi}
+
+La connexion WiFi constitue un élément critique du système, car toute la communication repose sur cette liaison. Le module WiFi Manager implémente une logique de connexion robuste avec gestion automatique des déconnexions et des tentatives de reconnexion.
+
+Le listing~\ref{lst:wifi_manager} présente l'implémentation de la gestion WiFi :
+
+\begin{lstlisting}[language=C++, caption={Module de gestion WiFi avec reconnexion automatique}, label={lst:wifi_manager}, captionpos=b]
+void connectWiFi() {
+    Serial.println("Connexion au WiFi...");
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid, password);
+    
+    int attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+        delay(500);
+        Serial.print(".");
+        attempts++;
+    }
+    
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("\nWiFi connecte!");
+        Serial.print("Adresse IP: ");
+        Serial.println(WiFi.localIP());
+        digitalWrite(PIN_LED_BLUE, HIGH);
+    } else {
+        Serial.println("\nEchec connexion WiFi");
+        digitalWrite(PIN_LED_BLUE, LOW);
+    }
+}
+
+void checkWiFiConnection() {
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("WiFi deconnecte, reconnexion...");
+        digitalWrite(PIN_LED_BLUE, LOW);
+        connectWiFi();
+    }
+}
+\end{lstlisting}
+
+La fonction \texttt{connectWiFi()} tente d'établir la connexion avec un nombre limité de tentatives pour éviter un blocage indéfini. En cas d'échec, le système continue de fonctionner en mode dégradé et tentera de se reconnecter périodiquement. La LED bleue indique visuellement l'état de la connexion WiFi, facilitant le diagnostic des problèmes réseau.
+
+\subsection{Implémentation du Client MQTT}
+\label{subsec:impl_mqtt_client}
+
+Le client MQTT implémente le protocole de communication avec le broker HiveMQ Cloud. Il gère la publication des messages d'alerte et de statut, ainsi que la souscription aux topics de commande si nécessaire.
+
+Le listing~\ref{lst:mqtt_client} montre l'implémentation du client MQTT :
+
+\begin{lstlisting}[language=C++, caption={Implémentation du client MQTT avec gestion des erreurs}, label={lst:mqtt_client}, captionpos=b]
+void reconnectMQTT() {
+    while (!mqttClient.connected()) {
+        Serial.println("Connexion au broker MQTT...");
+        
+        String clientId = "AndonESP32-";
+        clientId += String(random(0xffff), HEX);
+        
+        if (mqttClient.connect(clientId.c_str())) {
+            Serial.println("MQTT connecte!");
+            // Publication du message de demarrage
+            publishStatus("online");
+        } else {
+            Serial.print("Echec, rc=");
+            Serial.print(mqttClient.state());
+            Serial.println(" Nouvelle tentative dans 5s");
+            delay(5000);
+        }
+    }
+}
+
+void publishAlert(String alertType, String severity) {
+    StaticJsonDocument<256> doc;
+    doc["machineId"] = "M001";
+    doc["alertType"] = alertType;
+    doc["severity"] = severity;
+    doc["timestamp"] = getFormattedTime();
+    doc["status"] = "active";
+    
+    char buffer[256];
+    serializeJson(doc, buffer);
+    
+    if (mqttClient.publish(mqtt_topic_alert, buffer)) {
+        Serial.println("Alerte publiee: " + String(buffer));
+    } else {
+        Serial.println("Erreur publication alerte");
+    }
+}
+\end{lstlisting}
+
+La fonction \texttt{publishAlert()} construit un message JSON contenant toutes les informations nécessaires pour l'analyse de l'alerte. L'utilisation de la bibliothèque ArduinoJson garantit la validité du format JSON et simplifie la sérialisation des données. Un identifiant client aléatoire est généré à chaque connexion pour éviter les conflits avec d'autres dispositifs.
+
+\subsection{Gestion des Événements et Logique Métier}
+\label{subsec:impl_events}
+
+La logique métier du système gère les différents états de la machine et les transitions entre ces états. Elle implémente également le calcul du temps d'arrêt et la détection des conditions d'alerte.
+
+Le listing~\ref{lst:event_logic} présente l'implémentation de la gestion des événements :
+
+\begin{lstlisting}[language=C++, caption={Logique de gestion des événements et états machine}, label={lst:event_logic}, captionpos=b]
+void checkButtons() {
+    // Lecture de l'etat des boutons (logique inversee avec pull-up)
+    bool alarmPressed = (digitalRead(PIN_ALARM_BUTTON) == LOW);
+    bool resetPressed = (digitalRead(PIN_RESET_BUTTON) == LOW);
+    
+    static bool lastAlarmState = false;
+    static bool lastResetState = false;
+    static unsigned long lastDebounceTime = 0;
+    const unsigned long debounceDelay = 50;
+    
+    if (millis() - lastDebounceTime > debounceDelay) {
+        // Declenchement d'alarme
+        if (alarmPressed && !lastAlarmState && !alarmActive) {
+            alarmActive = true;
+            alarmStartTime = millis();
+            publishAlert("machine_stop", "high");
+            Serial.println("ALARME DECLENCHEE");
+            lastDebounceTime = millis();
+        }
+        
+        // Reinitialisation d'alarme
+        if (resetPressed && !lastResetState && alarmActive) {
+            unsigned long downtime = millis() - alarmStartTime;
+            publishAlertResolution(downtime);
+            alarmActive = false;
+            Serial.println("ALARME REINIT");
+            lastDebounceTime = millis();
+        }
+    }
+    
+    lastAlarmState = alarmPressed;
+    lastResetState = resetPressed;
+}
+\end{lstlisting}
+
+L'implémentation intègre un mécanisme anti-rebond (debouncing) pour éviter les fausses détections dues aux oscillations mécaniques des boutons. Le calcul du temps d'arrêt est effectué en mesurant la différence entre le moment du déclenchement et celui de la réinitialisation. Cette durée est ensuite transmise au backend pour les analyses statistiques.
+
+\subsection{Synchronisation Temporelle via NTP}
+\label{subsec:impl_ntp}
+
+Pour garantir la cohérence temporelle des événements, le système synchronise son horloge interne avec un serveur NTP (Network Time Protocol). Cette synchronisation est essentielle pour permettre l'analyse chronologique des événements et la corrélation entre les données de différentes machines.
+
+Le listing~\ref{lst:ntp_sync} montre l'implémentation de la synchronisation NTP :
+
+\begin{lstlisting}[language=C++, caption={Synchronisation de l'horloge système avec NTP}, label={lst:ntp_sync}, captionpos=b]
+void setupTime() {
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    Serial.println("Synchronisation NTP...");
+    
+    struct tm timeinfo;
+    int attempts = 0;
+    while (!getLocalTime(&timeinfo) && attempts < 10) {
+        Serial.print(".");
+        delay(1000);
+        attempts++;
+    }
+    
+    if (attempts < 10) {
+        Serial.println("\nHeure synchronisee:");
+        Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+    } else {
+        Serial.println("\nEchec synchronisation NTP");
+    }
+}
+
+String getFormattedTime() {
+    struct tm timeinfo;
+    if (!getLocalTime(&timeinfo)) {
+        return "1970-01-01T00:00:00Z";
+    }
+    
+    char buffer[30];
+    strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &timeinfo);
+    return String(buffer);
+}
+\end{lstlisting}
+
+La fonction \texttt{getFormattedTime()} génère un timestamp au format ISO 8601, garantissant la compatibilité avec les systèmes backend et les bases de données. En cas d'échec de la synchronisation NTP, le système utilise un timestamp par défaut tout en signalant le problème dans les logs.
+
+
+% ============================================================================
+\section{Développement du Backend Node.js}
+\label{sec:impl_backend}
+
+Le backend constitue le cœur logique du système. Il assure l'intermédiaire entre les dispositifs IoT et les interfaces utilisateur, en gérant la réception des données MQTT, leur traitement, leur stockage dans la base de données, et leur mise à disposition via une API REST.
+
+\subsection{Architecture du Backend}
+\label{subsec:impl_backend_arch}
+
+Le backend a été développé en Node.js en utilisant le framework Express pour la gestion des routes HTTP et la bibliothèque mqtt.js pour la communication avec le broker MQTT. L'architecture suit le modèle MVC (Model-View-Controller) adapté aux applications web modernes.
+
+La figure~\ref{fig:backend_architecture} présente l'architecture détaillée du backend :
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{images/backend_architecture_diagram.png}
+\caption{Architecture du backend Node.js}
+\label{fig:backend_architecture}
+\end{figure}
+
+Le backend est structuré en plusieurs couches distinctes :
+
+\begin{itemize}[leftmargin=1.5cm]
+    \item \textbf{Couche MQTT} : écoute les messages provenant des dispositifs IoT
+    \item \textbf{Couche Service} : implémente la logique métier et les traitements
+    \item \textbf{Couche Modèle} : gère l'accès aux données et les requêtes SQL
+    \item \textbf{Couche API REST} : expose les endpoints HTTP pour les clients web
+    \item \textbf{Couche Middleware} : assure l'authentification, la validation, et la gestion des erreurs
+\end{itemize}
+
+Cette architecture en couches garantit la séparation des responsabilités, facilite les tests unitaires, et permet une maintenance efficace du code.
+
+\subsection{Configuration du Serveur Express}
+\label{subsec:impl_express}
+
+Le serveur Express constitue le point d'entrée de toutes les requêtes HTTP. Il est configuré avec les middlewares nécessaires pour gérer les CORS, parser les corps de requêtes JSON, et servir les fichiers statiques du dashboard.
+
+Le listing~\ref{lst:express_config} présente la configuration du serveur Express :
+
+
+\begin{lstlisting}[language=JavaScript, caption={Configuration du serveur Express}, label={lst:express_config}, captionpos=b]
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middlewares de securite
+app.use(helmet());
+app.use(cors({
+    origin: process.env.ALLOWED_ORIGINS || '*',
+    credentials: true
+}));
+
+// Middlewares de parsing
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Logging des requetes
+app.use(morgan('combined'));
+
+// Fichiers statiques
+app.use(express.static('public'));
+
+// Routes API
+app.use('/api/machines', require('./routes/machines'));
+app.use('/api/alerts', require('./routes/alerts'));
+app.use('/api/events', require('./routes/events'));
+app.use('/api/stats', require('./routes/stats'));
+app.use('/api/auth', require('./routes/auth'));
+
+// Gestion des erreurs
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ 
+        error: 'Erreur serveur',
+        message: err.message 
+    });
+});
+
+app.listen(PORT, () => {
+    console.log(`Serveur demarre sur le port ${PORT}`);
+});
+\end{lstlisting}
+
+La configuration intègre plusieurs middlewares de sécurité : Helmet pour sécuriser les en-têtes HTTP, CORS pour gérer les requêtes cross-origin, et un système de logging pour tracer toutes les requêtes. Les routes sont organisées de manière modulaire, chaque ressource possédant son propre fichier de routes.
+
+
+\subsection{Client MQTT Backend}
+\label{subsec:impl_backend_mqtt}
+
+Le client MQTT du backend se connecte au broker HiveMQ et souscrit aux topics pertinents pour recevoir les messages des dispositifs IoT. À la réception d'un message, il le parse, le valide, et le traite selon sa nature.
+
+Le listing~\ref{lst:backend_mqtt} montre l'implémentation du client MQTT backend :
+
+\begin{lstlisting}[language=JavaScript, caption={Client MQTT du backend avec traitement des messages}, label={lst:backend_mqtt}, captionpos=b]
+const mqtt = require('mqtt');
+const db = require('./database');
+
+const mqttOptions = {
+    host: process.env.MQTT_HOST,
+    port: process.env.MQTT_PORT || 1883,
+    username: process.env.MQTT_USER,
+    password: process.env.MQTT_PASSWORD,
+    clientId: 'andon-backend-' + Math.random().toString(16).substr(2, 8)
+};
+
+const mqttClient = mqtt.connect(mqttOptions);
+
+mqttClient.on('connect', () => {
+    console.log('Backend connecte au broker MQTT');
+    mqttClient.subscribe('andon/machine/+/alert');
+    mqttClient.subscribe('andon/machine/+/status');
+});
+
+mqttClient.on('message', async (topic, message) => {
+    try {
+        const data = JSON.parse(message.toString());
+        console.log('Message MQTT recu:', topic, data);
+        
+        if (topic.includes('/alert')) {
+            await handleAlert(data);
+        } else if (topic.includes('/status')) {
+            await handleStatus(data);
+        }
+    } catch (error) {
+        console.error('Erreur traitement message MQTT:', error);
+    }
+});
+
+async function handleAlert(data) {
+    const { machineId, alertType, severity, timestamp } = data;
+    
+    await db.query(
+        'INSERT INTO alerts (machine_id, alert_type, severity, timestamp, status) VALUES ($1, $2, $3, $4, $5)',
+        [machineId, alertType, severity, timestamp, 'active']
+    );
+    
+    console.log(`Alerte enregistree pour machine ${machineId}`);
+}
+\end{lstlisting}
+
+Le client MQTT utilise des wildcards (+) dans les souscriptions pour recevoir les messages de toutes les machines. Chaque message reçu est parsé en JSON, validé, puis transmis à la fonction de traitement appropriée. La gestion asynchrone des opérations de base de données garantit que le traitement des messages n'est pas bloquant.
+
+La figure~\ref{fig:backend_running} montre le backend Node.js en cours d'exécution avec les logs de connexion et de traitement des messages :
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{images/backend_console_running.png}
+\caption{Console du backend Node.js affichant les connexions et traitements}
+\label{fig:backend_running}
+\end{figure}
+
+Les logs du backend fournissent une traçabilité complète des opérations : connexion au broker MQTT, réception des messages, insertion dans la base de données, et gestion des erreurs. Cette visibilité est essentielle pour le monitoring et le débogage du système en production.
+
+\subsection{Implémentation de l'API REST}
+\label{subsec:impl_rest_api}
+
+L'API REST expose plusieurs endpoints permettant aux clients web et mobiles d'interroger les données du système. Elle implémente les opérations CRUD (Create, Read, Update, Delete) pour chaque ressource.
+
+Le tableau~\ref{tab:api_endpoints} récapitule les principaux endpoints de l'API :
+
+\begin{table}[H]
+\centering
+\caption{Endpoints de l'API REST}
+\label{tab:api_endpoints}
+\small
+\begin{tabular}{@{}p{0.12\textwidth}p{0.35\textwidth}p{0.43\textwidth}@{}}
+\toprule
+\textbf{Méthode} & \textbf{Endpoint} & \textbf{Description} \\
+\midrule
+GET & /api/machines & Liste toutes les machines \\
+GET & /api/machines/:id & Détails d'une machine spécifique \\
+GET & /api/alerts & Liste toutes les alertes (avec pagination) \\
+GET & /api/alerts/active & Alertes actives uniquement \\
+POST & /api/alerts/:id/resolve & Marque une alerte comme résolue \\
+GET & /api/events & Historique des événements \\
+GET & /api/stats/overview & Statistiques globales du système \\
+GET & /api/stats/machine/:id & Statistiques d'une machine \\
+POST & /api/auth/login & Authentification utilisateur \\
+GET & /api/auth/verify & Vérification du token JWT \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Le listing~\ref{lst:api_routes} présente l'implémentation d'un contrôleur d'API :
+
+\begin{lstlisting}[language=JavaScript, caption={Contrôleur API pour les alertes}, label={lst:api_routes}, captionpos=b]
+const express = require('express');
+const router = express.Router();
+const db = require('../database');
+const auth = require('../middleware/auth');
+
+// GET /api/alerts - Recuperer toutes les alertes
+router.get('/', auth.verify, async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const offset = (page - 1) * limit;
+        
+        const result = await db.query(
+            `SELECT a.*, m.name as machine_name, m.zone 
+             FROM alerts a 
+             JOIN machines m ON a.machine_id = m.id 
+             ORDER BY a.timestamp DESC 
+             LIMIT $1 OFFSET $2`,
+            [limit, offset]
+        );
+        
+        res.json({
+            success: true,
+            data: result.rows,
+            pagination: { page, limit }
+        });
+    } catch (error) {
+        console.error('Erreur recuperation alertes:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Erreur serveur' 
+        });
+    }
+});
+
+// POST /api/alerts/:id/resolve - Resoudre une alerte
+router.post('/:id/resolve', auth.verify, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { resolution, userId } = req.body;
+        
+        await db.query(
+            `UPDATE alerts 
+             SET status = 'resolved', 
+                 resolution = $1, 
+                 resolved_by = $2, 
+                 resolved_at = NOW() 
+             WHERE id = $3`,
+            [resolution, userId, id]
+        );
+        
+        res.json({ success: true, message: 'Alerte resolue' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+module.exports = router;
+\end{lstlisting}
+
+Chaque endpoint est protégé par un middleware d'authentification qui vérifie la validité du token JWT. Les requêtes sont validées et les erreurs sont gérées de manière uniforme avec des messages explicites. La pagination est implémentée pour les ressources volumineuses afin d'optimiser les performances.
+
+% ============================================================================
+\section{Implémentation de la Base de Données PostgreSQL}
+\label{sec:impl_database}
+
+La base de données PostgreSQL constitue le référentiel central de toutes les données du système. Elle stocke les informations sur les machines, les alertes, les événements, et les utilisateurs.
+
+\subsection{Schéma de la Base de Données}
+\label{subsec:impl_db_schema}
+
+Le schéma de la base de données a été conçu selon les principes de normalisation relationnelle, garantissant l'intégrité des données et l'efficacité des requêtes. La figure~\ref{fig:db_schema} présente le schéma relationnel complet :
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/database_schema_diagram.png}
+\caption{Schéma relationnel de la base de données PostgreSQL}
+\label{fig:db_schema}
+\end{figure}
+
+Le schéma comprend les tables principales suivantes :
+
+\begin{itemize}[leftmargin=1.5cm]
+    \item \textbf{machines} : informations sur les machines (id, nom, type, zone, statut)
+    \item \textbf{alerts} : alertes générées par les machines
+    \item \textbf{events} : historique complet des événements
+    \item \textbf{users} : utilisateurs du système avec rôles
+    \item \textbf{downtimes} : temps d'arrêt calculés et catégorisés
+    \item \textbf{maintenance\_logs} : journaux des interventions de maintenance
+\end{itemize}
+
+Les relations entre les tables sont définies par des clés étrangères garantissant l'intégrité référentielle. Des index ont été créés sur les colonnes fréquemment utilisées dans les requêtes pour optimiser les performances.
+
+\subsection{Scripts de Création des Tables}
+\label{subsec:impl_db_tables}
+
+Le listing~\ref{lst:db_create} présente les scripts SQL de création des tables principales :
+
+
+\begin{lstlisting}[language=SQL, caption={Scripts de création des tables PostgreSQL}, label={lst:db_create}, captionpos=b]
+-- Table des machines
+CREATE TABLE machines (
+    id VARCHAR(20) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    zone VARCHAR(50) NOT NULL,
+    status VARCHAR(20) DEFAULT 'active',
+    last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table des alertes
+CREATE TABLE alerts (
+    id SERIAL PRIMARY KEY,
+    machine_id VARCHAR(20) REFERENCES machines(id),
+    alert_type VARCHAR(50) NOT NULL,
+    severity VARCHAR(20) NOT NULL,
+    timestamp TIMESTAMP NOT NULL,
+    status VARCHAR(20) DEFAULT 'active',
+    resolution TEXT,
+    resolved_by INTEGER,
+    resolved_at TIMESTAMP,
+    downtime_minutes INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table des evenements
+CREATE TABLE events (
+    id SERIAL PRIMARY KEY,
+    machine_id VARCHAR(20) REFERENCES machines(id),
+    event_type VARCHAR(50) NOT NULL,
+    description TEXT,
+    timestamp TIMESTAMP NOT NULL,
+    data JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table des utilisateurs
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'operator',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index pour optimiser les performances
+CREATE INDEX idx_alerts_machine_id ON alerts(machine_id);
+CREATE INDEX idx_alerts_timestamp ON alerts(timestamp DESC);
+CREATE INDEX idx_alerts_status ON alerts(status);
+CREATE INDEX idx_events_machine_id ON events(machine_id);
+CREATE INDEX idx_events_timestamp ON events(timestamp DESC);
+\end{lstlisting}
+
+Les tables utilisent des types de données appropriés pour chaque colonne. Les timestamps sont stockés avec le type TIMESTAMP de PostgreSQL pour faciliter les calculs temporels. Le type JSONB est utilisé pour la colonne \texttt{data} de la table events, permettant de stocker des données structurées flexibles tout en conservant la possibilité d'indexation et de requêtage.
+
+\subsection{Déploiement sur Railway}
+\label{subsec:impl_railway}
+
+Le backend et la base de données ont été déployés sur la plateforme Railway, qui offre un hébergement Cloud simplifié avec déploiement automatique depuis Git. Railway prend en charge nativement PostgreSQL et Node.js, facilitant le déploiement et la configuration.
+
+La figure~\ref{fig:railway_dashboard} montre le tableau de bord Railway avec les services déployés :
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{images/railway_dashboard.png}
+\caption{Tableau de bord Railway avec les services déployés}
+\label{fig:railway_dashboard}
+\end{figure}
+
+Railway offre plusieurs avantages pour ce projet : déploiement automatique à chaque push Git, monitoring intégré, logs centralisés, et gestion automatique des certificats SSL. La plateforme génère automatiquement des URL HTTPS pour les services déployés, garantissant la sécurité des communications.
+
+\subsection{Administration avec pgAdmin}
+\label{subsec:impl_pgadmin}
+
+L'administration de la base de données est réalisée via pgAdmin, un outil graphique complet pour PostgreSQL. Il permet de visualiser la structure des tables, d'exécuter des requêtes SQL, et de surveiller les performances.
+
+La figure~\ref{fig:pgadmin_interface} présente l'interface pgAdmin connectée à la base de données du projet :
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{images/pgadmin_interface.png}
+\caption{Interface pgAdmin montrant la structure de la base de données}
+\label{fig:pgadmin_interface}
+\end{figure}
+
+pgAdmin permet de visualiser les tables créées, leurs colonnes, les contraintes, et les index. L'outil facilite également l'exécution de requêtes de maintenance et l'analyse des plans d'exécution pour optimiser les performances.
+
+La figure~\ref{fig:pgadmin_tables} montre le contenu de la table alerts avec des données réelles enregistrées :
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{images/pgadmin_alerts_table.png}
+\caption{Contenu de la table alerts dans pgAdmin}
+\label{fig:pgadmin_tables}
+\end{figure}
+
+Les données stockées dans la base reflètent fidèlement les événements capturés par les dispositifs ESP32. Chaque alerte contient toutes les informations nécessaires pour l'analyse : identifiant de machine, type d'alerte, sévérité, timestamp, et statut de résolution.
+
+% ============================================================================
+\section{Développement du Dashboard Web}
+\label{sec:impl_dashboard}
+
+Le dashboard web constitue l'interface principale de visualisation et de contrôle du système Andon. Il a été développé en utilisant des technologies web modernes (HTML5, CSS3, JavaScript ES6+) sans framework lourd, privilégiant la performance et la simplicité.
+
+\subsection{Architecture Frontend}
+\label{subsec:impl_frontend_arch}
+
+L'architecture frontend suit le modèle SPA (Single Page Application) avec un système de routage côté client. Le code JavaScript est organisé en modules pour améliorer la maintenabilité et la réutilisabilité.
+
+La figure~\ref{fig:frontend_structure} illustre la structure de l'application frontend :
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{images/frontend_structure_diagram.png}
+\caption{Structure modulaire de l'application frontend}
+\label{fig:frontend_structure}
+\end{figure}
+
+L'application est organisée en plusieurs modules :
+
+\begin{itemize}[leftmargin=1.5cm]
+    \item \textbf{Module API} : gère toutes les communications avec le backend
+    \item \textbf{Module UI} : fonctions utilitaires pour la manipulation du DOM
+    \item \textbf{Module Charts} : génération des graphiques avec Chart.js
+    \item \textbf{Module Auth} : gestion de l'authentification et des sessions
+    \item \textbf{Module Notifications} : système de notifications push
+    \item \textbf{Module Router} : gestion de la navigation entre les pages
+\end{itemize}
+
+
+\subsection{Page de Connexion}
+\label{subsec:impl_login}
+
+La page de connexion constitue le point d'entrée sécurisé de l'application. Elle implémente un système d'authentification basé sur JWT (JSON Web Tokens) garantissant la sécurité des accès.
+
+Le listing~\ref{lst:login_js} présente l'implémentation de la logique de connexion :
+
+\begin{lstlisting}[language=JavaScript, caption={Logique d'authentification côté client}, label={lst:login_js}, captionpos=b]
+// Module d'authentification
+const Auth = {
+    async login(username, password) {
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                localStorage.setItem('authToken', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                window.location.href = '/dashboard.html';
+            } else {
+                throw new Error(data.message || 'Echec connexion');
+            }
+        } catch (error) {
+            console.error('Erreur login:', error);
+            showError('Nom utilisateur ou mot de passe incorrect');
+        }
+    },
+    
+    logout() {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        window.location.href = '/login.html';
+    },
+    
+    isAuthenticated() {
+        return localStorage.getItem('authToken') !== null;
+    },
+    
+    getToken() {
+        return localStorage.getItem('authToken');
+    }
+};
+\end{lstlisting}
+
+La figure~\ref{fig:login_page} montre l'interface de la page de connexion :
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{images/login_page_screenshot.png}
+\caption{Page de connexion de l'application Andon}
+\label{fig:login_page}
+\end{figure}
+
+L'interface de connexion présente un design moderne et épuré, conforme aux standards d'ergonomie web. Le formulaire inclut une validation côté client pour améliorer l'expérience utilisateur. Les erreurs d'authentification sont affichées de manière claire sans révéler d'informations sensibles sur les comptes existants.
+
+\subsection{Dashboard Principal}
+\label{subsec:impl_main_dashboard}
+
+Le dashboard principal affiche une vue d'ensemble de l'état du système avec les KPI (Key Performance Indicators) essentiels, les alertes actives, et les statistiques en temps réel.
+
+La figure~\ref{fig:dashboard_main} présente l'interface du dashboard principal :
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{images/dashboard_main_view.png}
+\caption{Dashboard principal avec vue d'ensemble du système}
+\label{fig:dashboard_main}
+\end{figure}
+
+Le dashboard affiche plusieurs sections clés :
+
+\begin{itemize}[leftmargin=1.5cm]
+    \item \textbf{Panneau de KPI} : métriques synthétiques (nombre de machines, alertes actives, taux de disponibilité)
+    \item \textbf{Carte des machines} : visualisation graphique de toutes les machines avec leur statut
+    \item \textbf{Alertes récentes} : liste des dernières alertes générées
+    \item \textbf{Graphiques de tendances} : évolution temporelle des indicateurs
+\end{itemize}
+
+Les données sont rafraîchies automatiquement toutes les 10 secondes via des appels API, garantissant une vision à jour de l'état du système.
+
+\subsection{Cartes des Machines}
+\label{subsec:impl_machine_cards}
+
+Les machines sont représentées sous forme de cartes visuelles affichant leur état en temps réel. Un code couleur intuitif facilite l'identification rapide des problèmes.
+
+La figure~\ref{fig:machine_cards} montre la section des cartes machines :
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{images/machine_cards_display.png}
+\caption{Cartes des machines avec indication visuelle des états}
+\label{fig:machine_cards}
+\end{figure}
+

@@ -1,0 +1,1494 @@
+% ============================================================================
+% CHAPITRE 3 : ANALYSE DES BESOINS ET CONCEPTION DU SYSTÈME
+% ============================================================================
+\chapter{Analyse des Besoins et Conception du Système}
+
+\section*{Introduction}
+
+Le chapitre précédent a établi les fondements théoriques et technologiques nécessaires à la compréhension de notre projet. Nous avons exploré les concepts de l'Industrie 4.0, de l'Internet Industriel des Objets, et présenté l'ensemble des technologies qui composent notre stack technique : ESP32, MQTT, Node.js, PostgreSQL, Socket.IO et PWA.
+
+Ce troisième chapitre marque la transition entre la théorie et la pratique en se concentrant sur la conception concrète du système Andon intelligent. Nous adoptons une démarche méthodique partant de l'analyse détaillée des besoins pour aboutir à une architecture technique complète et implémentable.
+
+Dans un premier temps, nous formaliserons les besoins fonctionnels et non fonctionnels en les structurant selon les différents profils d'utilisateurs et cas d'usage identifiés. Nous présenterons ensuite l'architecture générale du système, établissant une vision d'ensemble des composants et de leurs interactions. L'architecture matérielle sera détaillée, spécifiant les équipements IoT déployés sur le terrain (ESP32, capteurs, actionneurs) et leurs interconnexions. L'architecture logicielle sera ensuite décrite selon une approche multi-couches, clarifiant la répartition des responsabilités entre les différents modules applicatifs.
+
+Un volet important sera consacré à la conception de la base de données relationnelle, présentant le modèle conceptuel de données, les tables principales, leurs relations et les contraintes d'intégrité. La modélisation UML permettra de formaliser les processus métier à travers des diagrammes de cas d'utilisation, de séquence et d'activité, offrant une vision comportementale du système.
+
+Le flux complet de communication sera explicité, depuis la détection d'un événement sur un bouton physique jusqu'à la notification sur les terminaux des utilisateurs finaux, en passant par les protocoles MQTT, les traitements backend et la diffusion temps réel via WebSocket.
+
+Enfin, nous présenterons l'environnement de simulation Wokwi utilisé pour le prototypage et la validation précoce des concepts techniques avant le déploiement physique, justifiant son rôle dans notre démarche de développement itérative.
+
+Ce chapitre constitue ainsi le pont entre les objectifs stratégiques du projet et son implémentation technique, fournissant le blueprint architectural complet qui guidera la phase de réalisation décrite au chapitre suivant.
+
+
+\section{Analyse des besoins}
+
+L'analyse des besoins constitue la pierre angulaire de tout projet informatique industriel. Elle permet de traduire les attentes des parties prenantes en spécifications précises, mesurables et implémentables. Dans cette section, nous formalisons les exigences fonctionnelles décrivant ce que le système doit faire, ainsi que les exigences non fonctionnelles spécifiant comment le système doit le faire.
+
+\subsection{Besoins fonctionnels}
+
+Les besoins fonctionnels définissent les services et fonctionnalités que le système doit offrir aux utilisateurs finaux. Nous les organisons selon les principaux cas d'usage et profils d'utilisateurs identifiés chez SEWS Maroc.
+
+\subsubsection{Gestion des événements Andon}
+
+\textbf{BF-01 : Détection automatique des alertes}
+
+Le système doit détecter automatiquement l'actionnement des boutons Andon (vert, orange, rouge) sur chaque poste de travail et transmettre instantanément l'information au système central. Chaque événement doit être horodaté avec une précision de la seconde et enrichi des métadonnées contextuelles (identifiant de la ligne, type d'alerte, état précédent).
+
+\textbf{BF-02 : Notification temps réel multi-canal}
+
+Dès qu'une alerte est déclenchée, le système doit notifier instantanément les utilisateurs concernés selon leur profil et leurs préférences :
+
+\begin{itemize}
+    \item Notification visuelle sur le dashboard de supervision (changement de couleur, icône clignotante).
+    \item Notification sonore configurable pour les alertes critiques (rouge).
+    \item Notification push sur l'application mobile PWA des techniciens de maintenance.
+    \item Mise à jour en temps réel de l'état de la ligne sur tous les terminaux connectés.
+\end{itemize}
+
+La latence maximale acceptable entre le déclenchement physique du bouton et l'affichage de la notification est fixée à 2 secondes.
+
+\textbf{BF-03 : Historisation complète des événements}
+
+Tous les événements Andon doivent être enregistrés de manière permanente dans la base de données avec les informations suivantes : horodatage précis, ligne concernée, type d'alerte, durée de l'événement, technicien intervenant, observations, pièces remplacées, et actions correctives effectuées.
+
+
+\subsubsection{Gestion des interventions maintenance}
+
+\textbf{BF-04 : Identification automatique des techniciens}
+
+Le système doit permettre l'identification automatique du technicien intervenant sur une panne via la lecture d'un badge RFID. Cette identification doit déclencher automatiquement l'enregistrement de l'heure de prise en charge de l'intervention et associer le technicien à l'événement en cours, sans nécessiter de saisie manuelle.
+
+\textbf{BF-05 : Saisie structurée des observations}
+
+L'application mobile PWA doit offrir aux techniciens une interface de saisie structurée permettant de documenter précisément leur intervention :
+
+\begin{itemize}
+    \item Nature de la panne (liste déroulante prédéfinie extensible).
+    \item Niveau de criticité (mineur, moyen, critique).
+    \item Symptômes observés (champ texte libre avec suggestions).
+    \item Actions correctives effectuées (champs structurés).
+    \item Pièces remplacées (sélection depuis catalogue avec code article et quantité).
+    \item Recommandations pour éviter la récurrence.
+    \item Prise de photos (optionnel) pour documentation visuelle.
+\end{itemize}
+
+\textbf{BF-06 : Clôture et validation des interventions}
+
+Une fois l'intervention terminée, le technicien doit pouvoir clôturer formellement l'événement via l'application mobile. Cette clôture déclenche automatiquement le calcul de la durée d'intervention (MTTR), la notification au superviseur, et la mise à jour de l'état de la ligne sur tous les dashboards.
+
+\subsubsection{Supervision et reporting}
+
+\textbf{BF-07 : Dashboard de supervision centralisée}
+
+Le système doit fournir une interface web de supervision offrant une vue d'ensemble temps réel de l'état de toutes les lignes de production de l'atelier. Pour chaque ligne, le dashboard doit afficher :
+
+\begin{itemize}
+    \item État actuel (normal/ralentissement/arrêt) avec code couleur visuel.
+    \item Durée écoulée depuis le dernier changement d'état.
+    \item Technicien intervenant si une panne est en cours.
+    \item Nombre de pannes du jour/semaine/mois.
+    \item Disponibilité opérationnelle cumulée.
+\end{itemize}
+
+
+\textbf{BF-08 : Calcul automatique des indicateurs de performance}
+
+Le système doit calculer automatiquement et en temps réel les principaux indicateurs clés de performance (KPI) maintenance :
+
+\begin{itemize}
+    \item \textbf{MTTA (Mean Time To Acknowledge)} : Temps moyen entre le déclenchement d'une alerte et sa prise en charge par un technicien.
+    \item \textbf{MTTR (Mean Time To Repair)} : Temps moyen de réparation, mesuré entre la prise en charge et la clôture de l'intervention.
+    \item \textbf{MTBF (Mean Time Between Failures)} : Temps moyen de bon fonctionnement entre deux pannes consécutives.
+    \item \textbf{Disponibilité opérationnelle} : Ratio temps de fonctionnement normal / temps total d'observation.
+    \item \textbf{Fréquence des pannes} : Nombre de pannes par unité de temps (jour, semaine, mois).
+    \item \textbf{Distribution des types de pannes} : Analyse de Pareto identifiant les pannes les plus fréquentes.
+\end{itemize}
+
+Ces indicateurs doivent être calculables sur des périodes configurables (jour, semaine, mois, année) et exportables au format CSV ou PDF pour reporting managérial.
+
+\textbf{BF-09 : Historique et traçabilité complète}
+
+Le système doit permettre de consulter l'historique complet des pannes avec filtres avancés :
+
+\begin{itemize}
+    \item Filtrage par ligne de production, type de panne, technicien intervenant, période temporelle.
+    \item Affichage détaillé de chaque intervention (timeline, durées, observations, pièces).
+    \item Export des données historiques pour analyse externe (Excel, CSV).
+\end{itemize}
+
+\subsubsection{Gestion des utilisateurs et sécurité}
+
+\textbf{BF-10 : Authentification sécurisée}
+
+Le système doit implémenter un mécanisme d'authentification robuste garantissant que seuls les utilisateurs autorisés accèdent aux interfaces applicatives. L'authentification doit s'appuyer sur un couple identifiant/mot de passe avec hachage cryptographique sécurisé (bcrypt, Argon2) et génération de tokens JWT (JSON Web Tokens) pour maintenir les sessions.
+
+\textbf{BF-11 : Gestion des profils et autorisations}
+
+Le système doit supporter plusieurs profils utilisateurs avec droits différenciés :
+
+\begin{itemize}
+    \item \textbf{Opérateur} : Consultation de l'état de sa ligne uniquement.
+    \item \textbf{Technicien maintenance} : Prise en charge et clôture des pannes, saisie des observations.
+    \item \textbf{Superviseur} : Vue d'ensemble de l'atelier, consultation des KPI, export de rapports.
+    \item \textbf{Administrateur} : Configuration système, gestion des utilisateurs, paramétrage des lignes.
+\end{itemize}
+
+
+\subsection{Besoins non fonctionnels}
+
+Les besoins non fonctionnels spécifient les contraintes qualitatives et les exigences de performance, fiabilité, sécurité et maintenabilité que le système doit respecter. Ces exigences sont souvent plus critiques que les exigences fonctionnelles dans un contexte industriel où la continuité de service est primordiale.
+
+\subsubsection{Performance et réactivité}
+
+\textbf{BNF-01 : Latence temps réel}
+
+Le système doit garantir une latence maximale de 2 secondes entre le déclenchement d'un bouton Andon physique et l'affichage de la notification sur tous les terminaux connectés (dashboard web et applications mobiles). Cette exigence implique une optimisation de toute la chaîne de communication : détection ESP32, transmission MQTT, traitement backend, et diffusion WebSocket.
+
+\textbf{BNF-02 : Capacité de traitement}
+
+Le système doit pouvoir gérer simultanément :
+\begin{itemize}
+    \item Jusqu'à 20 lignes de production connectées.
+    \item Jusqu'à 100 événements Andon par jour.
+    \item Jusqu'à 50 utilisateurs connectés simultanément aux interfaces web et mobiles.
+    \item Consultation concurrente des historiques par plusieurs utilisateurs sans dégradation de performance.
+\end{itemize}
+
+\textbf{BNF-03 : Temps de réponse des interfaces}
+
+\begin{itemize}
+    \item Le chargement initial du dashboard ne doit pas excéder 3 secondes sur une connexion Wi-Fi standard.
+    \item Les requêtes de consultation d'historique doivent retourner les résultats en moins de 2 secondes pour une période d'un mois.
+    \item Le calcul et l'affichage des KPI doivent s'effectuer en moins de 1 seconde.
+\end{itemize}
+
+\subsubsection{Fiabilité et disponibilité}
+
+\textbf{BNF-04 : Disponibilité du service}
+
+Le système doit offrir une disponibilité minimale de 99\% calculée sur une base mensuelle, soit une tolérance d'indisponibilité maximale de 7h20min par mois. Cette exigence implique :
+
+\begin{itemize}
+    \item Des mécanismes de supervision de l'infrastructure (monitoring).
+    \item Des stratégies de reprise automatique en cas de défaillance (restart automatique des services).
+    \item Une architecture résiliente tolérante aux pannes de composants individuels.
+\end{itemize}
+
+
+\textbf{BNF-05 : Intégrité des données}
+
+Aucune donnée d'événement Andon ou d'intervention maintenance ne doit être perdue, même en cas de défaillance temporaire du réseau ou du système. Cette exigence implique :
+
+\begin{itemize}
+    \item Transactions ACID au niveau de la base de données PostgreSQL.
+    \item Utilisation de niveaux de QoS appropriés pour MQTT (QoS 1 minimum).
+    \item Mécanismes de mise en file d'attente (queuing) en cas de surcharge temporaire.
+    \item Sauvegardes régulières et automatiques de la base de données.
+\end{itemize}
+
+\textbf{BNF-06 : Résilience réseau}
+
+Les modules ESP32 doivent être capables de fonctionner en mode dégradé en cas de perte temporaire de connectivité Wi-Fi :
+
+\begin{itemize}
+    \item Mise en mémoire locale (buffer) des événements non transmis.
+    \item Reconnexion automatique au broker MQTT avec stratégie de backoff exponentiel.
+    \item Transmission différée des événements mis en buffer dès rétablissement de la connexion.
+    \item Indicateur visuel local (LED) signalant l'état de connexion.
+\end{itemize}
+
+\subsubsection{Sécurité}
+
+\textbf{BNF-07 : Confidentialité des communications}
+
+Toutes les communications réseau impliquant des données sensibles doivent être chiffrées :
+
+\begin{itemize}
+    \item Connexions HTTPS (TLS 1.2 minimum) pour les interfaces web.
+    \item Connexions WebSocket sécurisées (WSS).
+    \item MQTT sur TLS pour les communications ESP32-Broker (optionnel selon l'architecture réseau interne).
+    \item Chiffrement des mots de passe avec algorithme bcrypt ou Argon2.
+\end{itemize}
+
+\textbf{BNF-08 : Contrôle d'accès}
+
+\begin{itemize}
+    \item Authentification obligatoire pour tous les accès aux interfaces applicatives.
+    \item Gestion fine des autorisations basée sur les rôles (RBAC - Role-Based Access Control).
+    \item Expiration automatique des sessions après 8h d'inactivité.
+    \item Journalisation (logging) de toutes les actions sensibles (création/modification utilisateur, changement de configuration).
+\end{itemize}
+
+\textbf{BNF-09 : Protection contre les attaques courantes}
+
+Le système doit implémenter des protections contre les vulnérabilités web classiques :
+
+\begin{itemize}
+    \item Injection SQL : requêtes paramétrées exclusivement.
+    \item XSS (Cross-Site Scripting) : échappement systématique des entrées utilisateur.
+    \item CSRF (Cross-Site Request Forgery) : tokens CSRF pour les opérations sensibles.
+    \item Limitation du taux de requêtes (rate limiting) pour prévenir les attaques par déni de service.
+\end{itemize}
+
+
+\subsubsection{Ergonomie et accessibilité}
+
+\textbf{BNF-10 : Responsive Design}
+
+Les interfaces web (dashboard de supervision, application mobile PWA) doivent s'adapter automatiquement à tous les facteurs de forme :
+
+\begin{itemize}
+    \item Smartphones (320px à 767px de largeur).
+    \item Tablettes (768px à 1023px).
+    \item Ordinateurs de bureau (1024px et plus).
+\end{itemize}
+
+Le design doit privilégier une approche Mobile First, garantissant une expérience optimale sur les terminaux mobiles utilisés par les techniciens terrain.
+
+\textbf{BNF-11 : Facilité d'utilisation}
+
+\begin{itemize}
+    \item Les interfaces doivent être intuitives et ne nécessiter aucune formation technique approfondie.
+    \item Les actions critiques (clôture de panne, modification de configuration) doivent demander une confirmation explicite.
+    \item Les messages d'erreur doivent être explicites et proposer des actions correctives.
+    \item Le système doit respecter les conventions ergonomiques standard (codes couleurs cohérents, hiérarchie visuelle claire).
+\end{itemize}
+
+\textbf{BNF-12 : Accessibilité}
+
+Le système doit respecter les principes d'accessibilité de base :
+
+\begin{itemize}
+    \item Contrastes de couleurs suffisants (ratio WCAG AA minimum).
+    \item Tailles de police lisibles (minimum 14px pour le corps de texte).
+    \item Navigation au clavier possible pour toutes les fonctionnalités critiques.
+    \item Textes alternatifs (alt) pour les éléments visuels porteurs d'information.
+\end{itemize}
+
+\subsubsection{Maintenabilité et évolutivité}
+
+\textbf{BNF-13 : Modularité et architecture}
+
+Le code source doit être organisé selon une architecture modulaire claire séparant les responsabilités :
+
+\begin{itemize}
+    \item Séparation stricte entre logique métier, accès aux données et présentation.
+    \item Utilisation de patterns architecturaux reconnus (MVC, Repository, Service Layer).
+    \item Modules faiblement couplés permettant des modifications locales sans impact global.
+\end{itemize}
+
+\textbf{BNF-14 : Documentation}
+
+\begin{itemize}
+    \item Code source commenté avec documentation des fonctions et classes principales.
+    \item Documentation utilisateur couvrant l'installation, la configuration et l'utilisation du système.
+    \item Documentation technique décrivant l'architecture, les APIs, et les schémas de base de données.
+    \item Procédures d'exploitation (installation, sauvegarde/restauration, supervision).
+\end{itemize}
+
+
+\textbf{BNF-15 : Scalabilité}
+
+L'architecture doit permettre l'évolution du système sans refonte majeure :
+
+\begin{itemize}
+    \item Ajout de nouvelles lignes de production par simple configuration.
+    \item Extension à d'autres ateliers de SEWS Maroc (Atelier Assemblage, Atelier Découpe).
+    \item Possibilité d'ajouter de nouveaux types de capteurs (température, vibration, consommation énergétique).
+    \item Architecture backend permettant le passage à l'échelle horizontal (ajout de serveurs).
+\end{itemize}
+
+\textbf{BNF-16 : Interopérabilité}
+
+Le système doit offrir des interfaces standardisées permettant l'intégration avec d'autres systèmes d'information de l'entreprise :
+
+\begin{itemize}
+    \item API RESTful documentée (OpenAPI/Swagger) pour interrogation des données.
+    \item Export des données au format standard (CSV, JSON, Excel).
+    \item Possibilité de connexion future avec le système ERP et le logiciel GMAO de SEWS Maroc.
+\end{itemize}
+
+\subsubsection{Contraintes opérationnelles}
+
+\textbf{BNF-17 : Environnement de déploiement}
+
+Le système doit pouvoir être déployé sur les infrastructures suivantes :
+
+\begin{itemize}
+    \item Serveur local on-premise (pour respecter les contraintes de sécurité industrielle).
+    \item Cloud public (AWS, Azure, Google Cloud) pour scalabilité et haute disponibilité.
+    \item Solution hybride (edge computing local + stockage cloud).
+\end{itemize}
+
+\textbf{BNF-18 : Coût et budget}
+
+Le projet doit respecter une contrainte budgétaire stricte, privilégiant :
+
+\begin{itemize}
+    \item Technologies open-source sans licence propriétaire.
+    \item Matériel standard économique (ESP32, composants électroniques courants).
+    \item Infrastructure cloud à coût maîtrisé (tiers gratuits ou plans économiques).
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Synthèse des besoins non fonctionnels}
+\label{tab:bnf_synthesis}
+\begin{tabular}{|p{3cm}|p{5cm}|p{5cm}|}
+\hline
+\rowcolor{sewesblu!20}
+\textbf{Catégorie} & \textbf{Exigence} & \textbf{Critère de validation} \\
+\hline
+\textbf{Performance} & Latence < 2s & Tests de charge avec mesure chronométrique \\
+\hline
+\textbf{Disponibilité} & Uptime 99\% & Monitoring sur 30 jours \\
+\hline
+\textbf{Sécurité} & Chiffrement HTTPS/TLS & Audit de sécurité, tests de pénétration \\
+\hline
+\textbf{Ergonomie} & Responsive design & Tests sur smartphones, tablettes, desktop \\
+\hline
+\textbf{Maintenabilité} & Code modulaire documenté & Revue de code, métriques de complexité \\
+\hline
+\textbf{Scalabilité} & 20 lignes, 100 utilisateurs & Tests de montée en charge \\
+\hline
+\end{tabular}
+\end{table}
+
+
+\section{Architecture générale du système}
+
+Après avoir formalisé les besoins fonctionnels et non fonctionnels, nous présentons maintenant l'architecture globale du système Andon intelligent. Cette architecture s'articule autour d'une approche multi-couches distribuée, intégrant des composants matériels (edge devices), des protocoles de communication IoT, une infrastructure backend, une base de données relationnelle, et des interfaces utilisateur modernes.
+
+\subsection{Vision d'ensemble de l'architecture}
+
+Le système adopte une architecture en couches respectant le principe de séparation des préoccupations (Separation of Concerns) et favorisant la modularité, la scalabilité et la maintenabilité.
+
+\textbf{Couche Edge (Terrain)} : Composée des modules ESP32 déployés sur chaque ligne de production, cette couche assure la détection des événements physiques (boutons Andon, badges RFID) et leur transmission via le protocole MQTT. Les ESP32 embarquent une logique locale minimale (gestion de la reconnexion, buffering des événements) garantissant une résilience aux défaillances réseau temporaires.
+
+\textbf{Couche Communication} : Le broker MQTT (HiveMQ Cloud) joue le rôle d'épine dorsale de communication asynchrone entre les dispositifs edge et l'application backend. Il garantit la livraison fiable des messages selon les niveaux de QoS configurés et offre un découplage architectural total entre producteurs et consommateurs de messages.
+
+\textbf{Couche Backend (Logique Métier)} : Implémentée avec Node.js et Express.js, cette couche centralise toute la logique applicative : abonnement aux topics MQTT, traitement des événements, persistance en base de données, calcul des KPI, exposition d'APIs RESTful, et diffusion temps réel via Socket.IO. Le backend orchestre l'ensemble des flux de données et applique les règles métier.
+
+\textbf{Couche Données (Persistence)} : PostgreSQL assure le stockage structuré et fiable de toutes les données du système (événements Andon, interventions, utilisateurs, configurations). Le schéma relationnel garantit l'intégrité référentielle et facilite les requêtes analytiques complexes nécessaires au calcul des indicateurs de performance.
+
+\textbf{Couche Présentation (Interfaces Utilisateur)} : Deux interfaces principales sont offertes aux utilisateurs finaux :
+
+\begin{itemize}
+    \item \textbf{Dashboard Web} : Interface de supervision centralisée accessible via navigateur, offrant une vue d'ensemble temps réel de l'état de l'atelier et des fonctionnalités de consultation d'historique et de reporting.
+    
+    \item \textbf{Application Mobile PWA} : Application Progressive Web App destinée aux techniciens de maintenance, permettant la prise en charge des pannes, la saisie des observations et la consultation des informations terrain.
+\end{itemize}
+
+
+Les deux interfaces consomment les APIs REST exposées par le backend pour les opérations CRUD (Create, Read, Update, Delete) et reçoivent les notifications temps réel via connexions WebSocket (Socket.IO).
+
+\subsection{Flux de données principal}
+
+Le flux de données typique lors du déclenchement d'une alerte Andon suit le pipeline suivant :
+
+\begin{enumerate}
+    \item \textbf{Détection physique} : L'opérateur actionne un bouton Andon (orange ou rouge).
+    \item \textbf{Détection électronique} : L'ESP32 détecte le changement d'état via une interruption matérielle.
+    \item \textbf{Publication MQTT} : L'ESP32 publie un message JSON structuré sur le topic MQTT approprié (ex : \texttt{sews/atelier/ligne01/andon/alert}).
+    \item \textbf{Réception backend} : Le serveur Node.js, abonné au topic, reçoit instantanément le message.
+    \item \textbf{Validation et enrichissement} : Le backend valide le format du message, enrichit les métadonnées (horodatage serveur, identifiant unique) et applique les règles métier.
+    \item \textbf{Persistence} : L'événement est enregistré dans PostgreSQL via une transaction ACID.
+    \item \textbf{Diffusion temps réel} : Le backend émet un événement Socket.IO vers tous les clients web connectés.
+    \item \textbf{Notification utilisateurs} : Les dashboards et applications mobiles reçoivent l'événement et mettent à jour leur interface utilisateur instantanément.
+\end{enumerate}
+
+Ce pipeline garantit une latence end-to-end inférieure à 2 secondes entre l'action physique de l'opérateur et la notification visuelle sur les terminaux des superviseurs et techniciens.
+
+\ph{Architecture générale du système Andon IIoT}{fig:general_architecture}
+
+\subsection{Choix architecturaux justifiés}
+
+\textbf{Architecture distribuée plutôt que monolithique} : Le découplage entre les composants (ESP32, broker MQTT, backend, base de données, interfaces) permet une évolution et une maintenance indépendantes de chaque module. Un dysfonctionnement de l'interface web n'impacte pas la collecte et la persistance des données.
+
+\textbf{Communication asynchrone via MQTT} : Le modèle publish/subscribe évite les couplages directs entre ESP32 et backend. L'ajout de nouveaux dispositifs edge ou de nouveaux consommateurs de messages ne nécessite aucune modification des composants existants.
+
+\textbf{Backend centralisé Node.js} : L'architecture événementielle de Node.js est particulièrement adaptée à la gestion de flux temps réel avec nombreuses connexions concurrentes (ESP32 MQTT + clients WebSocket). Le langage JavaScript unifié (frontend/backend) simplifie le développement et le partage de code (validation, modèles).
+
+\textbf{Base de données relationnelle PostgreSQL} : Le modèle de données étant structuré et relationnel (liens entre pannes, interventions, techniciens, lignes), une base SQL s'impose. PostgreSQL offre fiabilité, conformité ACID, et capacités analytiques supérieures aux bases NoSQL pour notre cas d'usage.
+
+\textbf{WebSocket pour temps réel côté client} : WebSocket offre une latence nettement inférieure aux techniques de polling et permet au serveur d'initier les communications, essentiel pour des notifications push instantanées.
+
+
+\section{Architecture matérielle}
+
+L'architecture matérielle constitue la couche physique du système, interfaçant le monde numérique avec les processus industriels réels. Cette section détaille les composants électroniques déployés sur chaque ligne de production, leurs interconnexions et leur intégration au réseau Wi-Fi de l'usine.
+
+\subsection{Module ESP32}
+
+Le c\oe{}ur de l'architecture edge repose sur le microcontrôleur ESP32, choisi pour ses capacités de connectivité Wi-Fi native, sa puissance de calcul suffisante et son faible coût. Chaque ligne de production est équipée d'un module ESP32 DevKit V1 ou équivalent, embarquant :
+
+\begin{itemize}
+    \item Processeur dual-core Xtensa LX6 à 240 MHz.
+    \item 520 KB de SRAM pour exécution du firmware.
+    \item Flash 4 MB pour stockage du programme et buffering local.
+    \item Module Wi-Fi 802.11 b/g/n intégré permettant la connexion au réseau local industriel.
+    \item 34 broches GPIO configurables pour interfaçage avec les composants externes.
+\end{itemize}
+
+Le firmware embarqué sur l'ESP32 est développé avec l'environnement Arduino Core, offrant un bon compromis entre facilité de développement et performances. Les bibliothèques utilisées incluent :
+
+\begin{itemize}
+    \item \texttt{WiFi.h} : Gestion de la connexion Wi-Fi avec reconnexion automatique.
+    \item \texttt{PubSubClient} : Client MQTT léger et fiable supportant QoS 0, 1 et 2.
+    \item \texttt{ArduinoJson} : Sérialisation/désérialisation des messages JSON structurés.
+    \item \texttt{MFRC522} : Interface avec le lecteur RFID (optionnel selon configuration).
+\end{itemize}
+
+\subsection{Boutons Andon}
+
+Trois boutons poussoirs industriels (push buttons) sont connectés aux broches GPIO de l'ESP32, correspondant aux trois états du système Andon :
+
+\begin{itemize}
+    \item \textbf{Bouton vert (Normal)} : Signale un retour à la normale après résolution d'une anomalie. Connecté à la broche GPIO 12 avec résistance pull-up interne activée.
+    
+    \item \textbf{Bouton orange (Ralentissement)} : Indique un ralentissement ou une anomalie mineure nécessitant une attention mais n'arrêtant pas immédiatement la production. Connecté à la broche GPIO 14.
+    
+    \item \textbf{Bouton rouge (Arrêt)} : Déclenche une alerte critique signalant un arrêt de production effectif ou imminent. Connecté à la broche GPIO 27.
+\end{itemize}
+
+Les boutons sont configurés avec détection d'interruption matérielle (hardware interrupts) sur front descendant (FALLING edge), garantissant une détection instantanée sans polling périodique énergivore. Un mécanisme de debouncing logiciel (délai de 200 ms) filtre les rebonds mécaniques parasites inhérents aux boutons physiques.
+
+
+\subsection{Indicateurs LED}
+
+Pour offrir un feedback visuel local immédiat aux opérateurs, trois LEDs de couleur sont connectées à l'ESP32, reflétant l'état actuel de la ligne :
+
+\begin{itemize}
+    \item \textbf{LED verte} : Signale l'état normal. Connectée à la broche GPIO 25 via une résistance de limitation 220 $\Omega$.
+    
+    \item \textbf{LED orange} : Signale un ralentissement. Connectée à la broche GPIO 26 via résistance 220 $\Omega$.
+    
+    \item \textbf{LED rouge} : Signale un arrêt critique. Connectée à la broche GPIO 33 via résistance 220 $\Omega$.
+\end{itemize}
+
+La gestion des LEDs s'effectue via des commandes \texttt{digitalWrite()} simples. Seule la LED correspondant à l'état actuel de la ligne reste allumée en continu. Des patterns de clignotement peuvent être implémentés pour signaler des états transitoires (reconnexion Wi-Fi en cours, transmission MQTT en échec).
+
+\subsection{Lecteur RFID (optionnel)}
+
+Pour permettre l'identification automatique des techniciens intervenant sur les pannes, un module lecteur RFID MFRC522 peut être connecté à l'ESP32 via le bus SPI. Ce module permet la lecture de badges RFID standards (Mifare 13.56 MHz) portés par les techniciens.
+
+Connexions SPI du module RFID :
+\begin{itemize}
+    \item \texttt{SDA} (Slave Select) : GPIO 5
+    \item \texttt{SCK} (Serial Clock) : GPIO 18
+    \item \texttt{MOSI} (Master Out Slave In) : GPIO 23
+    \item \texttt{MISO} (Master In Slave Out) : GPIO 19
+    \item \texttt{RST} (Reset) : GPIO 22
+\end{itemize}
+
+Lorsqu'un technicien approche son badge du lecteur, l'ESP32 lit l'UID (Unique Identifier) du badge et le transmet au backend via MQTT sur un topic dédié (\texttt{sews/atelier/ligne01/rfid/scan}). Le backend associe alors cet UID au technicien correspondant et déclenche automatiquement la prise en charge de la panne en cours.
+
+\subsection{Alimentation électrique}
+
+Les modules ESP32 sont alimentés via des adaptateurs micro-USB 5V/1A standards, connectés au réseau électrique industriel. Pour garantir une alimentation stable et protéger les composants des surtensions, des régulateurs de tension LDO (Low Dropout) 3.3V sont intégrés sur les cartes ESP32 DevKit.
+
+Dans une architecture de production finale, une alimentation industrielle stabilisée 5V avec protection contre les inversions de polarité et les surtensions sera préférée pour renforcer la fiabilité.
+
+
+\subsection{Connexion au réseau Wi-Fi}
+
+Les modules ESP32 se connectent au réseau Wi-Fi industriel de SEWS Maroc via le SSID et le mot de passe configurés dans le firmware. La connexion s'établit automatiquement au démarrage de l'ESP32 et est maintenue en permanence grâce à un mécanisme de surveillance continue (watchdog).
+
+En cas de perte de connexion Wi-Fi détectée, le firmware tente une reconnexion automatique toutes les 10 secondes avec stratégie de backoff exponentiel (délai doublé à chaque échec, plafonné à 5 minutes). Durant les périodes de déconnexion, les événements détectés sont mis en buffer dans la mémoire flash de l'ESP32 (jusqu'à 100 événements) et retransmis automatiquement dès rétablissement de la connexion.
+
+Le firmware embarque également un serveur web léger accessible localement (\texttt{http://<ip\_esp32>:80}) permettant la consultation de l'état de connexion, du nombre d'événements en buffer, et la modification des paramètres Wi-Fi et MQTT sans reprogrammation complète du module.
+
+\subsection{Schéma de câblage}
+
+Le schéma suivant illustre les interconnexions entre l'ESP32 et les composants périphériques pour une ligne de production type :
+
+\ph{Schéma de câblage de l'architecture matérielle ESP32}{fig:hardware_wiring}
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Tableau de connexion des composants matériels}
+\label{tab:hardware_connections}
+\begin{tabular}{|p{3.5cm}|p{2.5cm}|p{2cm}|p{4.5cm}|}
+\hline
+\rowcolor{sewesblu!20}
+\textbf{Composant} & \textbf{Type} & \textbf{GPIO} & \textbf{Configuration} \\
+\hline
+Bouton Vert & Entrée & GPIO 12 & Pull-up, interruption FALLING \\
+\hline
+Bouton Orange & Entrée & GPIO 14 & Pull-up, interruption FALLING \\
+\hline
+Bouton Rouge & Entrée & GPIO 27 & Pull-up, interruption FALLING \\
+\hline
+LED Verte & Sortie & GPIO 25 & Active HIGH, résistance 220$\Omega$ \\
+\hline
+LED Orange & Sortie & GPIO 26 & Active HIGH, résistance 220$\Omega$ \\
+\hline
+LED Rouge & Sortie & GPIO 33 & Active HIGH, résistance 220$\Omega$ \\
+\hline
+RFID SDA & SPI & GPIO 5 & Slave Select \\
+\hline
+RFID SCK & SPI & GPIO 18 & Serial Clock \\
+\hline
+RFID MOSI & SPI & GPIO 23 & Master Out Slave In \\
+\hline
+RFID MISO & SPI & GPIO 19 & Master In Slave Out \\
+\hline
+RFID RST & Contrôle & GPIO 22 & Reset \\
+\hline
+\end{tabular}
+\end{table}
+
+
+\section{Architecture logicielle}
+
+L'architecture logicielle du système s'organise selon une approche multi-couches modulaire, séparant clairement les responsabilités et facilitant la maintenance et l'évolutivité. Cette section détaille l'organisation et les interactions des différents modules applicatifs.
+
+\subsection{Architecture backend Node.js}
+
+Le serveur backend constitue le c\oe{}ur applicatif du système, orchestrant l'ensemble des flux de données et implémentant la logique métier. Il s'organise selon une architecture en couches respectant les principes SOLID et les patterns MVC (Model-View-Controller).
+
+\subsubsection{Structure modulaire}
+
+\textbf{Couche Modèles (Models)} : Définit les entités métier et encapsule l'accès à la base de données PostgreSQL. Chaque table est représentée par un modèle (classe JavaScript) exposant des méthodes CRUD typées. Nous utilisons l'ORM Sequelize pour abstraire les requêtes SQL et faciliter les migrations de schéma.
+
+Modèles principaux :
+\begin{itemize}
+    \item \texttt{User} : Représente les utilisateurs du système (opérateurs, techniciens, superviseurs).
+    \item \texttt{ProductionLine} : Représente une ligne de production avec ses métadonnées (nom, localisation, équipement).
+    \item \texttt{AndonEvent} : Représente un événement Andon (déclenchement de bouton) avec horodatage et état.
+    \item \texttt{Intervention} : Représente une intervention de maintenance complète (prise en charge, observations, clôture).
+    \item \texttt{Part} : Catalogue des pièces de rechange.
+\end{itemize}
+
+\textbf{Couche Contrôleurs (Controllers)} : Implémente la logique de traitement des requêtes HTTP provenant des clients web. Chaque contrôleur correspond à une ressource REST et expose des méthodes pour les opérations CRUD standards. Les contrôleurs valident les entrées, appellent les services métier appropriés, et formatent les réponses JSON.
+
+Contrôleurs principaux :
+\begin{itemize}
+    \item \texttt{AuthController} : Gère l'authentification et la génération de tokens JWT.
+    \item \texttt{AndonController} : Expose les endpoints de consultation et de gestion des événements Andon.
+    \item \texttt{InterventionController} : Gère la prise en charge et la clôture des interventions.
+    \item \texttt{KPIController} : Calcule et retourne les indicateurs de performance.
+    \item \texttt{UserController} : Administration des utilisateurs (CRUD, gestion des rôles).
+\end{itemize}
+
+\textbf{Couche Services (Business Logic)} : Encapsule la logique métier complexe ne relevant pas directement de la persistance ni de la gestion des requêtes HTTP. Les services sont des classes réutilisables invoquées par les contrôleurs.
+
+Services principaux :
+\begin{itemize}
+    \item \texttt{MQTTService} : Gère la connexion au broker MQTT, les abonnements aux topics, et le traitement des messages reçus.
+    \item \texttt{SocketIOService} : Gère les connexions WebSocket et la diffusion des événements temps réel vers les clients.
+    \item \texttt{KPICalculator} : Implémente les algorithmes de calcul des indicateurs (MTTA, MTTR, disponibilité).
+    \item \texttt{NotificationService} : Gère l'envoi de notifications multi-canal (WebSocket, email optionnel).
+\end{itemize}
+
+
+\textbf{Couche Routes (Routing)} : Définit les endpoints de l'API REST et les associe aux contrôleurs et middlewares appropriés. Les routes sont organisées par ressource et respectent les conventions RESTful.
+
+Exemples de routes :
+\begin{itemize}
+    \item \texttt{POST /api/auth/login} : Authentification utilisateur.
+    \item \texttt{GET /api/andon/events} : Liste des événements Andon (avec pagination et filtres).
+    \item \texttt{POST /api/interventions/:id/close} : Clôture d'une intervention.
+    \item \texttt{GET /api/kpi/mttr?period=week} : Calcul du MTTR sur la période spécifiée.
+    \item \texttt{GET /api/lines} : Liste des lignes de production.
+\end{itemize}
+
+\textbf{Couche Middlewares} : Fonctions intermédiaires exécutées séquentiellement avant les contrôleurs, implémentant des fonctionnalités transverses.
+
+Middlewares principaux :
+\begin{itemize}
+    \item \texttt{authMiddleware} : Vérifie la présence et la validité du token JWT dans les en-têtes HTTP.
+    \item \texttt{roleMiddleware} : Contrôle les autorisations selon le rôle de l'utilisateur (RBAC).
+    \item \texttt{validationMiddleware} : Valide le format des données reçues via schémas Joi.
+    \item \texttt{errorHandler} : Intercepte et formate les erreurs pour réponses JSON cohérentes.
+    \item \texttt{rateLimiter} : Limite le nombre de requêtes par client pour prévenir les abus.
+\end{itemize}
+
+\subsubsection{Gestion MQTT}
+
+Le service MQTT s'initialise au démarrage du serveur backend et établit une connexion persistante au broker HiveMQ Cloud. Il s'abonne aux topics suivants selon une structure hiérarchique :
+
+\begin{itemize}
+    \item \texttt{sews/atelier/+/andon/alert} : Écoute toutes les alertes Andon de toutes les lignes.
+    \item \texttt{sews/atelier/+/andon/normal} : Écoute les retours à la normale.
+    \item \texttt{sews/atelier/+/rfid/scan} : Écoute les scans de badges RFID techniciens.
+    \item \texttt{sews/atelier/+/status} : Écoute les messages de statut périodiques des ESP32.
+\end{itemize}
+
+À la réception d'un message MQTT, le service effectue les traitements suivants :
+
+\begin{enumerate}
+    \item Parsing du payload JSON et validation du schéma.
+    \item Enrichissement des métadonnées (horodatage serveur, identifiant unique UUID).
+    \item Persistance dans PostgreSQL via les modèles Sequelize (transaction ACID).
+    \item Émission d'un événement Socket.IO vers tous les clients web connectés.
+    \item Déclenchement de règles métier additionnelles (notification par email si panne critique récurrente).
+\end{enumerate}
+
+
+\subsubsection{Gestion Socket.IO}
+
+Le service Socket.IO s'initialise en parallèle du serveur HTTP Express et gère les connexions WebSocket bidirectionnelles avec les clients web. Chaque client se connecte avec authentification (token JWT transmis lors du handshake initial) et rejoint automatiquement des « rooms » Socket.IO correspondant à son périmètre d'autorisation (ligne spécifique pour un opérateur, atelier complet pour un superviseur).
+
+Événements Socket.IO émis par le serveur :
+\begin{itemize}
+    \item \texttt{andon:alert} : Nouvelle alerte Andon détectée.
+    \item \texttt{andon:normal} : Retour à la normale d'une ligne.
+    \item \texttt{intervention:started} : Une intervention a été prise en charge par un technicien.
+    \item \texttt{intervention:closed} : Une intervention a été clôturée.
+    \item \texttt{kpi:updated} : Les indicateurs de performance ont été recalculés.
+\end{itemize}
+
+Événements Socket.IO reçus du client :
+\begin{itemize}
+    \item \texttt{subscribe:line} : Demande d'abonnement aux événements d'une ligne spécifique.
+    \item \texttt{unsubscribe:line} : Désabonnement d'une ligne.
+\end{itemize}
+
+Cette architecture événementielle garantit que toute modification de l'état du système se propage instantanément vers tous les clients concernés sans polling périodique, minimisant ainsi la latence et la charge réseau.
+
+\ph{Architecture logicielle backend en couches}{fig:software_architecture}
+
+\subsection{Dashboard de supervision web}
+
+Le dashboard de supervision constitue l'interface principale destinée aux superviseurs et responsables maintenance. Il s'agit d'une Single Page Application (SPA) développée en HTML5, CSS3 et JavaScript Vanilla (ES6+), sans framework lourd (React, Vue) pour minimiser la complexité et le poids de l'application.
+
+\subsubsection{Organisation modulaire}
+
+Le code frontend est organisé en modules ES6 importés dynamiquement :
+
+\begin{itemize}
+    \item \texttt{auth.js} : Gestion de l'authentification (login, stockage token, déconnexion).
+    \item \texttt{dashboard.js} : Logique principale du tableau de bord (affichage des lignes, mise à jour temps réel).
+    \item \texttt{history.js} : Module de consultation de l'historique avec filtres et pagination.
+    \item \texttt{kpi.js} : Affichage des graphiques et indicateurs de performance.
+    \item \texttt{socket.js} : Gestion de la connexion Socket.IO et des événements temps réel.
+    \item \texttt{api.js} : Abstraction des appels API REST (fetch avec gestion token et erreurs).
+\end{itemize}
+
+
+\subsubsection{Composants d'interface principaux}
+
+\textbf{Grille de visualisation des lignes} : Vue d'ensemble affichant toutes les lignes de production sous forme de cartes (cards) colorées selon leur état actuel :
+
+\begin{itemize}
+    \item Vert : Ligne en fonctionnement normal.
+    \item Orange : Ralentissement ou anomalie mineure signalée.
+    \item Rouge : Arrêt critique, intervention requise.
+    \item Gris : Ligne hors service ou déconnectée.
+\end{itemize}
+
+Chaque carte affiche : numéro de ligne, état actuel, durée dans l'état actuel, technicien intervenant si applicable, nombre de pannes du jour.
+
+\textbf{Panel de détail} : Lors du clic sur une carte de ligne, un panel latéral s'affiche présentant les informations détaillées :
+
+\begin{itemize}
+    \item Historique des événements récents (timeline chronologique).
+    \item KPI spécifiques à la ligne (MTTR moyen, disponibilité mensuelle).
+    \item Interventions en cours ou récentes avec observations techniciens.
+    \item Graphiques d'évolution temporelle (nombre de pannes par jour sur le mois).
+\end{itemize}
+
+\textbf{Module de filtrage et recherche} : Barre de filtres permettant de :
+
+\begin{itemize}
+    \item Filtrer les lignes par état (toutes, normales, en alerte, arrêtées).
+    \item Rechercher une ligne par numéro ou nom.
+    \item Afficher uniquement les lignes avec interventions en cours.
+\end{itemize}
+
+\textbf{Dashboard KPI global} : Section synthétisant les indicateurs de performance agrégés de l'ensemble de l'atelier :
+
+\begin{itemize}
+    \item Disponibilité globale de l'atelier (pourcentage).
+    \item Nombre total de pannes du jour/semaine/mois.
+    \item MTTA et MTTR moyens calculés sur la période sélectionnée.
+    \item Graphiques de distribution des types de pannes (Pareto).
+    \item Graphiques d'évolution temporelle (courbes de tendance).
+\end{itemize}
+
+Les graphiques sont générés avec la bibliothèque Chart.js, légère et performante.
+
+\subsubsection{Responsiveness}
+
+Le dashboard adopte une approche responsive basée sur CSS Flexbox et Grid, garantissant une adaptation fluide aux différentes tailles d'écran :
+
+\begin{itemize}
+    \item \textbf{Desktop (> 1200px)} : Affichage multi-colonnes avec sidebar navigation permanente.
+    \item \textbf{Tablette (768px - 1199px)} : Affichage sur deux colonnes avec navigation collapsible.
+    \item \textbf{Mobile (< 768px)} : Affichage mono-colonne avec menu hamburger.
+\end{itemize}
+
+
+\subsection{Application mobile Progressive Web App (PWA)}
+
+L'application mobile destinée aux techniciens de maintenance est implémentée comme une Progressive Web App, combinant les avantages d'une application web (déploiement instantané, mises à jour transparentes) et d'une application native (installation sur écran d'accueil, fonctionnement hors ligne, notifications push).
+
+\subsubsection{Fonctionnalités PWA}
+
+\textbf{Manifeste Web App} : Fichier JSON (\texttt{manifest.json}) décrivant l'application et permettant son installation :
+
+\begin{itemize}
+    \item Nom et nom court de l'application.
+    \item Icônes de différentes résolutions (192x192, 512x512) pour écran d'accueil et splash screen.
+    \item Couleur de thème et couleur de fond cohérentes avec la charte graphique SEWS.
+    \item Mode d'affichage \texttt{standalone} pour masquer les barres de navigation du navigateur.
+    \item URL de démarrage et scope de l'application.
+\end{itemize}
+
+\textbf{Service Worker} : Script JavaScript s'exécutant en arrière-plan, agissant comme proxy réseau programmable :
+
+\begin{itemize}
+    \item \textbf{Stratégie de cache} : Cache-first pour les ressources statiques (HTML, CSS, JS, images), garantissant un chargement instantané et le fonctionnement hors ligne.
+    \item \textbf{Stratégie Network-first} pour les appels API, garantissant la fraîcheur des données tout en offrant un fallback cache en cas de déconnexion.
+    \item \textbf{Synchronisation en arrière-plan} : Les interventions saisies hors ligne sont automatiquement envoyées au serveur dès rétablissement de la connexion via l'API Background Sync.
+    \item \textbf{Notifications push} : Réception de notifications même application fermée via l'API Push.
+\end{itemize}
+
+\subsubsection{Interface technicien}
+
+L'interface mobile est optimisée pour une utilisation terrain rapide et efficace :
+
+\textbf{Écran d'accueil} : Liste des alertes actives nécessitant une intervention, triées par criticité (rouge en priorité) puis par ancienneté. Chaque alerte affiche : ligne concernée, type d'alerte, durée écoulée, badge visuel de criticité.
+
+\textbf{Écran de prise en charge} : Lors du scan du badge RFID ou sélection manuelle d'une alerte :
+
+\begin{itemize}
+    \item Affichage des informations contextuelles (ligne, équipement, historique récent).
+    \item Bouton de confirmation de prise en charge déclenchant l'horodatage automatique.
+    \item Démarrage du chronomètre d'intervention visible en permanence.
+\end{itemize}
+
+\textbf{Écran de documentation d'intervention} : Formulaire structuré guidant la saisie :
+
+\begin{itemize}
+    \item Sélection du type de panne depuis liste déroulante catégorisée.
+    \item Saisie des symptômes observés (champ texte avec suggestions basées sur historique).
+    \item Sélection des pièces remplacées depuis catalogue avec recherche rapide.
+    \item Saisie des actions correctives (liste de checkboxes prédéfinies + champ libre).
+    \item Niveau de criticité et recommandations préventives.
+    \item Possibilité de joindre photos (via caméra du smartphone).
+\end{itemize}
+
+\textbf{Écran de clôture} : Synthèse de l'intervention avec durée totale calculée automatiquement, bouton de validation finale déclenchant l'enregistrement et la notification au superviseur.
+
+
+\subsection{Broker MQTT}
+
+Le broker MQTT constitue l'épine dorsale de communication asynchrone entre les dispositifs ESP32 et le backend Node.js. Pour ce projet, nous utilisons HiveMQ Cloud, une solution de broker MQTT managé offrant plusieurs avantages décisifs.
+
+\subsubsection{Justification du choix HiveMQ Cloud}
+
+\textbf{Fiabilité et disponibilité} : HiveMQ Cloud est une solution professionnelle offrant un SLA de 99.99\% de disponibilité, des clusters redondants et une reprise automatique en cas de défaillance.
+
+\textbf{Scalabilité} : Le broker peut gérer des milliers de connexions concurrentes et des millions de messages par seconde, largement suffisant pour notre cas d'usage initial (20 lignes) et des extensions futures.
+
+\textbf{Sécurité} : Support natif de TLS/SSL, authentification par nom d'utilisateur/mot de passe ou certificats X.509, contrôle d'accès fin par topic.
+
+\textbf{Monitoring intégré} : Dashboard de supervision fourni permettant de visualiser les connexions actives, le throughput des messages, les erreurs de connexion.
+
+\textbf{Simplicité opérationnelle} : Solution managée ne nécessitant aucune maintenance infrastructure (mises à jour automatiques, sauvegardes, monitoring).
+
+\textbf{Coût maîtrisé} : Tier gratuit offrant jusqu'à 100 connexions simultanées et 10 GB de transfert mensuel, suffisant pour notre preuve de concept.
+
+\subsubsection{Configuration et sécurité}
+
+Le broker est configuré avec les paramètres suivants :
+
+\begin{itemize}
+    \item \textbf{Endpoint} : \texttt{<cluster-id>.s1.eu.hivemq.cloud:8883} (TLS activé).
+    \item \textbf{Authentification} : Username/password (credentials stockés de manière sécurisée dans variables d'environnement).
+    \item \textbf{Keep-alive} : 60 secondes (détection rapide des déconnexions).
+    \item \textbf{Clean session} : False pour les clients ESP32 (persistance des messages non livrés en cas de déconnexion temporaire).
+\end{itemize}
+
+Les topics MQTT sont organisés selon une hiérarchie standardisée reflétant la structure organisationnelle :
+
+\texttt{sews/<site>/<atelier>/<ligne>/<type>/<action>}
+
+Exemples concrets :
+\begin{itemize}
+    \item \texttt{sews/kenitra/test-electrique/ligne01/andon/alert}
+    \item \texttt{sews/kenitra/test-electrique/ligne01/andon/normal}
+    \item \texttt{sews/kenitra/test-electrique/ligne01/rfid/scan}
+    \item \texttt{sews/kenitra/test-electrique/ligne01/status/online}
+\end{itemize}
+
+Cette structure hiérarchique facilite les abonnements avec wildcards et l'extension future du système à plusieurs sites et ateliers.
+
+
+\subsection{Base de données PostgreSQL}
+
+La base de données PostgreSQL constitue le référentiel central de toutes les données du système. Elle est hébergée sur un service cloud managé (Railway, Supabase ou AWS RDS selon les contraintes de déploiement) garantissant disponibilité, sauvegardes automatiques et scalabilité verticale.
+
+\subsubsection{Configuration et optimisation}
+
+\textbf{Version} : PostgreSQL 15 ou supérieur, bénéficiant des dernières optimisations de performance et fonctionnalités.
+
+\textbf{Encodage} : UTF-8 pour support complet des caractères internationaux.
+
+\textbf{Connexions} : Pool de connexions géré par Sequelize avec minimum 5, maximum 20 connexions concurrentes.
+
+\textbf{Indexation} : Index automatiques sur clés primaires et étrangères, index additionnels sur colonnes fréquemment requêtées (timestamps, identifiants de lignes).
+
+\textbf{Partitionnement} : Pour les tables d'événements à forte volumétrie, partitionnement temporel par mois envisagé si volume dépasse 1 million de lignes.
+
+\textbf{Sauvegardes} : Sauvegardes complètes quotidiennes avec rétention de 30 jours, sauvegardes incrémentales toutes les 6 heures.
+
+\ph{Architecture logicielle complète}{fig:complete_software_architecture}
+
+\section{Conception de la base de données}
+
+La base de données relationnelle constitue le fondement informationnel du système. Sa conception doit garantir l'intégrité des données, optimiser les performances d'accès, et faciliter les requêtes analytiques complexes nécessaires au calcul des KPI.
+
+\subsection{Modèle conceptuel de données}
+
+Le modèle conceptuel identifie les entités métier principales et leurs relations sémantiques. Nous adoptons une approche normalisée (3ème forme normale) équilibrant intégrité et performance.
+
+\subsubsection{Entités principales}
+
+\textbf{User (Utilisateur)} : Représente un utilisateur du système (opérateur, technicien, superviseur, administrateur). Attributs : identifiant unique, nom complet, email, mot de passe haché, rôle, badge RFID (optionnel), date de création, dernier login.
+
+\textbf{ProductionLine (Ligne de Production)} : Représente une ligne de production de l'atelier. Attributs : identifiant unique, numéro de ligne, nom descriptif, localisation physique, équipement principal, état actuel, date de mise en service, statut actif/inactif.
+
+\textbf{AndonEvent (Événement Andon)} : Représente un événement de déclenchement de bouton Andon. Attributs : identifiant unique, ligne concernée (clé étrangère), type d'événement (normal/warning/critical), horodatage détection, horodatage réception backend, payload JSON complet.
+
+
+\textbf{Intervention} : Représente le cycle de vie complet d'une intervention de maintenance. Attributs : identifiant unique, événement Andon déclencheur (clé étrangère), technicien intervenant (clé étrangère), horodatage prise en charge, horodatage clôture, durée totale (calculée), type de panne, criticité, symptômes observés (texte), actions correctives (texte), recommandations, statut (ouverte/en cours/clôturée).
+
+\textbf{Part (Pièce de rechange)} : Catalogue des pièces de rechange utilisables lors des interventions. Attributs : identifiant unique, code article, désignation, catégorie, stock disponible, prix unitaire, fournisseur.
+
+\textbf{InterventionPart (Association Intervention-Pièce)} : Table associative représentant les pièces remplacées lors d'une intervention. Attributs : identifiant unique, intervention (clé étrangère), pièce (clé étrangère), quantité utilisée, horodatage remplacement.
+
+\textbf{Notification} : Archive des notifications envoyées aux utilisateurs. Attributs : identifiant unique, utilisateur destinataire (clé étrangère), type notification, titre, message, horodatage envoi, statut lecture (lue/non lue).
+
+\subsection{Relations et cardinalités}
+
+Les relations entre entités structurent le modèle de données :
+
+\textbf{User $\leftrightarrow$ Intervention} : Relation 1:N (un technicien intervient sur plusieurs pannes, une panne est traitée par un seul technicien à la fois). Clé étrangère \texttt{technician\_id} dans la table \texttt{Intervention}.
+
+\textbf{ProductionLine $\leftrightarrow$ AndonEvent} : Relation 1:N (une ligne génère plusieurs événements Andon au fil du temps). Clé étrangère \texttt{line\_id} dans la table \texttt{AndonEvent}.
+
+\textbf{AndonEvent $\leftrightarrow$ Intervention} : Relation 1:1 ou 1:0..1 (un événement Andon peut déclencher une intervention si sa criticité le justifie, ou rester un simple événement informatif). Clé étrangère \texttt{andon\_event\_id} dans la table \texttt{Intervention}.
+
+\textbf{Intervention $\leftrightarrow$ Part} : Relation N:M (une intervention peut nécessiter plusieurs pièces, une pièce peut être utilisée dans plusieurs interventions). Table associative \texttt{InterventionPart} avec clés étrangères \texttt{intervention\_id} et \texttt{part\_id}.
+
+\textbf{User $\leftrightarrow$ Notification} : Relation 1:N (un utilisateur reçoit plusieurs notifications au fil du temps). Clé étrangère \texttt{user\_id} dans la table \texttt{Notification}.
+
+
+\subsection{Schéma relationnel détaillé}
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\caption{Table User — Utilisateurs du système}
+\label{tab:table_user}
+\begin{tabular}{|p{2.5cm}|p{2cm}|p{2cm}|p{1.5cm}|p{4cm}|}
+\hline
+\rowcolor{sewesblu!20}
+\textbf{Attribut} & \textbf{Type} & \textbf{Contraintes} & \textbf{Clé} & \textbf{Description} \\
+\hline
+id & UUID & NOT NULL & PK & Identifiant unique \\
+\hline
+full\_name & VARCHAR(100) & NOT NULL & & Nom complet \\
+\hline
+email & VARCHAR(100) & NOT NULL, UNIQUE & & Adresse email \\
+\hline
+password\_hash & VARCHAR(255) & NOT NULL & & Mot de passe haché (bcrypt) \\
+\hline
+role & ENUM & NOT NULL & & Rôle (operator, technician, supervisor, admin) \\
+\hline
+rfid\_badge & VARCHAR(50) & UNIQUE & & Identifiant badge RFID \\
+\hline
+created\_at & TIMESTAMP & NOT NULL, DEFAULT NOW() & & Date de création \\
+\hline
+last\_login & TIMESTAMP & & & Dernier login \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\caption{Table ProductionLine — Lignes de production}
+\label{tab:table_line}
+\begin{tabular}{|p{2.5cm}|p{2cm}|p{2cm}|p{1.5cm}|p{4cm}|}
+\hline
+\rowcolor{sewesblu!20}
+\textbf{Attribut} & \textbf{Type} & \textbf{Contraintes} & \textbf{Clé} & \textbf{Description} \\
+\hline
+id & UUID & NOT NULL & PK & Identifiant unique \\
+\hline
+line\_number & VARCHAR(20) & NOT NULL, UNIQUE & & Numéro de ligne \\
+\hline
+name & VARCHAR(100) & NOT NULL & & Nom descriptif \\
+\hline
+location & VARCHAR(100) & & & Localisation physique \\
+\hline
+equipment & VARCHAR(200) & & & Équipement principal \\
+\hline
+current\_status & ENUM & NOT NULL, DEFAULT 'normal' & & État actuel (normal, warning, critical, offline) \\
+\hline
+active & BOOLEAN & NOT NULL, DEFAULT true & & Ligne active ou désactivée \\
+\hline
+created\_at & TIMESTAMP & NOT NULL, DEFAULT NOW() & & Date de création \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\caption{Table AndonEvent — Événements Andon}
+\label{tab:table_event}
+\begin{tabular}{|p{2.5cm}|p{2cm}|p{2cm}|p{1.5cm}|p{4cm}|}
+\hline
+\rowcolor{sewesblu!20}
+\textbf{Attribut} & \textbf{Type} & \textbf{Contraintes} & \textbf{Clé} & \textbf{Description} \\
+\hline
+id & UUID & NOT NULL & PK & Identifiant unique \\
+\hline
+line\_id & UUID & NOT NULL & FK & Ligne concernée \\
+\hline
+event\_type & ENUM & NOT NULL & & Type (normal, warning, critical) \\
+\hline
+detected\_at & TIMESTAMP & NOT NULL & & Horodatage détection ESP32 \\
+\hline
+received\_at & TIMESTAMP & NOT NULL, DEFAULT NOW() & & Horodatage réception backend \\
+\hline
+payload & JSONB & & & Données complètes JSON \\
+\hline
+\end{tabular}
+\end{table}
+
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\caption{Table Intervention — Interventions de maintenance}
+\label{tab:table_intervention}
+\begin{tabular}{|p{2.5cm}|p{2cm}|p{2cm}|p{1.5cm}|p{4cm}|}
+\hline
+\rowcolor{sewesblu!20}
+\textbf{Attribut} & \textbf{Type} & \textbf{Contraintes} & \textbf{Clé} & \textbf{Description} \\
+\hline
+id & UUID & NOT NULL & PK & Identifiant unique \\
+\hline
+andon\_event\_id & UUID & NOT NULL, UNIQUE & FK & Événement Andon déclencheur \\
+\hline
+technician\_id & UUID & & FK & Technicien intervenant \\
+\hline
+acknowledged\_at & TIMESTAMP & & & Horodatage prise en charge \\
+\hline
+closed\_at & TIMESTAMP & & & Horodatage clôture \\
+\hline
+duration\_minutes & INTEGER & & & Durée totale (calculée) \\
+\hline
+failure\_type & VARCHAR(100) & & & Type de panne \\
+\hline
+criticality & ENUM & & & Criticité (minor, medium, critical) \\
+\hline
+symptoms & TEXT & & & Symptômes observés \\
+\hline
+corrective\_actions & TEXT & & & Actions correctives \\
+\hline
+recommendations & TEXT & & & Recommandations \\
+\hline
+status & ENUM & NOT NULL, DEFAULT 'open' & & Statut (open, in\_progress, closed) \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\caption{Table Part — Pièces de rechange}
+\label{tab:table_part}
+\begin{tabular}{|p{2.5cm}|p{2cm}|p{2cm}|p{1.5cm}|p{4cm}|}
+\hline
+\rowcolor{sewesblu!20}
+\textbf{Attribut} & \textbf{Type} & \textbf{Contraintes} & \textbf{Clé} & \textbf{Description} \\
+\hline
+id & UUID & NOT NULL & PK & Identifiant unique \\
+\hline
+part\_code & VARCHAR(50) & NOT NULL, UNIQUE & & Code article \\
+\hline
+designation & VARCHAR(200) & NOT NULL & & Désignation \\
+\hline
+category & VARCHAR(50) & & & Catégorie \\
+\hline
+stock\_quantity & INTEGER & NOT NULL, DEFAULT 0 & & Stock disponible \\
+\hline
+unit\_price & DECIMAL(10,2) & & & Prix unitaire \\
+\hline
+supplier & VARCHAR(100) & & & Fournisseur \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\caption{Table InterventionPart — Association Intervention-Pièce}
+\label{tab:table_intervention_part}
+\begin{tabular}{|p{2.5cm}|p{2cm}|p{2cm}|p{1.5cm}|p{4cm}|}
+\hline
+\rowcolor{sewesblu!20}
+\textbf{Attribut} & \textbf{Type} & \textbf{Contraintes} & \textbf{Clé} & \textbf{Description} \\
+\hline
+id & UUID & NOT NULL & PK & Identifiant unique \\
+\hline
+intervention\_id & UUID & NOT NULL & FK & Intervention concernée \\
+\hline
+part\_id & UUID & NOT NULL & FK & Pièce utilisée \\
+\hline
+quantity & INTEGER & NOT NULL, DEFAULT 1 & & Quantité utilisée \\
+\hline
+replaced\_at & TIMESTAMP & NOT NULL, DEFAULT NOW() & & Horodatage remplacement \\
+\hline
+\end{tabular}
+\end{table}
+
+\ph{Schéma de la base de données relationnelle}{fig:database_schema}
+
+
+\subsection{Contraintes d'intégrité}
+
+Pour garantir la cohérence et l'intégrité des données, plusieurs contraintes sont implémentées :
+
+\textbf{Contraintes de clés primaires} : Toutes les tables disposent d'une clé primaire UUID garantissant l'unicité absolue des enregistrements. L'utilisation d'UUID plutôt que d'entiers auto-incrémentés facilite la réplication éventuelle multi-sites et évite les conflits d'identifiants.
+
+\textbf{Contraintes de clés étrangères} : Les relations entre tables sont matérialisées par des clés étrangères avec actions référentielles :
+
+\begin{itemize}
+    \item \texttt{ON DELETE CASCADE} : Suppression d'une ligne de production entraîne suppression de tous ses événements Andon (rarement utilisé en production, mais utile pour nettoyage de données de test).
+    \item \texttt{ON DELETE SET NULL} : Suppression d'un utilisateur technicien ne supprime pas les interventions historiques, mais met à NULL la référence au technicien.
+    \item \texttt{ON DELETE RESTRICT} : Empêche la suppression d'une pièce tant qu'elle est référencée dans des interventions.
+\end{itemize}
+
+\textbf{Contraintes d'unicité} : Email des utilisateurs, numéro de ligne, code article des pièces doivent être uniques pour éviter les doublons.
+
+\textbf{Contraintes de domaine} : Énumérations (\texttt{ENUM}) restreignent les valeurs possibles pour les champs typés (rôles utilisateurs, types d'événements, statuts d'intervention).
+
+\textbf{Contraintes CHECK} : Règles métier exprimées au niveau base de données :
+
+\begin{itemize}
+    \item La date de clôture d'une intervention doit être postérieure à la date de prise en charge.
+    \item La quantité de pièces utilisée doit être strictement positive.
+    \item Le stock disponible des pièces ne peut être négatif.
+\end{itemize}
+
+\textbf{Index} : Création d'index sur les colonnes fréquemment requêtées :
+
+\begin{itemize}
+    \item Index sur \texttt{AndonEvent.detected\_at} pour requêtes temporelles performantes.
+    \item Index composite sur \texttt{(line\_id, detected\_at)} pour filtrage par ligne et période.
+    \item Index sur \texttt{Intervention.status} pour requêtes sur interventions en cours.
+    \item Index sur \texttt{User.email} pour recherche rapide lors de l'authentification.
+\end{itemize}
+
+\subsection{Requêtes analytiques typiques}
+
+Le modèle de données doit faciliter le calcul des KPI via requêtes SQL performantes. Exemples de requêtes analytiques :
+
+\textbf{Calcul du MTTR (Mean Time To Repair)} :
+
+\begin{lstlisting}[language=SQL, caption={Calcul du MTTR mensuel}]
+SELECT AVG(duration_minutes) as mttr_minutes
+FROM Intervention
+WHERE closed_at >= DATE_TRUNC('month', CURRENT_DATE)
+  AND closed_at < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
+  AND status = 'closed';
+\end{lstlisting}
+
+
+\textbf{Calcul du MTTA (Mean Time To Acknowledge)} :
+
+\begin{lstlisting}[language=SQL, caption={Calcul du MTTA hebdomadaire}]
+SELECT AVG(EXTRACT(EPOCH FROM (i.acknowledged_at - ae.detected_at))/60) as mtta_minutes
+FROM Intervention i
+JOIN AndonEvent ae ON i.andon_event_id = ae.id
+WHERE i.acknowledged_at >= CURRENT_DATE - INTERVAL '7 days'
+  AND i.acknowledged_at IS NOT NULL;
+\end{lstlisting}
+
+\textbf{Distribution des types de pannes (Pareto)} :
+
+\begin{lstlisting}[language=SQL, caption={Top 10 des pannes les plus fréquentes}]
+SELECT failure_type, COUNT(*) as occurrence_count
+FROM Intervention
+WHERE closed_at >= CURRENT_DATE - INTERVAL '30 days'
+  AND failure_type IS NOT NULL
+GROUP BY failure_type
+ORDER BY occurrence_count DESC
+LIMIT 10;
+\end{lstlisting}
+
+\textbf{Disponibilité opérationnelle par ligne} :
+
+\begin{lstlisting}[language=SQL, caption={Calcul de la disponibilité}]
+WITH downtime AS (
+  SELECT line_id, SUM(duration_minutes) as total_downtime
+  FROM Intervention
+  WHERE closed_at >= CURRENT_DATE - INTERVAL '7 days'
+  GROUP BY line_id
+)
+SELECT pl.line_number,
+       ROUND(100 * (1 - (COALESCE(d.total_downtime, 0) / (7 * 24 * 60))), 2) as availability_percent
+FROM ProductionLine pl
+LEFT JOIN downtime d ON pl.id = d.line_id
+WHERE pl.active = true
+ORDER BY pl.line_number;
+\end{lstlisting}
+
+Ces requêtes exploitent les fonctionnalités avancées de PostgreSQL (window functions, CTEs, fonctions d'agrégation) pour calculer efficacement les indicateurs sans nécessiter de traitement applicatif lourd.
+
+\section{Diagrammes UML}
+
+La modélisation UML (Unified Modeling Language) permet de formaliser les aspects comportementaux et structurels du système de manière standardisée et universellement compréhensible. Cette section présente les diagrammes UML essentiels documentant les cas d'usage, les séquences d'interactions et les flux d'activités.
+
+\subsection{Diagramme de cas d'utilisation}
+
+Le diagramme de cas d'utilisation identifie les acteurs du système et les fonctionnalités principales qu'ils peuvent invoquer. Il offre une vue macroscopique des services offerts par le système.
+
+\textbf{Acteurs identifiés} :
+
+\begin{itemize}
+    \item \textbf{Opérateur} : Personnel de production actionnant les boutons Andon.
+    \item \textbf{Technicien de maintenance} : Personnel intervenant sur les pannes.
+    \item \textbf{Superviseur} : Responsable atelier supervisant l'état global de production.
+    \item \textbf{Administrateur} : Personnel IT gérant la configuration du système.
+    \item \textbf{Système ESP32} : Acteur technique représentant les modules IoT.
+\end{itemize}
+
+
+\textbf{Cas d'utilisation principaux} :
+
+\begin{itemize}
+    \item \textbf{UC-01 : Déclencher une alerte Andon} (Opérateur) : L'opérateur actionne un bouton Andon pour signaler une anomalie.
+    
+    \item \textbf{UC-02 : Prendre en charge une intervention} (Technicien) : Le technicien scanne son badge RFID et prend officiellement en charge une panne signalée.
+    
+    \item \textbf{UC-03 : Documenter une intervention} (Technicien) : Le technicien saisit les observations, actions correctives et pièces remplacées via l'application mobile.
+    
+    \item \textbf{UC-04 : Clôturer une intervention} (Technicien) : Le technicien marque l'intervention comme résolue, déclenchant le calcul automatique de la durée.
+    
+    \item \textbf{UC-05 : Superviser l'état de l'atelier} (Superviseur) : Le superviseur consulte le dashboard temps réel affichant l'état de toutes les lignes.
+    
+    \item \textbf{UC-06 : Consulter l'historique des pannes} (Superviseur) : Le superviseur filtre et consulte l'historique complet des événements et interventions.
+    
+    \item \textbf{UC-07 : Visualiser les KPI} (Superviseur) : Le superviseur consulte les indicateurs de performance calculés automatiquement (MTTR, MTTA, disponibilité).
+    
+    \item \textbf{UC-08 : Exporter des rapports} (Superviseur) : Le superviseur génère et exporte des rapports au format CSV ou PDF.
+    
+    \item \textbf{UC-09 : Gérer les utilisateurs} (Administrateur) : L'administrateur crée, modifie et désactive des comptes utilisateurs.
+    
+    \item \textbf{UC-10 : Configurer les lignes de production} (Administrateur) : L'administrateur ajoute ou modifie les lignes de production dans le système.
+    
+    \item \textbf{UC-11 : Transmettre un événement} (Système ESP32) : Le module ESP32 détecte un changement d'état et transmet l'événement via MQTT.
+\end{itemize}
+
+\ph{Diagramme de cas d'utilisation du système Andon}{fig:use_case_diagram}
+
+\subsection{Diagramme de séquence}
+
+Les diagrammes de séquence illustrent les interactions temporelles entre les différents composants du système lors de l'exécution de scénarios spécifiques. Nous présentons ici le scénario nominal de gestion complète d'une panne, du déclenchement à la clôture.
+
+\textbf{Scénario : Cycle complet de gestion d'une panne critique}
+
+\textbf{Participants} : Opérateur, ESP32, Broker MQTT, Backend Node.js, PostgreSQL, Socket.IO, Dashboard Web, Technicien, Application PWA.
+
+\textbf{Séquence d'interactions} :
+
+\begin{enumerate}
+    \item Opérateur actionne le bouton rouge (arrêt critique).
+    \item ESP32 détecte l'interruption matérielle sur GPIO 27.
+    \item ESP32 allume la LED rouge locale.
+    \item ESP32 construit un message JSON structuré avec métadonnées (timestamp, line\_id, type).
+    \item ESP32 publie le message sur topic MQTT \texttt{sews/atelier/ligne01/andon/alert}.
+    \item Broker MQTT reçoit et distribue le message aux abonnés.
+    \item Backend Node.js (abonné au topic) reçoit le message.
+    \item Backend valide le format JSON et enrichit les métadonnées (UUID, timestamp serveur).
+    \item Backend crée un enregistrement \texttt{AndonEvent} dans PostgreSQL (transaction ACID).
+    \item Backend crée un enregistrement \texttt{Intervention} associé avec statut \texttt{'open'}.
+    \item Backend émet un événement Socket.IO \texttt{'andon:alert'} vers tous les clients.
+    \item Dashboard Web reçoit l'événement et met à jour l'interface (carte ligne devient rouge).
+    \item Application PWA des techniciens reçoit notification push et affiche l'alerte dans la liste.
+    \item Technicien consulte l'application PWA et sélectionne l'alerte.
+    \item Technicien scanne son badge RFID sur le lecteur ESP32.
+    \item ESP32 lit l'UID du badge et publie sur \texttt{sews/atelier/ligne01/rfid/scan}.
+    \item Backend reçoit le scan RFID, identifie le technicien, met à jour \texttt{Intervention.technician\_id} et \texttt{acknowledged\_at}.
+    \item Backend émet événement Socket.IO \texttt{'intervention:started'}.
+    \item Dashboard affiche le nom du technicien intervenant.
+    \item Technicien diagnostique et répare la panne.
+    \item Technicien saisit les observations dans l'application PWA (type panne, symptômes, actions, pièces).
+    \item Application PWA envoie requête HTTP POST \texttt{/api/interventions/:id/close} avec payload JSON.
+    \item Backend valide les données, calcule \texttt{duration\_minutes}, met à jour \texttt{closed\_at} et \texttt{status='closed'}.
+    \item Backend persiste les modifications dans PostgreSQL.
+    \item Backend émet événement Socket.IO \texttt{'intervention:closed'}.
+    \item Dashboard met à jour la carte ligne (revient au vert) et affiche durée d'intervention.
+    \item Backend recalcule les KPI (MTTR, MTTA) et émet événement \texttt{'kpi:updated'}.
+    \item Dashboard actualise les graphiques et statistiques.
+\end{enumerate}
+
+\ph{Diagramme de séquence : Gestion complète d'une panne}{fig:sequence_diagram}
+
+
+\subsection{Diagramme d'activité}
+
+Le diagramme d'activité modélise le flux de contrôle et les décisions au sein d'un processus métier. Nous présentons le processus de traitement d'un événement Andon côté backend.
+
+\textbf{Processus : Traitement d'un événement MQTT par le backend}
+
+\textbf{Activités et décisions} :
+
+\begin{enumerate}
+    \item \textbf{Démarrage} : Réception d'un message MQTT sur un topic surveillé.
+    
+    \item \textbf{Parsing JSON} : Tentative de désérialisation du payload JSON.
+    
+    \item \textbf{Décision : Format valide ?}
+    \begin{itemize}
+        \item Si NON : Logger l'erreur, rejeter le message, envoyer alerte monitoring, fin.
+        \item Si OUI : Continuer.
+    \end{itemize}
+    
+    \item \textbf{Validation métier} : Vérification que \texttt{line\_id} existe dans la base et que les champs obligatoires sont présents.
+    
+    \item \textbf{Décision : Données valides ?}
+    \begin{itemize}
+        \item Si NON : Logger l'erreur, rejeter le message, fin.
+        \item Si OUI : Continuer.
+    \end{itemize}
+    
+    \item \textbf{Enrichissement} : Ajout UUID unique, timestamp réception serveur, calcul latence réseau.
+    
+    \item \textbf{Détermination du type d'événement} : Extraction du champ \texttt{event\_type} (normal/warning/critical).
+    
+    \item \textbf{Décision : Type événement ?}
+    \begin{itemize}
+        \item Si \texttt{normal} : Mise à jour état ligne, pas de création intervention.
+        \item Si \texttt{warning} ou \texttt{critical} : Création d'une intervention.
+    \end{itemize}
+    
+    \item \textbf{Transaction base de données} :
+    \begin{itemize}
+        \item Début transaction PostgreSQL.
+        \item Insertion dans table \texttt{AndonEvent}.
+        \item Si nécessaire, insertion dans table \texttt{Intervention} avec \texttt{status='open'}.
+        \item Mise à jour \texttt{ProductionLine.current\_status}.
+        \item Commit transaction.
+    \end{itemize}
+    
+    \item \textbf{Décision : Transaction réussie ?}
+    \begin{itemize}
+        \item Si NON : Rollback, logger l'erreur, réessayer avec backoff exponentiel (max 3 tentatives), fin.
+        \item Si OUI : Continuer.
+    \end{itemize}
+    
+    \item \textbf{Diffusion Socket.IO} : Émission événement vers clients connectés dans la room appropriée.
+    
+    \item \textbf{Déclenchement règles métier} : Si panne critique récurrente (3ème en 24h), envoyer email au responsable maintenance.
+    
+    \item \textbf{Mise à jour cache} : Invalidation cache des KPI pour recalcul à la prochaine consultation.
+    
+    \item \textbf{Fin} : Événement traité avec succès.
+\end{enumerate}
+
+\ph{Diagramme d'activité : Traitement d'un événement MQTT}{fig:activity_diagram}
+
+\section{Diagrammes UML}
+
+\label{sec:diagrammes_uml}
+
+Afin de modéliser le comportement fonctionnel et dynamique du système, plusieurs diagrammes UML ont été élaborés. Ils permettent de représenter respectivement les interactions des utilisateurs avec le système, la chronologie des échanges entre composants, ainsi que l'enchaînement des actions lors du traitement d'un événement machine.
+
+\subsection{Diagramme de cas d'utilisation}
+
+Le diagramme de cas d'utilisation, présenté à la figure \ref{fig:uml_cas_utilisation}, identifie les principaux acteurs du système (opérateur, technicien de maintenance, responsable d'atelier) ainsi que les fonctionnalités auxquelles chacun accède.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images/uml_cas_utilisation.png}
+    \caption{Diagramme de cas d'utilisation du système Andon IIoT}
+    \label{fig:uml_cas_utilisation}
+\end{figure}
+
+\subsection{Diagramme de séquence}
+
+Le diagramme de séquence, illustré à la figure \ref{fig:uml_sequence}, détaille la chronologie des échanges entre l'ESP32, le broker MQTT, le backend, la base de données et les interfaces utilisateurs, lors du déclenchement d'un événement machine.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{images/uml_sequence.png}
+    \caption{Diagramme de séquence du traitement d'un événement machine}
+    \label{fig:uml_sequence}
+\end{figure}
+
+\subsection{Diagramme d'activité}
+
+Le diagramme d'activité, présenté à la figure \ref{fig:uml_activite}, décrit l'enchaînement logique des étapes de traitement, depuis la détection d'un événement au niveau du boîtier Andon jusqu'à sa résolution par l'équipe de maintenance.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.75\textwidth]{images/uml_activite.png}
+    \caption{Diagramme d'activité du cycle de traitement d'un événement}
+    \label{fig:uml_activite}
+\end{figure}
+
+Ces différents diagrammes offrent une vision complémentaire du fonctionnement du système, préparant ainsi la description détaillée du flux de communication exposée dans la section suivante.
+
+
+\section{Flux de communication}
+
+Cette section présente le flux complet de communication traversant l'ensemble de l'architecture, depuis la détection physique d'un événement jusqu'à sa visualisation sur les interfaces utilisateur. Comprendre ce flux est essentiel pour appréhender la cohérence globale du système et identifier les points critiques de performance.
+
+\subsection{Vue d'ensemble du pipeline de communication}
+
+Le pipeline de communication peut être décomposé en sept étapes principales formant une chaîne de traitement événementielle asynchrone :
+
+\textbf{Étape 1 : Détection matérielle (Edge Layer)}
+
+Un opérateur actionne physiquement un bouton Andon sur son poste de travail. Le microcontrôleur ESP32 détecte instantanément ce changement d'état via une interruption matérielle configurée sur la broche GPIO correspondante. Cette détection par interruption garantit une réactivité maximale (latence < 1 ms) sans mobiliser en permanence le processeur dans une boucle de polling.
+
+\textbf{Étape 2 : Traitement local et publication MQTT (Edge Layer)}
+
+L'ESP32 exécute sa routine d'interruption (ISR - Interrupt Service Routine) qui positionne un flag interne. Dans la boucle principale (\texttt{loop()}), le firmware détecte le flag, applique un debouncing logiciel (200 ms), puis construit un message JSON structuré contenant les métadonnées de l'événement :
+
+\begin{lstlisting}[language=json,caption={Structure du message MQTT publié par ESP32}]
+{
+  "device_id": "esp32_ligne01",
+  "line_id": "ligne01",
+  "event_type": "critical",
+  "timestamp": "2026-07-16T14:23:45Z",
+  "button": "red",
+  "latitude": 34.25,
+  "longitude": -6.58
+}
+\end{lstlisting}
+
+Le message est publié sur le topic MQTT hiérarchique approprié avec niveau de QoS 1 (at least once delivery) garantissant qu'aucune alerte ne sera perdue même en cas de défaillance réseau temporaire.
+
+\textbf{Étape 3 : Routage par le broker MQTT (Communication Layer)}
+
+Le broker HiveMQ Cloud reçoit le message, identifie tous les clients abonnés au topic concerné (utilisation de wildcards possibles), et redistribue instantanément le message à chaque abonné. Le broker gère également la persistance temporaire des messages (queuing) si un client abonné est temporairement déconnecté mais dispose d'une session persistante (\texttt{clean\_session=false}).
+
+
+\textbf{Étape 4 : Réception et traitement backend (Application Layer)}
+
+Le serveur Node.js, connecté en permanence au broker MQTT comme client abonné, reçoit le message via son callback enregistré. Le service MQTT parse le payload JSON, valide sa conformité au schéma attendu, enrichit les métadonnées (UUID unique, timestamp réception serveur), et déclenche le traitement métier approprié selon le type d'événement.
+
+\textbf{Étape 5 : Persistence en base de données (Data Layer)}
+
+Le backend ouvre une transaction PostgreSQL et exécute séquentiellement les opérations de persistance :
+
+\begin{itemize}
+    \item Insertion de l'événement dans la table \texttt{AndonEvent}.
+    \item Si l'événement est de type \texttt{warning} ou \texttt{critical}, création d'un enregistrement \texttt{Intervention} avec statut \texttt{'open'}.
+    \item Mise à jour du champ \texttt{current\_status} de la table \texttt{ProductionLine}.
+    \item Commit de la transaction garantissant l'atomicité (tout ou rien).
+\end{itemize}
+
+La garantie ACID de PostgreSQL assure qu'aucune incohérence ne peut survenir même en cas de défaillance système survenant pendant le traitement.
+
+\textbf{Étape 6 : Diffusion temps réel WebSocket (Application Layer)}
+
+Immédiatement après la persistance réussie, le backend émet un événement Socket.IO nommé \texttt{'andon:alert'} vers tous les clients web connectés. L'événement contient le payload JSON complet de l'alerte, permettant aux clients de mettre à jour leur interface utilisateur sans nécessiter de requête HTTP additionnelle.
+
+Si des rooms Socket.IO sont configurées (par exemple une room par ligne de production), le backend peut cibler sélectivement les clients concernés, optimisant ainsi la bande passante et la pertinence des notifications.
+
+\textbf{Étape 7 : Mise à jour des interfaces utilisateur (Presentation Layer)}
+
+\textbf{Dashboard Web} : Le client JavaScript écoute l'événement Socket.IO \texttt{'andon:alert'} via un handler enregistré. À la réception, il met à jour dynamiquement le DOM (Document Object Model) :
+
+\begin{itemize}
+    \item Modification de la classe CSS de la carte correspondant à la ligne (ajout de la classe \texttt{'alert-critical'}).
+    \item Changement de couleur de fond (passage au rouge).
+    \item Démarrage d'un chronomètre affichant la durée écoulée depuis l'alerte.
+    \item Ajout d'une icône clignotante et d'une alerte sonore (optionnelle, configurable par l'utilisateur).
+    \item Ajout de l'événement dans la timeline temps réel affichée en sidebar.
+\end{itemize}
+
+\textbf{Application Mobile PWA} : L'application, si elle est ouverte et connectée, reçoit également l'événement Socket.IO et met à jour sa liste d'alertes actives. Si l'application est fermée ou en arrière-plan, le Service Worker peut recevoir une notification push (via l'API Push) et afficher une notification système native, permettant au technicien d'être alerté même sans consulter activement l'application.
+
+
+\subsection{Analyse de la latence end-to-end}
+
+Pour garantir l'exigence de latence maximale de 2 secondes spécifiée dans les besoins non fonctionnels, analysons la contribution de chaque étape du pipeline :
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Décomposition de la latence end-to-end}
+\label{tab:latency_breakdown}
+\begin{tabular}{|p{5cm}|p{3cm}|p{5cm}|}
+\hline
+\rowcolor{sewesblu!20}
+\textbf{Étape} & \textbf{Latence typique} & \textbf{Facteurs d'influence} \\
+\hline
+Détection matérielle (interruption) & < 1 ms & Vitesse processeur ESP32 \\
+\hline
+Debouncing + construction JSON & 200-250 ms & Délai debouncing configurable \\
+\hline
+Transmission Wi-Fi ESP32 → Broker & 50-100 ms & Qualité réseau Wi-Fi, distance AP \\
+\hline
+Routage broker MQTT & 10-20 ms & Charge broker, nombre abonnés \\
+\hline
+Transmission Broker → Backend & 50-100 ms & Localisation géographique, bande passante \\
+\hline
+Traitement backend + PostgreSQL & 100-200 ms & Complexité logique, charge serveur \\
+\hline
+Diffusion WebSocket & 20-50 ms & Nombre clients connectés \\
+\hline
+Rendu interface client & 50-100 ms & Performance navigateur, complexité DOM \\
+\hline
+\rowcolor{green!10}
+\textbf{Total théorique} & \textbf{480-820 ms} & \textbf{Bien en-deçà des 2 secondes} \\
+\hline
+\end{tabular}
+\end{table}
+
+Cette analyse démontre que l'architecture proposée respecte largement l'exigence de latence maximale, avec une marge de sécurité confortable absorbant les variations liées à la charge système et aux conditions réseau.
+
+\subsection{Gestion des défaillances et mécanismes de résilience}
+
+L'architecture intègre plusieurs mécanismes garantissant la résilience face aux défaillances partielles :
+
+\textbf{Défaillance Wi-Fi ESP32} : Les messages non transmis sont mis en buffer dans la flash ESP32 (capacité 100 événements). Reconnexion automatique toutes les 10 secondes avec backoff exponentiel. Transmission différée dès rétablissement.
+
+\textbf{Défaillance broker MQTT} : Si HiveMQ Cloud devient indisponible, les ESP32 et le backend tentent des reconnexions automatiques. Les ESP32 bufferisent localement. Alternative : déploiement d'un broker Mosquitto local de secours.
+
+\textbf{Défaillance backend Node.js} : Supervision par PM2 (Process Manager) avec restart automatique en cas de crash. Logs détaillés pour analyse post-mortem. Alternative : déploiement de multiples instances backend derrière load balancer.
+
+\textbf{Défaillance PostgreSQL} : Sauvegardes automatiques quotidiennes. Réplication master-slave envisageable pour haute disponibilité critique. Monitoring alertant en cas d'indisponibilité.
+
+\textbf{Déconnexion client WebSocket} : Reconnexion automatique gérée par Socket.IO avec backoff exponentiel. Rechargement des événements manqués via requête HTTP de synchronisation.
+
+\ph{Flux de communication complet du système}{fig:communication_flow}
+
+
+\section{Environnement de simulation}
+
+Avant le déploiement physique du système sur les lignes de production réelles de SEWS Maroc, une phase de prototypage et de validation technique est indispensable. Cette phase a été réalisée à l'aide de Wokwi, un simulateur en ligne d'électronique et de microcontrôleurs offrant un environnement de développement et de test virtuel complet.
+
+\subsection{Présentation de Wokwi}
+
+Wokwi (\url{https://wokwi.com}) est une plateforme web permettant de concevoir, programmer et simuler des circuits électroniques basés sur des microcontrôleurs (Arduino, ESP32, Raspberry Pi Pico, ATtiny) sans nécessiter de matériel physique. Lancé en 2020, Wokwi s'est imposé comme un outil de référence pour l'apprentissage, le prototypage rapide et la démonstration de concepts IoT.
+
+\subsection{Justification de l'utilisation de Wokwi}
+
+Le recours à Wokwi dans notre projet répond à plusieurs objectifs stratégiques et pratiques :
+
+\textbf{Validation précoce du concept} : Avant d'investir dans l'achat de composants matériels (modules ESP32, boutons industriels, LEDs, lecteurs RFID, câblage), il était essentiel de valider la faisabilité technique du concept : détection d'événements par interruptions, communication MQTT, sérialisation JSON, gestion de la reconnexion Wi-Fi. Wokwi a permis cette validation en quelques heures, sans coût matériel.
+
+\textbf{Tests de communication MQTT en conditions réelles} : Wokwi simule non seulement le microcontrôleur et les composants électroniques, mais également les communications réseau Wi-Fi. Il est ainsi possible de connecter un ESP32 virtuel à un broker MQTT réel (HiveMQ Cloud dans notre cas) et de tester l'intégralité de la chaîne de communication (publication, abonnement, QoS, reconnexion). Cette fonctionnalité rare distingue Wokwi des simulateurs électroniques classiques.
+
+\textbf{Développement itératif rapide} : La modification du code, la recompilation et le redémarrage de la simulation s'effectuent en quelques secondes, accélérant considérablement le cycle de développement par rapport à une approche nécessitant téléversement sur matériel physique.
+
+\textbf{Démonstration et documentation} : Les projets Wokwi sont partageables via URL, permettant de démontrer le fonctionnement du système aux parties prenantes (encadrants académiques, responsables SEWS) sans nécessiter l'accès physique au matériel. Les schémas de câblage générés automatiquement constituent également une documentation technique précieuse.
+
+\textbf{Formation et transfert de compétences} : Wokwi facilite la formation des techniciens SEWS qui pourront modifier et adapter le firmware ESP32 ultérieurement sans expertise approfondie en électronique.
+

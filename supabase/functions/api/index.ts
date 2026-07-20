@@ -121,8 +121,8 @@ const handleStats = async (c: any) => {
   }
 };
 
-// 🗺️ --- الروت الذكي والشامل دقة واحدة ---
-// كيفما صيفط الفرونتند الرابط، السيرفر غايلقطو بـ هاد الفيلتر الحامي
+// 🗺️ --- Smart and comprehensive routing ---
+// The frontend can send any route, server catches it with this protective filter
 
 app.post('*', async (c) => {
   const p = c.req.path.replace(/\/$/, '');

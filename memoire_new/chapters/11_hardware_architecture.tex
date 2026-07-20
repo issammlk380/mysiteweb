@@ -1,0 +1,159 @@
+\chapter{Architecture mat\'erielle}
+
+Ce chapitre d\'ecrit en d\'etail les composants mat\'eriels du syst\`eme Andon, depuis les n\oe{}uds de d\'etection jusqu'\`a l'infrastructure r\'eseau.
+
+\section{Le n\oe{}ud Andon ESP32}
+
+\subsection{Choix du microcontr\^oleur}
+
+L'ESP32 (Espressif Systems) a \'et\'e s\'electionn\'e comme microcontr\^oleur principal pour chaque n\oe{}ud Andon. Ce choix est motiv\'e par :
+
+\begin{itemize}
+    \item Connectivit\'e Wi-Fi 802.11 b/g/n et Bluetooth 4.2/BLE int\'egr\'ees.
+    \item Processeur dual-core Xtensa LX6 \`a 240 MHz avec 520 KB de RAM.
+    \item 34 broches GPIO dont 16 ADC (convertisseur analogique-num\'erique).
+    \item Interface I$^2$C et SPI pour l'ajout de capteurs externes.
+    \item Consommation r\'eduite : 80 mA en mode Wi-Fi actif.
+    \item Prix unitaire comp\'etitif ($\approx$ 4EUR).
+    \item Soutien Arduino et MicroPython, facilitant le d\'eveloppement.
+\end{itemize}
+
+\subsection{Composants du n\oe{}ud}
+
+Chaque n\oe{}ud Andon est compos\'e des \'el\'ements suivants :
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Composant} & \textbf{R\'ef\'erence} & \textbf{Fonction} \\
+\midrule
+Microcontr\^oleur & ESP32-DevKitC & Processeur, Wi-Fi, BT \\
+Bouton poussoir & KY-004 & Signalisation Andon \\
+LED verte & LED 5mm 3V & Indicateur ligne OK \\
+LED rouge & LED 5mm 3V & Indicateur panne \\
+R\'esistances & 220 $\Omega$ (x2) & Limitation courant LED \\
+R\'esistance pull-down & 10 k$\Omega$ & Stabilisation signal bouton \\
+Alimentation & USB 5V / adaptateur & Alimentation du n\oe{}ud \\
+Bo\^itier & Bo\^itier plastique IP54 & Protection du circuit \\
+\bottomrule
+\end{tabular}
+\caption{Composants du n\oe{}ud Andon ESP32}
+\label{tab:composants_esp32}
+\end{table}
+
+\subsection{Sch\'ema de câblage}
+
+Le sch\'ema de câblage d\'efinit les connexions \'electriques du n\oe{}ud Andon :
+
+\begin{itemize}
+    \item Le bouton poussoir est connect\'e entre la broche \textbf{GPIO4} et la masse (GND), avec une r\'esistance de pull-down de 10 k$\Omega$ pour garantir un \'etat logique bas d\'efini au repos.
+    \item La \textbf{LED verte} est connect\'e entre la broche \textbf{GPIO16} et la masse, s\'erie d'une r\'esistance de 220 $\Omega$.
+    \item La \textbf{LED rouge} est connect\'e entre la broche \textbf{GPIO17} et la masse, s\'erie d'une r\'esistance de 220 $\Omega$.
+    \item L'alimentation est fournie via le connecteur USB du module ESP32 (5V).
+\end{itemize}
+
+\figplaceholder{Sch\'ema de câblage du n\oe{}ud Andon}{fig:schema_cablage_esp32}
+
+\subsection{Fonctionnement du circuit}
+
+Le circuit fonctionne selon le principe suivant :
+
+\begin{enumerate}
+    \item Au repos, la broche GPIO4 est \`a l'\`etat bas (0V) gr\^ace \`a la r\'esistance pull-down.
+    \item Lorsque l'op\'erateur appuie sur le bouton, le signal passe \`a l'\`etat haut (3,3V).
+    \item L'ESP32 d\'etecte le front montant par interruption logicielle.
+    \item Apr\`es d\'ebounce (200 ms), l'ESP32 g\'en\`ere un message JSON.
+    \item Le message est publi\'e sur le topic MQTT correspondant.
+    \item L'ESP32 allume la LED rouge en attendant la confirmation du serveur.
+\end{enumerate}
+
+\section{Infrastructure r\'eseau}
+
+\subsection{R\'eseau Wi-Fi}
+
+Le r\'eseau Wi-Fi de l'atelier assure la communication entre les n\oe{}uds ESP32 et le broker MQTT :
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{l l}
+\toprule
+\textbf{Param\`etre} & \textbf{Valeur} \\
+\midrule
+Standard & Wi-Fi 802.11 b/g/n (2,4 GHz) \\
+Protocole de s\'ecurit\'e & WPA2-Enterprise \\
+Port d\'edi\'e aux IoT & VLAN s\'epar\'e \\
+Filtrage & Par adresse MAC \\
+Bande passante & 1 Mb/s d\'edi\' par n\oe{}ud \\
+Port\'ee & 30--50 m (atelier) \\
+\bottomrule
+\end{tabular}
+\caption{Param\`etres du r\'eseau Wi-Fi}
+\label{tab:wifi_params}
+\end{table}
+
+\subsection{R\'eseau filaire}
+
+Le serveur backend est connect\'e au r\'eseau filaire de l'entreprise :
+
+\begin{itemize}
+    \item Connectivit\'e Ethernet Gigabit.
+    \item Adresse IP statique dans le sous-r\'eseau d\'edi\'e.
+    \item Pare-feu configur\'e pour limiter les acc\`es aux ports n\'ecessaires (1883 MQTT, 3000 API, 5432 PostgreSQL).
+    \item Pas de connexion Internet directe pour des raisons de s\'ecurit\'e.
+\end{itemize}
+
+\section{Alimentation et fiabilit\'e}
+
+\subsection{Alimentation des n\oe{}uds}
+
+Chaque n\oe{}ud Andon est aliment\'e par :
+
+\begin{itemize}
+    \item Un adaptateur secteur 5V/2A branch\'e sur une prise \`a proximit\'e du poste.
+    \item En secours : un module de backup batteries (autonomie 4h).
+\end{itemize}
+
+\subsection{Robustesse industrielle}
+
+Les n\oe{}uds doivent r\'esister aux conditions de l'atelier :
+
+\begin{itemize}
+    \item Temp\'erature ambiante : 15$^\circ$C \`a 35$^\circ$C.
+    \item Humidit\'e relative : 30\% \`a 80\%.
+    \item Poussi\`ere : bo\^itier IP54 recommand\'e.
+    \item Vibrations : fixation solide du bo\^itier au poste de travail.
+    \item Perturbations \'electromagn\'etiques : blindage du bo\^itier m\'etallique.
+\end{itemize}
+
+\section{Dimensionnement du syst\`eme}
+
+\subsection{Nombre de n\oe{}uds}
+
+Le syst\`eme est dimensionn\'e pour l'atelier Test \'Electrique de \sews :
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{l c}
+\toprule
+\textbf{Param\`etre} & \textbf{Valeur} \\
+\midrule
+Nombre de lignes & 8 \\
+N\oe{}uds par ligne & 1 \\
+N\oe{}uds total & 8 \\
+Boutons par ligne & 1 \\
+LEDs par ligne & 2 (rouge + verte) \\
+Co\^ut par n\oe{}ud & $\approx$ 12EUR \\
+Co\^ut total capteurs & $\approx$ 96EUR \\
+\bottomrule
+\end{tabular}
+\caption{Dimensionnement des n\oe{}uds}
+\label{tab:dimensionnement}
+\end{table}
+
+\section{Synth\`ese du chapitre}
+
+L'architecture mat\'erielle du syst\`eme repose sur des n\oe{}uds ESP32 autonomes, chacun \'e\'equip\'e d'un bouton Andon et de deux LED indicatrices. Le r\'eseau Wi-Fi de l'atelier assure la transmission des donn\'ees vers un serveur backend. Le co\^ut total du mat\'eriel est tr\`es comp\'etitif ($\approx$ 96EUR pour 8 n\oe{}uds), d\'emontrant la pertinence de cette approche par rapport aux solutions commerciales.

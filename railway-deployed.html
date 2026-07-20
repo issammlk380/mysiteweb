@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr" class="scroll-smooth">
 <head>
     <meta charset="UTF-8" />
@@ -1514,13 +1514,10 @@ function toast(message, type = 'info', duration = 3000) {
 ════════════════════════════════════════════════════════════ */
 function normalizeRow(row) {
     if (!row) return {};
-    const created = row.created_at || row.createdAt || row.timestamp || row.date || row.date_panne;
+    const created = row.created_at || row.createdAt || row.timestamp || row.date;
     let dateStr = '—';
     if (row.jour && row.jour !== '—') {
         dateStr = row.jour;
-    } else if (row.date_panne) {
-        const d = new Date(row.date_panne);
-        if (!isNaN(d)) dateStr = d.toLocaleDateString('fr-FR');
     } else if (created) {
         const d = new Date(created);
         if (!isNaN(d)) dateStr = d.toLocaleDateString('fr-FR');
@@ -1531,34 +1528,19 @@ function normalizeRow(row) {
         atelier: row.atelier || deriveAtelier(row.machine),
         status: row.status || '—',
         jour: dateStr,
-        // ✅ From pgAdmin
-        breakdown_category: row.breakdown_category || '—',
-        root_cause: row.root_cause || '—',
-        heure_panne: row.heure_panne || '—',
-        heure_arrivee: row.heure_arrivee || row.heure_arret_technicien || '—',
-        heure_reparation: row.heure_reparation || '—',
-        temps_reaction_minutes: row.temps_reaction_minutes ?? row.temps_attente ?? 0,
-        temps_reparation_minutes: row.temps_reparation_minutes ?? row.temps_reparation ?? row.duration ?? 0,
-        temps_total_arret_minutes: row.temps_total_arret_minutes ?? 0,
-        // Legacy
-        heure_declaration: row.heure_declaration || row.heure_panne || row.start_time || row.startTime || '—',
-        heure_arret_technicien: row.heure_arret_technicien || row.heure_arrivee || row.technicianArrival || '—',
-        temps_attente: row.temps_attente ?? row.temps_reaction_minutes ?? row.waitTime ?? 0,
-        temps_reparation: row.temps_reparation ?? row.temps_reparation_minutes ?? row.duration ?? row.repairTime ?? 0,
-        duration: row.duration ?? row.temps_reparation_minutes ?? row.temps_reparation ?? 0,
+        heure_declaration: row.heure_declaration || row.start_time || row.startTime || '—',
+        heure_arret_technicien: row.heure_arret_technicien || row.technicianArrival || '—',
+        temps_attente: row.temps_attente ?? row.waitTime ?? 0,
+        temps_reparation: row.temps_reparation ?? row.duration ?? row.repairTime ?? 0,
+        duration: row.duration ?? row.temps_reparation ?? 0,
         criticite: row.criticite || row.criticality || '—',
-        technicien: row.technician || row.technicien || '—',
+        technicien: row.technicien || row.technician || '—',
         technician: row.technician || row.technicien || '—',
-        piece_observation: row.piece_observationatelier || row.piece_observation || row.observation || row.notes || '—',
+        piece_observation: row.piece_observation || row.observation || row.notes || '—',
         alert_type: row.alert_type || row.alertType || 'N/A',
-        actions_taken: row.actions_taken || '—',
-        spare_parts_used: row.spare_parts_used || '—',
-        timestamp: row.timestamp || row.created_at || row.date || row.date_panne || null,
-        date: row.date || row.created_at || row.jour || row.date_panne || null,
+        timestamp: row.timestamp || row.created_at || row.date || null,
+        date: row.date || row.created_at || row.jour || null,
         createdAt: row.createdAt || row.created_at || null,
-        date_panne: row.date_panne || null,
-        date_arrivee_technicien: row.date_arrivee_technicien || null,
-        date_reparation: row.date_reparation || null,
     };
 }
 
@@ -2002,13 +1984,6 @@ function renderTable() {
 
     tbody.innerHTML = slice.map((r, idx) => {
         const rowNum = start + idx + 1;
-        // ✅ Using correct columns from pgAdmin
-        const declaration = r.breakdown_category || r.heure_declaration || r.start_time || '—';
-        const arrTech = r.heure_arrivee || r.heure_arret_technicien || '—';
-        const attente = r.temps_reaction_minutes || r.temps_attente || 0;
-        const reparation = r.temps_reparation_minutes || r.temps_reparation || r.duration || 0;
-        const technicien = r.technician || r.technicien || '—';
-        
         return `
         <tr class="table-row-hover transition-colors">
             <td class="px-5 py-4 text-slate-400 text-xs font-mono">${rowNum}</td>
@@ -2018,12 +1993,12 @@ function renderTable() {
             <td class="px-5 py-4 text-slate-500 dark:text-slate-400">${r.atelier}</td>
             <td class="px-5 py-4">${statusBadge(r.status)}</td>
             <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs">${r.jour}</td>
-            <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs">${declaration}</td>
-            <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs">${arrTech}</td>
-            <td class="px-5 py-4 text-xs font-semibold text-amber-600 dark:text-amber-400">${fmtMin(attente)}</td>
-            <td class="px-5 py-4 text-xs font-semibold text-blue-600 dark:text-blue-400">${fmtMin(reparation)}</td>
+            <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs">${r.heure_declaration || r.start_time || '—'}</td>
+            <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs">${r.heure_arret_technicien || '—'}</td>
+            <td class="px-5 py-4 text-xs font-semibold text-amber-600 dark:text-amber-400">${fmtMin(r.temps_attente)}</td>
+            <td class="px-5 py-4 text-xs font-semibold text-blue-600 dark:text-blue-400">${fmtMin(r.temps_reparation ?? r.duration)}</td>
             <td class="px-5 py-4">${critBadge(r.criticite)}</td>
-            <td class="px-5 py-4 font-medium text-slate-700 dark:text-slate-300">${technicien}</td>
+            <td class="px-5 py-4 font-medium text-slate-700 dark:text-slate-300">${r.technicien || r.technician || '—'}</td>
             <td class="px-5 py-4 text-slate-400 text-xs max-w-[180px] truncate" title="${r.piece_observation}">${r.piece_observation}</td>
         </tr>`;
     }).join('');

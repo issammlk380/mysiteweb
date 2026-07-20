@@ -1,0 +1,225 @@
+% ============================================================================
+% MÉMOIRE DE FIN D'ÉTUDES — MASTER SCIENCES ET TECHNIQUES
+% Système Andon Intelligent basé sur l'IIoT
+% Université Ibn Tofail — Faculté des Sciences — Kénitra
+% ============================================================================
+
+\documentclass[11pt,a4paper,oneside]{report}
+
+% ============================================================================
+% PACKAGES ESSENTIELS
+% ============================================================================
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[top=2cm, bottom=2cm, left=2.5cm, right=2cm, headheight=26pt, footskip=0.8cm]{geometry}
+\usepackage{graphicx}
+\usepackage[table]{xcolor}
+\usepackage{csquotes}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tocloft}
+\usepackage[hidelinks]{hyperref}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{setspace}
+\usepackage[backend=biber,style=numeric,sorting=none]{biblatex}
+
+% Define missing listing languages
+\lstdefinelanguage{json}{
+    basicstyle=\ttfamily\scriptsize,
+    keywordstyle=\color{blue!70!black}\bfseries,
+    stringstyle=\color{orange!80!black},
+    commentstyle=\color{green!50!black}\itshape,
+    morestring=[s]{"}{"},
+    morekeywords={true,false,null},
+    sensitive=true
+}
+\lstdefinelanguage{JavaScript}{
+    morekeywords={const,let,var,function,return,if,else,while,for,async,await,try,catch,require,new,this,class,import,export,default,from,void,typeof,instanceof},
+    sensitive=true,
+    morecomment=[l]{//},
+    morecomment=[s]{/*}{*/},
+    morestring=[s]{"}{"},
+    morestring=[s]{'}{'}
+}
+
+% ============================================================================
+% ESPACEMENT ET MISE EN PAGE
+% ============================================================================
+
+% Espacement des paragraphes professionnel
+\setlength{\parskip}{3pt}
+\setlength{\parindent}{1em}
+\setstretch{1.05}
+
+% Listes optimisées mais lisibles
+\setlist{nosep, leftmargin=1.2cm, itemsep=1pt, parsep=0pt, topsep=2pt}
+
+% ============================================================================
+% FORMATAGE DES TITRES — Style académique professionnel
+% ============================================================================
+
+% Définition des couleurs
+\definecolor{sewesblu}{RGB}{0,51,102}
+\definecolor{darkblue}{RGB}{0,45,90}
+\definecolor{mediumblue}{RGB}{25,70,135}
+
+\titleformat{\chapter}[display]
+  {\normalfont\Large\bfseries\color{sewesblu}}
+  {\chaptertitlename\ \thechapter}{6pt}{\large}
+\titlespacing*{\chapter}{0pt}{-10pt}{8pt}
+
+\titleformat{\section}
+  {\normalfont\normalsize\bfseries\color{darkblue}}
+  {\thesection}{0.5em}{}
+\titlespacing*{\section}{0pt}{8pt}{4pt}
+
+\titleformat{\subsection}
+  {\normalfont\small\bfseries\color{mediumblue}}
+  {\thesubsection}{0.5em}{}
+\titlespacing*{\subsection}{0pt}{6pt}{3pt}
+
+\titleformat{\subsubsection}
+  {\normalfont\small\bfseries\color{mediumblue}}
+  {\thesubsubsection}{0.5em}{}
+\titlespacing*{\subsubsection}{0pt}{4pt}{2pt}
+
+% ============================================================================
+% LISTINGS — Formatage professionnel du code source
+% ============================================================================
+\lstset{
+    basicstyle=\ttfamily\scriptsize,
+    keywordstyle=\color{darkblue}\bfseries,
+    commentstyle=\color{green!60!black}\itshape,
+    stringstyle=\color{orange!90!black},
+    numberstyle=\tiny\color{gray},
+    numbers=left,
+    stepnumber=1,
+    numbersep=4pt,
+    backgroundcolor=\color{gray!5},
+    frame=single,
+    rulecolor=\color{gray!30},
+    breaklines=true,
+    breakatwhitespace=true,
+    showstringspaces=false,
+    captionpos=b,
+    xleftmargin=1.5em,
+    framexleftmargin=1em,
+    aboveskip=3pt,
+    belowskip=3pt,
+    lineskip=0.5pt,
+    columns=flexible
+}
+
+% ============================================================================
+% EN-TÊTES ET PIEDS DE PAGE
+% ============================================================================
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\itshape\nouppercase{\leftmark}}
+\fancyhead[R]{\small\bfseries\thepage}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{sewesblu}\leaders\hrule height \headrulewidth\hfill}}
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyfoot[C]{\small\bfseries\thepage}
+    \renewcommand{\headrulewidth}{0pt}
+}
+
+% ============================================================================
+% STYLE DES LÉGENDES
+% ============================================================================
+\captionsetup{font={small,sf}, labelfont={bf,color=sewesblu}, labelsep=period, skip=4pt}
+
+% ============================================================================
+% HYPERREF — Configuration des liens
+% ============================================================================
+\hypersetup{
+    colorlinks=true,
+    linkcolor=darkblue,
+    citecolor=green!50!black,
+    urlcolor=sewesblu,
+    pdftitle={Système Andon Intelligent basé sur l'IIoT - Mémoire de Master},
+    pdfauthor={Aissam MALKOUT},
+    pdfsubject={Mémoire de Fin d'Études - Master Sciences et Techniques},
+    pdfkeywords={IoT, IIoT, Andon, Industry 4.0, MQTT, Maintenance Intelligente, ESP32, SEWS Maroc}
+}
+
+% ============================================================================
+% BIBLIOGRAPHY
+% ============================================================================
+\addbibresource{references.bib}
+
+% ============================================================================
+% COMMANDES PERSONNALISÉES
+% ============================================================================
+\newcommand{\sews}{SEWS Maroc}
+\newcommand{\iiot}{IIoT}
+\newcommand{\iot}{IoT}
+
+% Commande pour figure placeholder temporaire
+\newcommand{\ph}[2]{%
+  \begin{figure}[htbp]
+  \centering
+  \fbox{\parbox{0.85\textwidth}{\centering\vspace{1cm}{\small\bfseries\color{sewesblu} #1}\vspace{0.2cm}\\{\scriptsize\color{gray}(Figure à insérer)}\vspace{1cm}}}
+  \caption{#1}
+  \label{#2}
+  \end{figure}
+}
+
+% ============================================================================
+% DOCUMENT INFORMATION
+% ============================================================================
+\title{Conception et Implémentation d'un Système Andon Intelligent basé sur l'IIoT pour la Supervision en Temps Réel et la Gestion du Cycle de Vie des Pannes Industrielles}
+\author{Aissam MALKOUT}
+\date{Année Universitaire 2025-2026}
+
+% ============================================================================
+% DOCUMENT
+% ============================================================================
+\begin{document}
+
+% Pages préliminaires
+\pagenumbering{roman}
+\input{chapters/00_cover}
+\input{chapters/01_dedication}
+\input{chapters/02_acknowledgements}
+\input{chapters/03_abstract_fr}
+\input{chapters/04_abstract_en}
+
+% Table des matières
+\tableofcontents
+\clearpage
+
+% Liste des abréviations
+\input{chapters/05_abbreviations}
+\clearpage
+
+% Corps du mémoire
+\pagenumbering{arabic}
+\setcounter{page}{1}
+\input{chapters/06_introduction}
+\input{chapters/07_chapter1_context}
+\input{chapters/08_chapter2_analysis}
+\input{chapters/09_chapter3_implementation}
+\input{chapters/10_chapter4_testing}
+\input{chapters/11_conclusion}
+
+% Références bibliographiques
+\printbibliography[heading=bibintoc,title={Références Bibliographiques}]
+
+% Annexes
+\appendix
+\input{chapters/12_appendices}
+
+\end{document}

@@ -286,7 +286,7 @@ function mapStatusToFrontend(dbStatus) {
 
 async function insertRealisticBreakdown(breakdownData) {
   try {
-    // Simple INSERT without zone and type (for compatibility)
+    // ✅ INSERT without duration (removed from table)
     const query = `
       INSERT INTO downtime_logs (
         machine, atelier, operator, technician, status, alert_type, criticite,
@@ -296,11 +296,11 @@ async function insertRealisticBreakdown(breakdownData) {
         date_reparation, heure_reparation,
         temps_reaction_minutes, temps_reparation_minutes, 
         temps_intervention_minutes, temps_total_arret_minutes,
-        duration, lifecycle_phase,
+        lifecycle_phase,
         created_at, updated_at
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-        $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $13, $13
+        $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $13, $13
       )
       RETURNING id;
     `;
@@ -327,7 +327,6 @@ async function insertRealisticBreakdown(breakdownData) {
       breakdownData.tempsReaction,
       breakdownData.tempsReparation,
       breakdownData.tempsIntervention,
-      breakdownData.tempsTotal,
       breakdownData.tempsTotal,
       breakdownData.lifecycle_phase
     ];
@@ -440,6 +439,7 @@ async function getActiveMachines() {
 
 async function resolveOldestBreakdown() {
   try {
+    // ✅ UPDATE without duration (removed from table)
     const result = await poolRef.query(`
       UPDATE downtime_logs
       SET 
@@ -448,7 +448,6 @@ async function resolveOldestBreakdown() {
         date_reparation = NOW(),
         heure_reparation = TO_CHAR(NOW(), 'HH24:MI:SS'),
         temps_total_arret_minutes = GREATEST(0, EXTRACT(EPOCH FROM (NOW() - date_panne)) / 60)::INTEGER,
-        duration = GREATEST(0, EXTRACT(EPOCH FROM (NOW() - date_panne)) / 60)::INTEGER,
         temps_reparation_minutes = CASE 
           WHEN date_arrivee_technicien IS NOT NULL 
           THEN GREATEST(0, EXTRACT(EPOCH FROM (NOW() - date_arrivee_technicien)) / 60)::INTEGER
@@ -754,9 +753,8 @@ async function fillNullValues() {
           temps_reaction_minutes = COALESCE(temps_reaction_minutes, $15),
           temps_reparation_minutes = COALESCE(temps_reparation_minutes, $16),
           temps_intervention_minutes = COALESCE(temps_intervention_minutes, $17),
-          temps_total_arret_minutes = COALESCE(temps_total_arret_minutes, $18),
-          duration = COALESCE(CAST(duration AS INTEGER), $19)
-        WHERE id = $20
+          temps_total_arret_minutes = COALESCE(temps_total_arret_minutes, $18)
+        WHERE id = $19
       `, [
         randomChoice(OPERATORS),
         randomChoice(TECHNICIANS),
@@ -775,7 +773,6 @@ async function fillNullValues() {
         timestamps.tempsReaction,
         timestamps.tempsReparation,
         timestamps.tempsIntervention,
-        timestamps.tempsTotal,
         timestamps.tempsTotal,
         row.id
       ]);

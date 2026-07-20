@@ -1,0 +1,187 @@
+\chapter{Architecture de communication}
+
+Ce chapitre analyse les protocoles et les flux de donn\'ees du syst\`eme Andon, en justifiant les choix de communication et en d\'ecrivant les m\'ecanismes d'interconnexion entre les diff\'erents composants.
+
+\section{Protocoles de communication utilis\'es}
+
+\subsection{MQTT : protocole principal}
+
+MQTT (Message Queuing Telemetry Transport) est le protocole principal du syst\`eme, assurant la communication entre les capteurs ESP32 et le serveur backend \cite{banks2014mqtt}.
+
+\subsubsection{Justification du choix}
+
+Le choix de MQTT est justifi\'e par :
+
+\begin{itemize}
+    \item L\'eg\`eret\'e des messages : en-t\^etes minimaux (2 octets), adapt\'e aux microcontr\^oleurs.
+    \item Le mod\`ele publish/subscribe : d\'e-couplage entre producteurs et consommateurs de donn\'ees.
+    \item Les niveaux de QoS : garantie de livraison configurable selon la criticit\'e.
+    \item La reconnexion automatique : le client se reconnecte apr\`es une d\'econnexion.
+    \item La large adoption : support\'e par toutes les plateformes IoT.
+\end{itemize}
+
+\subsubsection{Configuration du broker}
+
+Le broker MQTT Mosquitto est configur\'e pour le syst\`eme Andon :
+
+\begin{lstlisting}[caption={Configuration du broker Mosquitto},label={lst:mosquitto_config}]
+listener 1883 localhost
+listener 8883
+certfile /etc/mosquitto/certs/server.crt
+keyfile /etc/mosquitto/certs/server.key
+allow_anonymous false
+password_file /etc/mosquitto/passwd
+max_connections -1
+max_inflight_messages 20
+max_queued_messages 1000
+\end{lstlisting}
+
+\subsection{HTTP/HTTPS : API REST}
+
+Le protocole HTTP est utilis\'e pour les communications entre le frontend et le backend via l'API REST :
+
+\begin{itemize}
+    \item Les requ\^etes GET pour la lecture de donn\'ees.
+    \item Les requ\^etes POST pour la cr\'eation de ressources.
+    \item Les requ\^etes PUT pour la mise \`a jour de ressources.
+    \item Les requ\^etes DELETE pour la suppression de ressources.
+\end{itemize}
+
+En environnement de production, le HTTPS est obligatoire pour chiffrer les communications.
+
+\subsection{WebSocket (Socket.IO)}
+
+Socket.IO est utilis\'e pour les communications temps r\'eel bidirectionnelles entre le serveur et le frontend :
+
+\begin{itemize}
+    \item Diffusion instantan\'ee des \'ev\'enements Andon.
+    \item Mise \`a jour de l'\`etat des lignes en direct.
+    \item Notifications visuelles en temps r\'eel.
+    \item Fallback automatique sur HTTP long-polling si WebSocket n'est pas disponible.
+\end{itemize}
+
+\section{Structure des topics MQTT}
+
+\subsection{Hierarchie des topics}
+
+La hi\'erarchie des topics MQTT refl\`ete l'organisation physique de l'atelier :
+
+\begin{lstlisting}[caption={Hi\'erarchie des topics MQTT},label={lst:topics_hierarchie}]
+# Alertes Andon (du capteur au serveur)
+sews/andon/1/alert
+sews/andon/2/alert
+...
+sews/andon/8/alert
+
+# Status des capteurs
+sews/capteurs/1/status
+sews/capteurs/2/status
+...
+sews/capteurs/8/status
+
+# Commandes retour (du serveur au capteur)
+sews/command/1/led
+sews/command/2/led
+...
+sews/command/8/led
+\end{lstlisting}
+
+\subsection{Format des messages}
+
+Les messages MQTT utilisent le format JSON pour faciliter le traitement :
+
+\begin{lstlisting}[caption={Format du message d'alerte Andon},label={lst:message_format}]
+{
+  "ligneId": 1,
+  "timestamp": "2026-04-15T10:30:00.000Z",
+  "type": "panne_electrique",
+  "urgence": "haute",
+  "operateur": "op_t1_01",
+  "description": "Court-circuit detecte 
+    sur testeur 3"
+}
+\end{lstlisting}
+
+\section{Flux de donn\'ees d\'etaill\'e}
+
+\subsection{Flux d'un \'ev\'enement Andon}
+
+Le parcours complet d'un \'ev\'enement Andon suit les \'etapes suivantes :
+
+\begin{enumerate}
+    \item \textbf{D\'etection :} l'op\'erateur appuie sur le bouton physique.
+    \item \textbf{Traitement local :} l'ESP32 d\'etecte l'appui, applique un d\'ebounce de 200 ms et g\'en\`ere un message JSON.
+    \item \textbf{Publication MQTT :} le message est publi\'e sur le topic \texttt{sews/andon/\{ligne\_id\}/alert} avec QoS 1.
+    \item \textbf{Routage :} le broker MQTT redistribue le message aux abonn\'es (serveur backend).
+    \item \textbf{Traitement serveur :} le serveur Node.js re\c{c}oit le message, valide les donn\'ees et cr\'e un enregistrement dans PostgreSQL.
+    \item \textbf{Diffusion temps r\'eel :} le serveur diffuse l'\'ev\'enement via Socket.IO aux clients connect\'es.
+    \item \textbf{Affichage :} le frontend Angular re\c{c}oit la notification et met \`a jour le tableau de bord.
+    \item \textbf{Notification :} un e-mail est envoy\'e au technicien de garde.
+    \item \textbf{Indicateur visuel :} le serveur publie une commande sur \texttt{sews/command/\{ligne\_id\}/led} pour allumer la LED rouge.
+\end{enumerate}
+
+\subsection{Flux de r\'esolution}
+
+Lorsqu'un technicien r\'e\'esout une panne :
+
+\begin{enumerate}
+    \item Le technicien acc\`ede \`a l'\'ev\'enement dans le frontend.
+    \item Il saisit le compte-rendu d'intervention et valide la r\'e-solution.
+    \item Le frontend envoie une requ\^ete PUT \`a l'API REST (\texttt{PUT /api/evenements/:id}).
+    \item Le serveur met \`a jour l'enregistrement dans PostgreSQL (statut = resolu, date\_fin = now).
+    \item Le serveur publie la commande de r\'e-solution sur MQTT.
+    \item L'ESP32 re\c{c}oit la commande et\'eint la LED rouge, allume la LED verte.
+    \item Le frontend affiche la ligne comme r\'e-solue.
+    \item Une notification de r\'e-solution est envoy\'ee.
+\end{enumerate}
+
+\section{Gestion de la s\'ecurit\'e des communications}
+
+\subsection{S\'ecurit\'e MQTT}
+
+La s\'ecurit\'e de la communication MQTT est assur\'ee par :
+
+\begin{itemize}
+    \item \textbf{Authentification :} chaque client MQTT doit fournir un identifiant et un mot de passe.
+    \item \textbf{TLS :} chiffrement des communications sur le port 8883.
+    \item \textbf{ACL :} contr\^ole d'acc\`es par topic (chaque n\oe{}ud ne publie que sur son topic).
+    \item \textbf{Persistance :} les messages QoS 1 sont conserv\'es jusqu'\`a r\'e-ception de l'accus\'e.
+\end{itemize}
+
+\subsection{S\'ecurit\'e HTTP}
+
+La s\'ecurit\'e de l'API REST est assur\'ee par :
+
+\begin{itemize}
+    \item \textbf{HTTPS :} chiffrement TLS des communications.
+    \item \textbf{JWT :} tokens d'authentification sign\'es avec expiration.
+    \item \textbf{Validation :} v\'erification des donn\'ees d'entr\'ee.
+    \item \textbf{Rate limiting :} limitation du nombre de requ\^etes.
+\end{itemize}
+
+\section{Gestion des erreurs et tol\'erance aux pannes}
+
+\subsection{Strat\'egie de reconnexion}
+
+Le client MQTT int\`egre un m\'ecanisme de reconnexion automatique :
+
+\begin{itemize}
+    \item Tentative de reconnexion toutes les 5 secondes en cas de d\'econnexion.
+    \item Backoff exponentiel avec un d\'elai maximum de 60 secondes.
+    \item Conservation des messages en attente pendant la d\'econnexion.
+    \item Re-souscription aux topics lors de la reconnexion.
+\end{itemize}
+
+\subsection{Persistence des donn\'ees}
+
+En cas de d\'efaut du serveur :
+
+\begin{itemize}
+    \item Les messages MQTT non trait\'es sont conserv\'es dans le broker (QoS 1).
+    \item PostgreSQL assure la durabilit\'e des donn\'ees enregistr\'ees (WAL).
+    \item Le frontend affiche les donn\'ees en cache en attendant la reconnexion.
+\end{itemize}
+
+\section{Synth\`ese du chapitre}
+
+L'architecture de communication du syst\`eme repose sur trois protocoles compl\'ementaires : MQTT pour la couche capteur, HTTP/REST pour l'API, et Socket.IO pour le temps r\'eel. La hi\'erarchie des topics MQTT, les flux de donn\'ees d\'etaill\'es et les m\'ecanismes de s\'ecurit\'e forment un syst\`eme coh\'erent et fiable, capable de g\'erer les contraintes de l'environnement industriel.

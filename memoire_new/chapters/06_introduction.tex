@@ -1,0 +1,66 @@
+\chapter{Introduction G\'en\'erale}
+
+\section{Contexte g\'en\'eral}
+
+L'industrie manufacturi\`ere traverse une transformation profonde sous l'impulsion de la quatri\`eme r\'evolution industrielle, commun\'ement d\'enomm\'ee Industrie 4.0. Cette r\'evolution se caract\'erise par l'int\'e-gration des technologies num\'eriques dans l'ensemble des processus de production, permettant une interconnexion sans pr\'e\'ec\'edent des syst\`emes, des machines et des hommes \cite{xu2018industry}.
+
+Dans ce contexte, la gestion des pannes de production repr\'esente un d\'efi majeur pour les entreprises manufacturi\`eres. Les temps d'arr\^et non planifi\'es engendrent des co\^uts consid\'erables : perte de productivit\'e, d\'elais de livraison, d\'egradation de la qualit\'e et insatisfaction client. Selon les \'etudes r\'ealis\'es dans le domaine de la maintenance industrielle, les arr\^ets de ligne repr\'esentent en moyenne 5\% \`a 20\% du temps de production total \cite{schwab2017fourth}.
+
+Le syst\`eme Andon, initialement d\'evelopp\'e par le constructeur automobile japonais Toyota dans le cadre du Toyota Production System (TPS), constitue un m\'ecanisme fondamental de d\'etection et de signalisation des anomalies en temps r\'eel \cite{liker2004toyota}. Ce syst\`eme permet \`a tout op\'erateur de la cha\^ine de production de signaler imm\'ediatement tout probl\`eme qu'il d\'etecte, d\'eclenchant ainsi une cha\^ine d'actions correctives rapides.
+
+Cependant, les syst\`emes Andon traditionnels, bas\'es sur des signaux visuels et sonores physiques, pr\'esentent des limites significatives dans l'environnement industriel moderne : port\'ee limit\'ee, absence de tra\c{c}abilit\'e num\'erique, difficult\'e d'analyse statistique et manque d'int\'egration avec les syst\`emes d'information existants.
+
+\section{Probl\'ematique}
+
+Face \`a ces limitations, la question centrale de ce m\'emoire est la suivante :
+
+\begin{quote}
+\itshape Comment concevoir et r\'ealiser un syst\`eme Andon intelligent, bas\'e sur les technologies de l'Internet Industriel des Objets (\iiot), capable d'assurer la d\'etection, la signalisation et le suivi en temps r\'eel des pannes de production, tout en offrant des capacit\'es d'analyse et de d\'ecision assist\'ees ?
+\end{quote}
+
+Cette probl\'ematique soul\`eve plusieurs questions subsidiaires :
+\begin{itemize}
+    \item Quelle architecture mat\'erielle et logicielle est la plus adapt\'ee pour connecter les postes de production et collecter les donn\'ees en temps r\'eel ?
+    \item Quels protocoles de communication et quels standards technologiques permettent d'assurer la fiabilit\'e et la p\'erformance du syst\`eme ?
+    \item Comment concevoir une base de donn\'ees capable de g\'erer le volume et la v\'elicit\'e des \'ev\'enements industriels ?
+    \item Quelles m\'etriques et quels indicateurs de performance permettent d'\'evaluer l'efficacit\'e du syst\`eme d\'evelopp\'e ?
+\end{itemize}
+
+\section{Objectifs du m\'emoire}
+
+L'objectif principal de ce travail est la conception, le d\'eveloppement et la validation d'un syst\`eme Andon intelligent pour \sews. Les objectifs sp\'ecifiques sont les suivants :
+
+\begin{enumerate}
+    \item \textbf{Analyser le contexte industriel} de \sews et identifier les besoins fonctionnels et techniques en mati\`ere de gestion des pannes.
+    \item \textbf{Concevoir une architecture technique} int\'egrant des capteurs IoT, un serveur de traitement et une interface web en temps r\'eel.
+    \item \textbf{Impl\'ementer le syst\`eme} en d\'eveloppant les couches mat\'erielle (ESP32 et capteurs), logicielle (Node.js/Express, PostgreSQL) et pr\'esentation (Angular).
+    \item \textbf{Valider le syst\`eme} en conditions r\'eelles de production et mesurer son impact sur les indicateurs de performance.
+\end{enumerate}
+
+\section{M\'ethodologie}
+
+La r\'ealisation de ce projet suit une approche structur\'ee en plusieurs \'etapes :
+
+\begin{enumerate}
+    \item \textbf{Phase d'\'eude et d'analyse :} immersion au sein du d\'epartement Maintenance de \sews, recueil des besoins et \'etat de l'art des technologies \iiot.
+    \item \textbf{Phase de conception :} mod\'e-lisation de l'architecture globale, conception de la base de donn\'ees et d\'efinition des interfaces.
+    \item \textbf{Phase de d\'eveloppement :} programmation des composants mat\'eriels et logiciels, int\'egration des diff\'erents modules.
+    \item \textbf{Phase de tests et de validation :} tests unitaires, tests d'int\'e-gration, tests en conditions r\'eelles et mesure des performances.
+\end{enumerate}
+
+\section{Organisation du m\'emoire}
+
+Ce m\'emoire est organis\'e en huit chapitres :
+
+\begin{itemize}
+    \item \textbf{Chapitre 2 -- \'Etat de l'art :} pr\'esente les fondements th\'eoriques et les technologies associ\'ees au syst\`eme Andon et \`a l'\iiot.
+    \item \textbf{Chapitre 3 -- Contexte de l'entreprise :} d\'ecrit l'environnement industriel de \sews et les processus de production concern\'es.
+    \item \textbf{Chapitre 4 -- Analyse des besoins :} d\'efinit les besoins fonctionnels et non fonctionnels du syst\`eme.
+    \item \textbf{Chapitre 5 -- Conception du syst\`eme :} pr\'esente l'architecture globale et les choix de conception.
+    \item \textbf{Chapitre 6 -- Architecture mat\'erielle et logicielle :} d\'ecrit les composants physiques et l'organisation logicielle.
+    \item \textbf{Chapitre 7 -- Conception de la base de donn\'ees :} pr\'esente le mod\`ele de donn\'ees et l'impl\'ementation SQL.
+    \item \textbf{Chapitre 8 -- Architecture de communication :} analyse les protocoles et flux de donn\'ees du syst\`eme.
+    \item \textbf{Chapitre 9 -- Impl\'ementation :} d\'ecrit le d\'eveloppement concret de chaque composant.
+    \item \textbf{Chapitre 10 -- R\'esultats exp\'erimentaux :} pr\'esente les tests, les mesures de performance et l'analyse des r\'esultats.
+    \item \textbf{Chapitre 11 -- Conclusion g\'en\'erale :} synth\`ese des travaux r\'ealis\'es et perspectives d'\'evolution.
+\end{itemize}

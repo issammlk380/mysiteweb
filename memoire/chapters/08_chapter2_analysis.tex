@@ -1,0 +1,1178 @@
+﻿% ============================================================================
+% CHAPITRE 2 : ÉTUDE THÉORIQUE ET TECHNOLOGIES UTILISÉES
+% ============================================================================
+\chapter{Étude Théorique et Technologies Utilisées}
+
+\section*{Introduction}
+
+Ce chapitre constitue le fondement théorique et technologique de notre projet. Il vise à présenter de manière structurée et approfondie l'ensemble des concepts, méthodologies et technologies qui sous-tendent la conception et l'implémentation du système Andon intelligent.
+
+Dans un premier temps, nous contextualiserons le projet en rappelant les enjeux industriels et les défis spécifiques auxquels SEWS Maroc est confronté. Nous expliciterons ensuite la problématique et les objectifs du projet de manière détaillée. Par la suite, nous aborderons les fondements théoriques essentiels : le système Andon, l'Industrie 4.0, et l'Internet Industriel des Objets (IIoT). Nous explorerons ensuite les technologies clés retenues pour notre architecture : les microcontrôleurs ESP32, les protocoles de communication MQTT et WebSocket, les frameworks backend et frontend, la base de données PostgreSQL, ainsi que l'approche Progressive Web Application (PWA). Enfin, nous présenterons une analyse comparative justifiant nos choix technologiques et conclurons sur la cohérence globale de l'architecture proposée.
+
+\section{Contexte du projet}
+
+\subsection{Environnement industriel}
+
+SEWS Maroc évolue dans un environnement industriel hautement compétitif où les exigences des constructeurs automobiles en matière de qualité, de coûts et de délais ne cessent de croître. Dans ce contexte, la disponibilité des équipements de production constitue un facteur critique de performance. Toute interruption non planifiée de la production engendre des coûts directs (perte de production, mobilisation des équipes de maintenance) et indirects (retards de livraison, non-respect des engagements contractuels).
+
+L'Atelier Test Électrique, composé de 12 lignes de production automatisées, représente un maillon stratégique de la chaîne de valeur. Chaque ligne est équipée de bancs de test complexes permettant de vérifier la conformité électrique et fonctionnelle des faisceaux de câbles avant expédition aux constructeurs automobiles. La moindre défaillance technique peut provoquer un arrêt de ligne, impactant immédiatement la productivité globale de l'atelier.
+
+\subsection{Système Andon actuel}
+
+Le système Andon actuellement déployé chez SEWS Maroc s'inscrit dans la philosophie du Lean Manufacturing héritée du Toyota Production System. Ce système repose sur le principe du management visuel et permet aux opérateurs de signaler rapidement les anomalies de production.
+
+
+Concrètement, chaque poste de travail dispose d'un boîtier comportant trois boutons de couleur :
+
+\begin{itemize}
+    \item \textbf{Bouton vert} : signale un fonctionnement normal, aucune intervention requise.
+    \item \textbf{Bouton orange} : indique un ralentissement ou une anomalie mineure nécessitant une attention.
+    \item \textbf{Bouton rouge} : déclenche une alerte critique signalant un arrêt de production imminent ou effectif.
+\end{itemize}
+
+Ces boutons actionnent des tours lumineuses visibles depuis l'ensemble de l'atelier, permettant au superviseur et aux techniciens de maintenance de localiser visuellement et rapidement la ligne en difficulté. Ce système présente l'avantage de la simplicité, de la fiabilité mécanique et d'une appropriation immédiate par les opérateurs.
+
+Toutefois, dans le contexte actuel de transformation numérique, ce système purement visuel et manuel révèle des limitations structurelles qui freinent l'optimisation continue des performances maintenance et l'exploitation intelligente des données de production. L'absence de traçabilité numérique, de calcul automatique des indicateurs de performance et de supervision centralisée en temps réel motive la nécessité d'une modernisation technologique profonde.
+
+\subsection{Enjeux de la transformation digitale}
+
+La transformation digitale des systèmes de supervision industrielle répond à plusieurs enjeux stratégiques :
+
+\textbf{Enjeu opérationnel :} Réduire les temps d'arrêt non planifiés (downtime) par une détection et une résolution plus rapides des pannes.
+
+\textbf{Enjeu décisionnel :} Disposer de données fiables et structurées permettant d'identifier les équipements critiques, d'anticiper les défaillances récurrentes et d'optimiser les stratégies de maintenance.
+
+\textbf{Enjeu organisationnel :} Professionnaliser la fonction maintenance en instaurant une traçabilité complète des interventions, en valorisant les compétences techniques et en facilitant le partage de connaissances.
+
+\textbf{Enjeu stratégique :} S'inscrire dans une démarche d'amélioration continue compatible avec les référentiels Industrie 4.0, renforçant ainsi la compétitivité et l'attractivité de l'entreprise.
+
+
+\section{Problématique}
+
+\subsection{Identification des limitations du système existant}
+
+L'analyse approfondie du système Andon actuel de SEWS Maroc révèle plusieurs limitations critiques qui compromettent l'efficacité de la gestion maintenance et la capacité de l'entreprise à optimiser ses performances opérationnelles.
+
+\subsubsection{Absence de traçabilité numérique}
+
+Le système actuel ne dispose d'aucun mécanisme d'enregistrement automatique des événements. Lorsqu'un opérateur actionne un bouton Andon, l'information est transmise uniquement de manière visuelle via la tour lumineuse. Aucune trace numérique n'est conservée concernant l'heure exacte du déclenchement, la durée de l'anomalie, l'identité de l'opérateur ayant signalé le problème, ni la nature précise de la panne. Cette absence de traçabilité génère plusieurs conséquences négatives :
+
+\begin{itemize}
+    \item Impossibilité de reconstituer l'historique précis des pannes sur une ligne donnée.
+    \item Difficulté à identifier les équipements présentant des défaillances récurrentes.
+    \item Absence de données fiables pour alimenter des analyses de fiabilité (AMDEC, analyse de Pareto).
+    \item Risque de perte d'information en cas de changement d'équipe ou de rotation du personnel.
+\end{itemize}
+
+\subsubsection{Calcul manuel et approximatif des KPI maintenance}
+
+Les indicateurs clés de performance maintenance, essentiels au pilotage opérationnel, sont actuellement calculés manuellement à partir de relevés papier. Les principaux KPI concernés sont :
+
+\begin{itemize}
+    \item \textbf{MTTA (Mean Time To Acknowledge)} : Temps moyen de prise en compte d'une alerte.
+    \item \textbf{MTTR (Mean Time To Repair)} : Temps moyen de réparation.
+    \item \textbf{Disponibilité opérationnelle} : Ratio temps de fonctionnement / temps total.
+    \item \textbf{Fréquence des pannes} : Nombre de pannes par période donnée.
+\end{itemize}
+
+
+Le calcul manuel de ces indicateurs présente plusieurs inconvénients majeurs : erreurs de saisie, approximations temporelles, délais de consolidation importants (reporting hebdomadaire ou mensuel uniquement), et impossibilité de disposer d'indicateurs temps réel pour une prise de décision réactive.
+
+\subsubsection{Gestion papier des interventions}
+
+La traçabilité des interventions maintenance s'effectue actuellement sur des fiches papier standardisées. Lorsqu'un technicien intervient sur une panne, il doit consigner manuellement les informations suivantes : date et heure d'intervention, nature de la panne, pièces remplacées, actions correctives, durée d'intervention. Ce processus manuel présente plusieurs faiblesses :
+
+\begin{itemize}
+    \item Risque de perte ou de détérioration des fiches papier.
+    \item Difficultés de lecture (écriture manuscrite parfois illisible).
+    \item Impossibilité d'exploitation numérique directe des données.
+    \item Temps administratif important pour la saisie ultérieure dans les systèmes informatiques.
+    \item Absence de standardisation des terminologies et des descriptions de pannes.
+\end{itemize}
+
+\subsubsection{Absence de vision centralisée temps réel}
+
+Le système Andon actuel ne propose aucune interface de supervision centralisée. Le responsable maintenance ou le superviseur d'atelier doit circuler physiquement dans l'atelier pour évaluer l'état global des lignes de production. Cette limitation engendre plusieurs problèmes :
+
+\begin{itemize}
+    \item Perte de temps dans les déplacements.
+    \item Vision partielle et séquentielle de l'état de l'atelier.
+    \item Impossibilité de superviser l'atelier à distance (depuis un bureau, en télétravail, ou en déplacement).
+    \item Difficulté à prioriser les interventions en cas de pannes multiples simultanées.
+\end{itemize}
+
+
+\subsection{Formulation de la problématique centrale}
+
+Au regard des limitations identifiées, la problématique centrale de ce projet peut être formulée comme suit :
+
+\begin{quote}
+\textit{Comment concevoir et implémenter un système Andon intelligent, basé sur l'Internet Industriel des Objets (IIoT), capable de détecter automatiquement les pannes, de tracer numériquement l'ensemble du cycle de vie des interventions maintenance, de calculer en temps réel les indicateurs de performance, et d'offrir une interface de supervision centralisée accessible depuis tout terminal connecté, tout en garantissant la fiabilité, la scalabilité et la sécurité du système ?}
+\end{quote}
+
+Cette problématique se décline en plusieurs sous-questions techniques et organisationnelles :
+
+\begin{itemize}
+    \item Quelle architecture matérielle et logicielle adopter pour connecter les boutons Andon existants à un réseau IoT industriel fiable ?
+    \item Quel protocole de communication utiliser pour garantir une latence minimale et une fiabilité maximale des notifications temps réel ?
+    \item Comment concevoir une base de données relationnelle structurée permettant de tracer l'ensemble du cycle de vie des pannes ?
+    \item Comment identifier automatiquement les techniciens intervenant sur les pannes sans alourdir leur charge de travail ?
+    \item Comment concevoir des interfaces utilisateur ergonomiques adaptées aux différents profils d'utilisateurs (opérateurs, techniciens, superviseurs) ?
+    \item Comment garantir la sécurité des données et l'intégrité du système face aux risques de cyberattaques industrielles ?
+\end{itemize}
+
+\section{Objectifs du projet}
+
+\subsection{Objectif général}
+
+L'objectif général de ce projet consiste à \textbf{concevoir, développer et déployer un système Andon intelligent basé sur l'IIoT permettant la supervision en temps réel et la gestion complète du cycle de vie des pannes industrielles au sein de l'Atelier Test Électrique de SEWS Maroc}.
+
+
+\subsection{Objectifs fonctionnels}
+
+Les objectifs fonctionnels définissent les services et fonctionnalités que le système doit offrir aux utilisateurs finaux :
+
+\begin{enumerate}
+    \item \textbf{Détection automatique des pannes} : Connecter les boutons Andon existants à des modules ESP32 permettant de détecter automatiquement l'actionnement des boutons et de transmettre instantanément l'information au système central.
+    
+    \item \textbf{Notification temps réel multi-canal} : Notifier immédiatement (latence inférieure à 2 secondes) les superviseurs et techniciens de maintenance via une interface web et des notifications push sur application mobile.
+    
+    \item \textbf{Traçabilité des interventions} : Enregistrer automatiquement l'identité du technicien intervenant via badge RFID, permettant une traçabilité nominative des interventions sans saisie manuelle.
+    
+    \item \textbf{Saisie structurée des observations} : Offrir aux techniciens une interface mobile permettant de saisir de manière structurée la nature de la panne, la criticité, les pièces remplacées et les actions correctives effectuées.
+    
+    \item \textbf{Calcul automatique des KPI} : Calculer en temps réel et de manière automatique l'ensemble des indicateurs de performance maintenance (MTTA, MTTR, disponibilité, fréquence des pannes).
+    
+    \item \textbf{Dashboard de supervision centralisée} : Offrir une interface web de supervision permettant de visualiser en temps réel l'état de toutes les lignes de production, l'historique des pannes, et les statistiques de performance.
+    
+    \item \textbf{Application mobile PWA} : Développer une application mobile Progressive Web App permettant aux techniciens d'intervenir depuis le terrain sans nécessiter d'installation depuis un store applicatif.
+    
+    \item \textbf{Gestion multi-utilisateurs} : Implémenter un système d'authentification et d'autorisation permettant de gérer différents profils d'utilisateurs (opérateurs, techniciens, superviseurs, administrateurs).
+\end{enumerate}
+
+
+\subsection{Objectifs non fonctionnels}
+
+Les objectifs non fonctionnels spécifient les contraintes qualitatives et techniques que le système doit respecter :
+
+\begin{enumerate}
+    \item \textbf{Performance et réactivité} : Le système doit garantir une latence maximale de 2 secondes entre le déclenchement d'un bouton Andon et la notification des utilisateurs concernés.
+    
+    \item \textbf{Fiabilité et disponibilité} : Le système doit offrir une disponibilité minimale de 99\% (tolérance maximale d'indisponibilité : 7h par mois).
+    
+    \item \textbf{Scalabilité} : L'architecture doit permettre l'ajout de nouvelles lignes de production sans nécessiter de refonte majeure du système.
+    
+    \item \textbf{Sécurité} : Les communications doivent être chiffrées, les données sensibles protégées, et les accès contrôlés par authentification robuste.
+    
+    \item \textbf{Ergonomie et accessibilité} : Les interfaces utilisateur doivent être intuitives, responsive (adaptées aux différents terminaux), et accessibles sans formation technique approfondie.
+    
+    \item \textbf{Maintenabilité} : Le code source doit être structuré, documenté et modulaire pour faciliter les évolutions futures et la maintenance corrective.
+    
+    \item \textbf{Interopérabilité} : Le système doit pouvoir s'intégrer avec les systèmes d'information existants de SEWS Maroc (ERP, GMAO) via des APIs standardisées.
+\end{enumerate}
+
+\subsection{Objectifs pédagogiques}
+
+Sur le plan personnel et pédagogique, ce projet vise également à :
+
+\begin{itemize}
+    \item Approfondir les compétences en architecture de systèmes IoT industriels.
+    \item Maîtriser les technologies et protocoles de l'écosystème IIoT (MQTT, WebSocket, ESP32).
+    \item Développer des compétences full-stack (backend Node.js, frontend moderne, bases de données relationnelles).
+    \item Appréhender les contraintes et exigences spécifiques des systèmes industriels critiques.
+    \item Acquérir une expérience concrète en gestion de projet technique dans un environnement professionnel.
+\end{itemize}
+
+
+\section{Système Andon}
+
+\subsection{Origine et philosophie du système Andon}
+
+Le système Andon (terme japonais signifiant « lanterne » ou « lumière ») constitue l'un des outils fondamentaux du Toyota Production System (TPS) et du Lean Manufacturing. Développé dans les années 1950 par Taiichi Ohno chez Toyota Motor Corporation, ce système incarne le principe du \textit{jidoka} (autonomation), l'un des deux piliers du TPS avec le \textit{just-in-time}.
+
+La philosophie sous-jacente du système Andon repose sur plusieurs principes managériaux fondamentaux :
+
+\textbf{Principe de détection immédiate des anomalies :} Tout opérateur doit pouvoir signaler instantanément une anomalie sans attendre la fin du cycle de production.
+
+\textbf{Principe d'empowerment des opérateurs :} Les opérateurs sont habilités et encouragés à arrêter la ligne de production dès qu'un problème qualité ou un dysfonctionnement est détecté, inversant ainsi la logique traditionnelle de production à tout prix.
+
+\textbf{Principe de résolution à la source :} Les problèmes doivent être résolus immédiatement et à la source, évitant ainsi la propagation des défauts en aval de la chaîne de production.
+
+\textbf{Principe de transparence et de management visuel :} L'état de la production doit être visible en temps réel par l'ensemble des acteurs de l'atelier, favorisant la réactivité collective et la culture de l'amélioration continue.
+
+\subsection{Fonctionnement du système Andon traditionnel}
+
+Un système Andon traditionnel se compose généralement des éléments suivants :
+
+\begin{itemize}
+    \item \textbf{Dispositifs de signalisation opérateur :} Boutons ou cordes (Andon cord) actionnables directement par les opérateurs à chaque poste de travail.
+    
+    \item \textbf{Signalisation visuelle :} Tours lumineuses à LED multicolores (généralement vert, orange, rouge) ou tableaux Andon affichant l'état de chaque ligne de production.
+    
+    \item \textbf{Signalisation sonore :} Alarmes ou mélodies distinctes permettant d'attirer l'attention des superviseurs et techniciens.
+\end{itemize}
+
+
+Le fonctionnement classique s'articule autour du workflow suivant :
+
+\begin{enumerate}
+    \item L'opérateur détecte une anomalie (défaut qualité, pénurie de pièces, panne machine, problème de sécurité).
+    \item Il actionne le bouton correspondant à la criticité de l'anomalie (orange pour un ralentissement, rouge pour un arrêt).
+    \item La tour lumineuse s'active, signalant visuellement l'état de la ligne aux autres membres de l'équipe.
+    \item Le superviseur ou le technicien se déplace vers le poste concerné pour évaluer la situation.
+    \item L'anomalie est résolue, et le système est réinitialisé manuellement pour revenir à l'état normal (vert).
+\end{enumerate}
+
+\ph{Schéma fonctionnel d'un système Andon traditionnel}{fig:andon_traditional}
+
+\subsection{Évolution vers l'Andon intelligent}
+
+Avec l'avènement de l'Industrie 4.0 et de l'Internet Industriel des Objets, le concept d'Andon évolue vers une version « intelligente » intégrant les capacités suivantes :
+
+\begin{itemize}
+    \item \textbf{Connectivité IoT :} Les dispositifs Andon sont connectés à un réseau IP et communiquent via des protocoles standardisés (MQTT, HTTP, WebSocket).
+    
+    \item \textbf{Traçabilité numérique :} Chaque événement est horodaté, enregistré dans une base de données et associé à des métadonnées (ligne, poste, opérateur, nature de l'alerte).
+    
+    \item \textbf{Notifications multi-canal :} Les alertes sont diffusées non seulement visuellement dans l'atelier, mais également via des tableaux de bord numériques, des applications mobiles et des notifications push.
+    
+    \item \textbf{Analytique temps réel :} Les données collectées alimentent des tableaux de bord temps réel permettant de calculer des KPI et d'identifier des tendances.
+    
+    \item \textbf{Intelligence artificielle :} Les systèmes les plus avancés intègrent des algorithmes de machine learning pour prédire les pannes avant qu'elles ne surviennent (maintenance prédictive).
+\end{itemize}
+
+
+\subsection{Bénéfices attendus d'un système Andon intelligent}
+
+La transition d'un système Andon traditionnel vers un système intelligent génère plusieurs bénéfices quantifiables :
+
+\textbf{Réduction des temps d'arrêt :} La notification instantanée et multi-canal permet de mobiliser plus rapidement les équipes compétentes, réduisant le MTTA et le MTTR.
+
+\textbf{Amélioration de la traçabilité :} La numérisation des événements permet de constituer un historique fiable, exploitable pour des analyses de fiabilité et d'amélioration continue.
+
+\textbf{Optimisation des ressources maintenance :} L'analyse des données permet d'identifier les équipements critiques nécessitant une attention prioritaire et d'optimiser la répartition des ressources humaines.
+
+\textbf{Mesure objective de la performance :} Les KPI calculés automatiquement fournissent une base objective pour évaluer l'efficacité des actions d'amélioration et pour benchmarker les performances entre différentes lignes ou ateliers.
+
+\textbf{Aide à la décision stratégique :} Les données historiques alimentent les décisions d'investissement (renouvellement d'équipements, formation des équipes) et de planification (maintenance préventive, gestion des stocks de pièces de rechange).
+
+\section{Industrie 4.0}
+
+\subsection{Définition et contexte historique}
+
+Le terme \textbf{Industrie 4.0} (ou \textit{Industrie du futur}) désigne la quatrième révolution industrielle, caractérisée par l'intégration massive des technologies numériques dans les processus de production manufacturière. Ce concept a été formalisé pour la première fois en 2011 en Allemagne dans le cadre d'un programme gouvernemental visant à moderniser l'appareil industriel allemand face à la concurrence mondiale.
+
+L'évolution industrielle peut être schématisée en quatre grandes révolutions :
+
+\begin{enumerate}
+    \item \textbf{Industrie 1.0 (fin XVIII\textsuperscript{e} siècle)} : Mécanisation de la production grâce à la machine à vapeur et à l'énergie hydraulique.
+    
+    \item \textbf{Industrie 2.0 (fin XIX\textsuperscript{e} siècle)} : Production de masse rendue possible par l'électrification et la division du travail (taylorisme, fordisme).
+    
+    \item \textbf{Industrie 3.0 (années 1970)} : Automatisation de la production via l'électronique, l'informatique et les automates programmables (PLC).
+    
+    \item \textbf{Industrie 4.0 (années 2010)} : Digitalisation et interconnexion des systèmes de production via l'IoT, l'intelligence artificielle, le Big Data et le cloud computing.
+\end{enumerate}
+
+
+\ph{Les quatre révolutions industrielles}{fig:industry_revolutions}
+
+\subsection{Piliers technologiques de l'Industrie 4.0}
+
+L'Industrie 4.0 repose sur l'intégration synergique de neuf piliers technologiques fondamentaux :
+
+\begin{enumerate}
+    \item \textbf{Internet des Objets Industriel (IIoT)} : Connexion des machines, capteurs et équipements de production à Internet pour une surveillance et un contrôle en temps réel.
+    
+    \item \textbf{Big Data et Analytics} : Collecte, stockage et analyse de volumes massifs de données pour extraire des insights et optimiser les processus.
+    
+    \item \textbf{Intelligence Artificielle et Machine Learning} : Algorithmes d'apprentissage automatique permettant la détection d'anomalies, la maintenance prédictive et l'optimisation autonome.
+    
+    \item \textbf{Cloud et Edge Computing} : Infrastructure de calcul déportée offrant puissance de traitement, stockage évolutif et accessibilité universelle.
+    
+    \item \textbf{Cybersécurité industrielle} : Protection des systèmes critiques contre les cyberattaques et garantie de la confidentialité des données sensibles.
+    
+    \item \textbf{Simulation et jumeaux numériques} : Représentations virtuelles des processus physiques permettant de simuler et d'optimiser avant implémentation réelle.
+    
+    \item \textbf{Réalité augmentée} : Superposition d'informations numériques sur l'environnement réel pour assister les opérateurs dans les tâches complexes de maintenance.
+    
+    \item \textbf{Fabrication additive (impression 3D)} : Production à la demande de pièces de rechange complexes sans nécessiter de moules ou d'outillages coûteux.
+    
+    \item \textbf{Robotique collaborative} : Robots collaboratifs (cobots) travaillant en interaction sécurisée avec les opérateurs humains.
+\end{enumerate}
+
+\ph{Les neuf piliers technologiques de l'Industrie 4.0}{fig:industry40_pillars}
+
+
+\subsection{Caractéristiques des systèmes industriels 4.0}
+
+Les systèmes conformes à la vision Industrie 4.0 présentent plusieurs caractéristiques distinctives :
+
+\textbf{Interconnexion horizontale et verticale :} Les systèmes sont connectés horizontalement au sein de la chaîne de valeur (de la commande client à la livraison) et verticalement au sein de l'architecture informationnelle (du capteur terrain jusqu'aux systèmes de planification ERP).
+
+\textbf{Décentralisation et autonomie :} Les systèmes cyber-physiques (CPS) peuvent prendre des décisions localement sans nécessiter systématiquement l'intervention d'une autorité centrale, améliorant ainsi la réactivité et la résilience.
+
+\textbf{Modularité et reconfigurabilité :} Les lignes de production deviennent reconfigurables dynamiquement pour s'adapter à la variabilité de la demande et à la personnalisation de masse.
+
+\textbf{Orientation temps réel :} Les systèmes collectent, traitent et analysent les données en temps réel pour permettre une prise de décision réactive et une optimisation continue.
+
+\textbf{Orientation service :} Les systèmes sont architecturés selon une logique de services (SOA - Service Oriented Architecture) facilitant l'interopérabilité et l'intégration de nouveaux composants.
+
+\subsection{Enjeux et défis de l'Industrie 4.0}
+
+La transformation vers l'Industrie 4.0 soulève plusieurs enjeux et défis majeurs :
+
+\textbf{Investissements financiers :} La modernisation des infrastructures nécessite des investissements conséquents en équipements, logiciels et compétences, dont le retour sur investissement doit être clairement démontré.
+
+\textbf{Compétences et formation :} Les collaborateurs doivent développer de nouvelles compétences techniques (data science, cybersécurité, programmation) et organisationnelles (travail collaboratif, gestion de projets agiles).
+
+\textbf{Interopérabilité et standardisation :} L'hétérogénéité des équipements et des protocoles de communication nécessite des efforts de standardisation pour garantir l'interopérabilité des systèmes.
+
+\textbf{Cybersécurité :} L'ouverture des systèmes industriels vers Internet expose les infrastructures critiques à de nouveaux risques de cyberattaques nécessitant des stratégies de sécurité robustes.
+
+
+\textbf{Protection des données :} La collecte massive de données soulève des questions éthiques et légales concernant la confidentialité, la propriété intellectuelle et la conformité réglementaire (RGPD).
+
+\textbf{Conduite du changement :} La transformation digitale implique des changements organisationnels et culturels profonds nécessitant un accompagnement managérial fort pour vaincre les résistances naturelles au changement.
+
+\section{Internet des Objets Industriel (IIoT)}
+
+\subsection{Définition et différenciation IoT / IIoT}
+
+L'\textbf{Internet des Objets} (IoT - Internet of Things) désigne l'interconnexion via Internet d'objets physiques équipés de capteurs, d'actionneurs et de capacités de communication permettant la collecte et l'échange de données. L'\textbf{Internet Industriel des Objets} (IIoT - Industrial Internet of Things) constitue une déclinaison spécifique de l'IoT appliquée aux environnements industriels, manufacturiers et infrastructures critiques.
+
+Bien que conceptuellement similaires, l'IoT et l'IIoT se distinguent par plusieurs caractéristiques fondamentales résumées dans le tableau suivant :
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Comparaison IoT vs IIoT}
+\label{tab:iot_vs_iiot}
+\begin{tabular}{|p{3.5cm}|p{5cm}|p{5cm}|}
+\hline
+\rowcolor{sewesblu!20}
+\textbf{Critère} & \textbf{IoT (Grand Public)} & \textbf{IIoT (Industriel)} \\
+\hline
+\textbf{Domaines d'application} & Domotique, wearables, santé connectée, villes intelligentes & Production manufacturière, énergie, transport, infrastructures critiques \\
+\hline
+\textbf{Exigences de fiabilité} & Moyenne (tolérance aux pannes acceptable) & Très élevée (criticité des opérations) \\
+\hline
+\textbf{Latence acceptable} & Secondes à minutes & Millisecondes à secondes \\
+\hline
+\textbf{Sécurité} & Importante mais pas critique & Critique (risques industriels et sécuritaires majeurs) \\
+\hline
+\textbf{Protocoles} & HTTP, MQTT, CoAP & MQTT, OPC UA, Modbus, Profinet \\
+\hline
+\textbf{Environnement} & Domestique, conditions contrôlées & Industriel, conditions extrêmes (température, humidité, vibrations) \\
+\hline
+\textbf{Volume de données} & Modéré & Très important (milliers de capteurs) \\
+\hline
+\textbf{Cycle de vie} & Court (2-5 ans) & Long (10-20 ans) \\
+\hline
+\end{tabular}
+\end{table}
+
+
+\subsection{Architecture typique d'un système IIoT}
+
+Un système IIoT classique s'articule généralement autour d'une architecture en couches :
+
+\textbf{Couche Perception (Edge Layer)} : Composée des capteurs, actionneurs, équipements industriels et modules de communication (ESP32, Arduino, PLC) déployés directement sur le terrain. Cette couche assure la collecte des données brutes et l'interfaçage physique avec les processus industriels.
+
+\textbf{Couche Réseau (Network Layer)} : Assure le transport des données entre la couche perception et la couche applicative. Elle repose sur diverses technologies de communication (Wi-Fi, Ethernet, 4G/5G, LoRaWAN) et protocoles (MQTT, OPC UA, Modbus TCP).
+
+\textbf{Couche Middleware (Fog/Edge Computing Layer)} : Couche intermédiaire réalisant un prétraitement local des données (filtrage, agrégation, détection d'anomalies) pour réduire la latence et le volume de données transmises au cloud.
+
+\textbf{Couche Applicative (Application Layer)} : Héberge les services métiers (supervision, gestion de maintenance, analytics, reporting) et les interfaces utilisateur (dashboards web, applications mobiles).
+
+\textbf{Couche Data (Storage \& Analytics Layer)} : Assure la persistance des données (bases relationnelles, time-series databases, data lakes) et l'exécution d'algorithmes d'analyse avancés (machine learning, IA).
+
+\ph{Architecture en couches d'un système IIoT}{fig:iiot_architecture}
+
+\subsection{Technologies habilitantes de l'IIoT}
+
+L'implémentation d'une solution IIoT performante repose sur plusieurs technologies clés :
+
+\textbf{Capteurs et actionneurs intelligents :} Dispositifs miniaturisés, basse consommation et communicants capables de mesurer des grandeurs physiques (température, pression, vibration, courant électrique) et d'agir sur les processus industriels.
+
+\textbf{Protocoles de communication industriels :} MQTT (léger, publish/subscribe), OPC UA (standard industriel interopérable), Modbus (protocole série classique), CoAP (conçu pour les réseaux contraints).
+
+
+\textbf{Plateformes IIoT :} Solutions logicielles intégrées offrant gestion des dispositifs, ingestion de données, moteurs de règles, analytics et visualisation (AWS IoT, Azure IoT Hub, ThingsBoard, Node-RED).
+
+\textbf{Edge Computing :} Capacité de traitement local des données au plus près de leur source, réduisant la latence et la dépendance au cloud central.
+
+\textbf{Jumeaux numériques :} Répliques virtuelles des équipements physiques permettant simulation, prédiction et optimisation.
+
+\subsection{Cas d'usage industriels de l'IIoT}
+
+L'IIoT trouve des applications concrètes dans de nombreux domaines industriels :
+
+\textbf{Maintenance prédictive :} Analyse des signaux vibratoires, thermiques et électriques pour prédire les défaillances avant qu'elles ne surviennent, permettant une planification optimale des interventions.
+
+\textbf{Optimisation énergétique :} Surveillance en temps réel de la consommation énergétique des équipements et identification des gisements d'économie.
+
+\textbf{Gestion de la qualité :} Détection automatique des défauts de production par vision industrielle et corrélation avec les paramètres process.
+
+\textbf{Traçabilité produits :} Suivi en temps réel du parcours des produits dans la chaîne de production via technologies RFID ou codes-barres 2D.
+
+\textbf{Supervision d'installations distribuées :} Monitoring centralisé d'infrastructures géographiquement dispersées (réseaux électriques, stations d'eau, pipelines).
+
+\textbf{Gestion des flux logistiques :} Optimisation des stocks et des approvisionnements grâce à la visibilité temps réel sur les niveaux de consommation.
+
+Notre projet de système Andon intelligent s'inscrit précisément dans le premier cas d'usage, visant à améliorer la réactivité de la maintenance et à collecter des données structurées pour évoluer progressivement vers une approche prédictive.
+
+
+\section{ESP32 — Microcontrôleur pour l'IoT Industriel}
+
+\subsection{Présentation générale}
+
+L'\textbf{ESP32} est un microcontrôleur système-sur-puce (SoC - System on Chip) développé par la société chinoise Espressif Systems, lancé en 2016 comme successeur de l'ESP8266. Ce composant est devenu une référence incontournable dans le domaine de l'IoT grâce à son excellent rapport performance/prix et à son écosystème logiciel riche.
+
+L'ESP32 intègre nativement des capacités de connectivité sans fil (Wi-Fi et Bluetooth), un processeur dual-core puissant, de nombreuses interfaces de communication (UART, SPI, I2C, CAN) et une consommation énergétique maîtrisée, le positionnant idéalement pour les applications IoT industrielles nécessitant autonomie, fiabilité et coût maîtrisé.
+
+\subsection{Caractéristiques techniques principales}
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Caractéristiques techniques de l'ESP32}
+\label{tab:esp32_specs}
+\begin{tabular}{|p{4cm}|p{9.5cm}|}
+\hline
+\rowcolor{sewesblu!20}
+\textbf{Composant} & \textbf{Spécifications} \\
+\hline
+\textbf{Processeur} & Xtensa dual-core 32-bit LX6, fréquence jusqu'à 240 MHz \\
+\hline
+\textbf{Mémoire} & 520 KB SRAM, 448 KB ROM, flash externe jusqu'à 16 MB \\
+\hline
+\textbf{Connectivité} & Wi-Fi 802.11 b/g/n (2.4 GHz), Bluetooth v4.2 BR/EDR et BLE \\
+\hline
+\textbf{GPIO} & 34 broches GPIO programmables \\
+\hline
+\textbf{Interfaces} & UART (3), SPI (4), I2C (2), I2S (2), CAN 2.0, PWM \\
+\hline
+\textbf{Convertisseurs} & ADC 12-bit (18 canaux), DAC 8-bit (2 canaux) \\
+\hline
+\textbf{Sécurité} & Accélération cryptographique matérielle (AES, SHA, RSA), boot sécurisé, flash chiffré \\
+\hline
+\textbf{Alimentation} & 2.2 V à 3.6 V, modes basse consommation (deep sleep < 10 µA) \\
+\hline
+\textbf{Température} & -40°C à +125°C (grade industriel) \\
+\hline
+\end{tabular}
+\end{table}
+
+
+\subsection{Écosystème de développement}
+
+L'ESP32 bénéficie d'un écosystème logiciel mature facilitant le développement d'applications :
+
+\textbf{ESP-IDF (Espressif IoT Development Framework)} : Framework officiel en C/C++ offrant un contrôle bas niveau et des performances optimales. Il intègre FreeRTOS pour la gestion multitâche en temps réel.
+
+\textbf{Arduino Core pour ESP32} : Port de l'environnement Arduino permettant un développement rapide et accessible grâce à une bibliothèque riche de fonctions simplifiées. Idéal pour le prototypage et les projets de complexité moyenne.
+
+\textbf{MicroPython / CircuitPython} : Implémentations de Python pour microcontrôleurs, permettant un développement interactif et une courbe d'apprentissage douce.
+
+\textbf{PlatformIO} : Environnement de développement intégré (IDE) multiplateforme supportant l'ESP32 avec gestion avancée des bibliothèques, débogage et compilation optimisée.
+
+\textbf{Bibliothèques spécialisées} : Nombreuses bibliothèques open-source pour MQTT (PubSubClient, AsyncMQTT), HTTP (HTTPClient, AsyncWebServer), JSON (ArduinoJson), OTA (ArduinoOTA), et bien d'autres protocoles et fonctionnalités.
+
+\subsection{Avantages de l'ESP32 pour notre projet}
+
+Le choix de l'ESP32 comme plateforme matérielle pour notre système Andon intelligent se justifie par plusieurs avantages décisifs :
+
+\textbf{Connectivité Wi-Fi native :} Permet une intégration simplifiée au réseau industriel existant sans nécessiter de modules externes coûteux.
+
+\textbf{Performance de calcul suffisante :} Le processeur dual-core 240 MHz permet de gérer simultanément la détection des événements, la communication MQTT et la gestion des LEDs sans dégradation de performance.
+
+\textbf{Nombre de GPIO élevé :} Les 34 broches GPIO permettent de connecter plusieurs boutons Andon, un lecteur RFID, des LEDs de signalisation et des capteurs additionnels sur un seul module.
+
+
+\textbf{Sécurité matérielle :} Les fonctionnalités de chiffrement matériel et de boot sécurisé renforcent la sécurité globale du système face aux menaces de compromission des dispositifs edge.
+
+\textbf{Coût économique :} Le prix unitaire de l'ESP32 (2 à 5 euros selon les variantes) permet un déploiement à grande échelle sans investissement prohibitif.
+
+\textbf{Communauté et support :} La large communauté de développeurs et la richesse documentaire facilitent la résolution de problèmes techniques et l'intégration de nouvelles fonctionnalités.
+
+\textbf{Fiabilité industrielle :} Les variantes industrielles de l'ESP32 tolèrent des conditions environnementales difficiles (température étendue, vibrations) courantes en milieu industriel.
+
+\ph{Architecture matérielle du module ESP32}{fig:esp32_architecture}
+
+\section{MQTT — Protocole de Messagerie IoT}
+
+\subsection{Présentation et historique}
+
+\textbf{MQTT} (Message Queuing Telemetry Transport) est un protocole de messagerie léger conçu spécifiquement pour les communications Machine-to-Machine (M2M) et l'Internet des Objets. Développé initialement en 1999 par Andy Stanford-Clark (IBM) et Arlen Nipper (Arcom, aujourd'hui Cirrus Link) pour surveiller des pipelines pétroliers via des liaisons satellites à faible bande passante, MQTT est devenu un standard OASIS en 2013 et ISO/IEC en 2016.
+
+MQTT répond aux contraintes spécifiques des réseaux IoT : bande passante limitée, latence variable, connexions intermittentes et dispositifs à ressources limitées. Sa simplicité, sa légèreté et sa fiabilité en ont fait le protocole de référence pour l'IIoT.
+
+\subsection{Principe de fonctionnement : modèle Publish/Subscribe}
+
+Contrairement au modèle client/serveur classique utilisé par HTTP, MQTT repose sur un modèle de communication \textbf{publish/subscribe} (publication/abonnement) offrant un découplage total entre émetteurs et récepteurs de messages.
+
+
+Ce modèle s'articule autour de trois acteurs principaux :
+
+\textbf{Broker MQTT :} Serveur central (ex : Mosquitto, HiveMQ, EMQX) qui reçoit tous les messages des clients et les redistribue aux clients abonnés aux topics concernés. Il gère les sessions clients, les abonnements et assure la persistance des messages selon les niveaux de QoS.
+
+\textbf{Publishers (Éditeurs) :} Clients qui publient des messages sur des topics spécifiques. Dans notre contexte, les modules ESP32 sont des publishers qui publient des événements Andon.
+
+\textbf{Subscribers (Abonnés) :} Clients qui s'abonnent à un ou plusieurs topics pour recevoir les messages correspondants. Notre serveur backend Node.js est un subscriber qui écoute les événements publiés par les ESP32.
+
+\ph{Architecture Publish/Subscribe du protocole MQTT}{fig:mqtt_pubsub}
+
+\subsection{Concepts fondamentaux}
+
+\subsubsection{Topics (Sujets)}
+
+Les topics constituent le système d'adressage hiérarchique de MQTT. Un topic est une chaîne de caractères UTF-8 organisée selon une structure arborescente avec des niveaux séparés par des barres obliques (/). Exemples :
+
+\begin{itemize}
+    \item \texttt{sews/atelier/ligne01/andon/status}
+    \item \texttt{sews/atelier/ligne01/andon/alert}
+    \item \texttt{sews/atelier/ligne01/rfid/scan}
+\end{itemize}
+
+Les subscribers peuvent s'abonner à des topics précis ou utiliser des wildcards :
+\begin{itemize}
+    \item \textbf{+} (single-level wildcard) : remplace exactement un niveau. Ex : \texttt{sews/atelier/+/andon/alert} écoute les alertes de toutes les lignes.
+    \item \textbf{\#} (multi-level wildcard) : remplace tous les niveaux restants. Ex : \texttt{sews/atelier/\#} écoute tous les messages de l'atelier.
+\end{itemize}
+
+
+\subsubsection{Quality of Service (QoS)}
+
+MQTT définit trois niveaux de qualité de service garantissant différents degrés de fiabilité de livraison :
+
+\textbf{QoS 0 (At most once)} : Le message est envoyé une seule fois sans accusé de réception. Livraison non garantie, mais latence minimale. Utilisé pour des données non critiques (mesures environnementales redondantes).
+
+\textbf{QoS 1 (At least once)} : Le message est envoyé au moins une fois avec accusé de réception. Garantit la livraison mais peut générer des doublons. Équilibre entre fiabilité et performance.
+
+\textbf{QoS 2 (Exactly once)} : Garantit la livraison exactement une fois via une poignée de main en quatre étapes. Fiabilité maximale mais latence et overhead réseau supérieurs. Réservé aux messages critiques (commandes d'actionneurs, transactions financières).
+
+Pour notre système Andon, nous utilisons principalement QoS 1 pour garantir qu'aucune alerte ne soit perdue tout en maintenant une latence acceptable.
+
+\subsubsection{Retained Messages}
+
+Un message marqué \textit{retained} est conservé par le broker et automatiquement envoyé à tout nouveau client s'abonnant au topic concerné. Cela permet aux nouveaux subscribers de connaître immédiatement le dernier état connu d'un équipement sans attendre une nouvelle publication.
+
+\subsubsection{Last Will and Testament (LWT)}
+
+Le mécanisme LWT permet à un client de définir un message qui sera automatiquement publié par le broker si la connexion du client est perdue de manière inattendue. Cela permet de détecter les défaillances réseau ou matérielles des dispositifs IoT et de déclencher des alertes appropriées.
+
+
+\subsection{Avantages de MQTT pour l'IIoT}
+
+MQTT présente plusieurs avantages décisifs pour les applications IoT industrielles :
+
+\textbf{Légèreté et efficacité :} L'en-tête minimal d'un paquet MQTT (2 octets) et l'utilisation de TCP/IP assurent une consommation de bande passante minimale, cruciale pour les réseaux à faible débit.
+
+\textbf{Fiabilité :} Les niveaux de QoS garantissent la livraison des messages critiques même en présence de défaillances réseau temporaires.
+
+\textbf{Scalabilité :} Le modèle publish/subscribe permet d'ajouter facilement de nouveaux dispositifs ou applications sans reconfiguration des clients existants.
+
+\textbf{Découplage :} Publishers et subscribers n'ont pas besoin de se connaître mutuellement ni d'être actifs simultanément, facilitant l'architecture distribuée.
+
+\textbf{Sécurité :} MQTT supporte TLS/SSL pour le chiffrement des communications et l'authentification par nom d'utilisateur/mot de passe ou certificats X.509.
+
+\textbf{Support bidirectionnel :} Un même client peut être simultanément publisher et subscriber, permettant des interactions complexes.
+
+\subsection{Implémentation dans notre système}
+
+Dans notre architecture, MQTT joue un rôle central comme épine dorsale de communication :
+
+\begin{itemize}
+    \item Les modules ESP32 publient les événements Andon sur des topics structurés.
+    \item Le serveur Node.js s'abonne à ces topics, traite les événements et les persiste en base de données.
+    \item Le broker MQTT (Mosquitto) assure la distribution fiable et performante des messages.
+    \item Le mécanisme LWT détecte automatiquement les déconnexions inattendues des modules ESP32.
+\end{itemize}
+
+
+\section{WebSocket et Socket.IO}
+
+\subsection{Limitation du protocole HTTP classique}
+
+Le protocole HTTP (HyperText Transfer Protocol) traditionnel repose sur un modèle requête/réponse unidirectionnel et sans état (stateless). Le client initie toujours la communication en envoyant une requête au serveur, qui répond puis ferme la connexion. Ce modèle présente des limitations majeures pour les applications temps réel nécessitant des mises à jour instantanées initiées par le serveur.
+
+Pour contourner ces limitations, plusieurs techniques ont été développées historiquement :
+
+\textbf{Polling} : Le client envoie des requêtes HTTP périodiques au serveur pour vérifier la présence de nouvelles données. Inefficace et génère un trafic réseau important même en l'absence de mises à jour.
+
+\textbf{Long Polling} : Le serveur maintient la connexion ouverte jusqu'à l'arrivée de nouvelles données ou expiration d'un timeout. Améliore la réactivité mais reste inefficient en termes de ressources serveur.
+
+\textbf{Server-Sent Events (SSE)} : Connexion HTTP persistante unidirectionnelle du serveur vers le client. Simple mais ne permet pas la communication bidirectionnelle.
+
+Ces solutions palliatives ont été rendues obsolètes par l'émergence du protocole WebSocket.
+
+\subsection{Protocole WebSocket}
+
+\textbf{WebSocket} est un protocole de communication standardisé (RFC 6455, 2011) offrant un canal de communication bidirectionnel full-duplex sur une connexion TCP unique. Après une poignée de main initiale HTTP (WebSocket handshake), la connexion est maintenue ouverte indéfiniment, permettant au serveur et au client d'échanger des messages dans les deux directions avec une latence minimale.
+
+\subsubsection{Mécanisme de fonctionnement}
+
+Le processus d'établissement d'une connexion WebSocket comprend les étapes suivantes :
+
+\begin{enumerate}
+    \item Le client envoie une requête HTTP avec l'en-tête \texttt{Upgrade: websocket}.
+    \item Le serveur accepte la montée en version et répond avec un code HTTP 101 (Switching Protocols).
+    \item La connexion TCP est maintenue ouverte et les données sont échangées via des frames WebSocket de faible overhead.
+    \item Les deux parties peuvent envoyer des messages à tout moment sans attendre de requête.
+    \item La connexion reste active jusqu'à fermeture explicite par l'une des parties ou déconnexion réseau.
+\end{enumerate}
+
+
+\subsubsection{Avantages du WebSocket}
+
+\textbf{Latence minimale :} Les messages sont transmis instantanément sans overhead HTTP répété, idéal pour les notifications temps réel.
+
+\textbf{Efficacité réseau :} Une seule connexion TCP persistante élimine l'overhead des multiples requêtes HTTP.
+
+\textbf{Communication bidirectionnelle :} Serveur et client peuvent initier des échanges de manière symétrique.
+
+\textbf{Support natif dans les navigateurs :} L'API WebSocket est nativement supportée par tous les navigateurs modernes.
+
+\subsection{Socket.IO — Bibliothèque temps réel}
+
+\textbf{Socket.IO} est une bibliothèque JavaScript facilitant le développement d'applications web temps réel bidirectionnelles. Bien qu'utilisant WebSocket comme transport privilégié, Socket.IO offre plusieurs fonctionnalités avancées et garantit la compatibilité avec les environnements ne supportant pas nativement WebSocket.
+
+\subsubsection{Fonctionnalités principales}
+
+\textbf{Fallback automatique :} Si WebSocket n'est pas disponible (pare-feu restrictif, proxy incompatible), Socket.IO bascule automatiquement sur HTTP long-polling, garantissant la compatibilité universelle.
+
+\textbf{Reconnexion automatique :} En cas de perte de connexion, Socket.IO tente automatiquement de se reconnecter avec stratégie de backoff exponentiel.
+
+\textbf{Rooms et Namespaces :} Permet de segmenter les connexions en groupes logiques (rooms) et espaces de noms (namespaces) pour diffusion sélective de messages.
+
+\textbf{Événements personnalisés :} Au-delà de l'envoi de messages bruts, Socket.IO permet de définir et d'émettre des événements nommés avec données associées, structurant la communication.
+
+\textbf{Broadcasting :} Diffusion simplifiée de messages à tous les clients connectés ou à un sous-ensemble filtré (room spécifique).
+
+\textbf{Acknowledgments :} Mécanisme de callbacks pour confirmer la réception et le traitement d'un message.
+
+
+\subsubsection{Architecture Socket.IO dans notre système}
+
+Dans notre système Andon intelligent, Socket.IO assure la communication temps réel entre le backend Node.js et les clients web (dashboard de supervision) :
+
+\begin{enumerate}
+    \item Le serveur Node.js écoute les messages MQTT provenant des ESP32.
+    \item À la réception d'un événement Andon, le serveur persiste les données en PostgreSQL.
+    \item Le serveur émet un événement Socket.IO vers tous les clients web connectés.
+    \item Les dashboards reçoivent instantanément l'événement et mettent à jour l'interface utilisateur sans rechargement de page.
+\end{enumerate}
+
+Ce pipeline garantit une latence end-to-end inférieure à 2 secondes entre l'actionnement d'un bouton physique et la notification visuelle sur tous les terminaux connectés.
+
+\ph{Pipeline de communication MQTT + WebSocket/Socket.IO}{fig:mqtt_socketio_pipeline}
+
+\section{Node.js et Express.js}
+
+\subsection{Node.js — Plateforme JavaScript côté serveur}
+
+\textbf{Node.js} est un environnement d'exécution JavaScript open-source, multiplateforme, construit sur le moteur V8 de Google Chrome. Créé en 2009 par Ryan Dahl, Node.js a révolutionné le développement backend en permettant l'utilisation de JavaScript côté serveur, unifiant ainsi les langages frontend et backend.
+
+\subsubsection{Caractéristiques fondamentales}
+
+\textbf{Architecture événementielle non-bloquante :} Node.js repose sur une boucle d'événements (event loop) et des I/O asynchrones, permettant de gérer des milliers de connexions concurrentes sans overhead de threads. Idéal pour les applications temps réel à forte concurrence.
+
+\textbf{Moteur V8 haute performance :} Le moteur JavaScript V8 compile le code en bytecode natif, offrant des performances proches des langages compilés traditionnels.
+
+\textbf{Écosystème NPM :} Node Package Manager (NPM) est le plus vaste écosystème de bibliothèques open-source (plus de 2 millions de packages), accélérant considérablement le développement.
+
+
+\textbf{JavaScript full-stack :} L'utilisation du même langage côté client et serveur simplifie le développement, facilite le partage de code (validation, modèles de données) et réduit la courbe d'apprentissage des équipes.
+
+\textbf{Scalabilité horizontale :} L'architecture légère de Node.js facilite le déploiement d'instances multiples derrière un load balancer pour gérer des charges importantes.
+
+\subsubsection{Cas d'usage privilégiés}
+
+Node.js excelle particulièrement dans les scénarios suivants :
+
+\begin{itemize}
+    \item Applications temps réel (chat, notifications push, tableaux de bord collaboratifs)
+    \item APIs RESTful et microservices
+    \item Applications IoT nécessitant la gestion de nombreuses connexions simultanées
+    \item Serveurs proxy et passerelles API
+    \item Applications streaming (vidéo, audio, données)
+\end{itemize}
+
+Notre système Andon s'inscrit précisément dans ces cas d'usage : gestion de connexions MQTT multiples, diffusion temps réel via WebSocket et exposition d'APIs RESTful.
+
+\subsection{Express.js — Framework Web Minimaliste}
+
+\textbf{Express.js} est le framework web le plus populaire pour Node.js, offrant une couche d'abstraction légère et flexible pour le développement d'applications web et d'APIs. Sa philosophie minimaliste laisse une grande liberté architecturale tout en fournissant les fonctionnalités essentielles.
+
+\subsubsection{Fonctionnalités principales}
+
+\textbf{Routage puissant :} Système de routage permettant de définir des handlers pour différentes méthodes HTTP (GET, POST, PUT, DELETE) et patterns d'URL, avec support des paramètres dynamiques et expressions régulières.
+
+\textbf{Middlewares :} Architecture basée sur une chaîne de middlewares (fonctions intermédiaires) permettant de modulariser le traitement des requêtes (logging, authentification, parsing, compression, gestion d'erreurs).
+
+
+\textbf{Gestion des templates :} Intégration facile de moteurs de templates (EJS, Pug, Handlebars) pour générer dynamiquement des pages HTML côté serveur.
+
+\textbf{Support des méthodes HTTP :} Gestion native de toutes les méthodes HTTP standard pour la construction d'APIs RESTful conformes.
+
+\textbf{Extensibilité :} Écosystème riche de middlewares tiers (Passport pour l'authentification, Helmet pour la sécurité, Morgan pour le logging, CORS pour la gestion des origines croisées).
+
+\subsubsection{Architecture de notre backend Express}
+
+Notre serveur backend s'articule autour d'une architecture modulaire classique :
+
+\begin{itemize}
+    \item \textbf{Routes} : Définition des endpoints API (authentification, gestion des pannes, consultation des statistiques).
+    \item \textbf{Contrôleurs} : Logique métier de traitement des requêtes.
+    \item \textbf{Modèles} : Abstraction de l'accès aux données PostgreSQL.
+    \item \textbf{Middlewares} : Authentification JWT, validation des entrées, gestion des erreurs.
+    \item \textbf{Services} : Logique métier transverse (calcul des KPI, envoi de notifications).
+\end{itemize}
+
+\section{PostgreSQL — Base de Données Relationnelle}
+
+\subsection{Présentation générale}
+
+\textbf{PostgreSQL} (souvent abrégé Postgres) est un système de gestion de base de données relationnelle objet (SGBDRO) open-source réputé pour sa robustesse, sa conformité aux standards SQL et ses fonctionnalités avancées. Développé depuis 1986 à l'Université de Californie à Berkeley, PostgreSQL est aujourd'hui l'une des bases de données les plus populaires et respectées de l'écosystème open-source.
+
+
+\subsection{Caractéristiques et fonctionnalités avancées}
+
+\textbf{Conformité SQL :} PostgreSQL respecte rigoureusement les standards SQL (SQL:2016) et supporte des fonctionnalités avancées (CTEs récursifs, window functions, full-text search).
+
+\textbf{Support transactionnel ACID :} Garantit l'Atomicité, la Cohérence, l'Isolation et la Durabilité des transactions, essentiel pour l'intégrité des données critiques.
+
+\textbf{Types de données riches :} Support natif de types avancés (JSON/JSONB, tableaux, types géométriques, UUID, range types) et possibilité de définir des types personnalisés.
+
+\textbf{Extensibilité :} Possibilité d'ajouter des fonctions personnalisées, opérateurs, types de données et extensions (PostGIS pour les données géospatiales, TimescaleDB pour les séries temporelles).
+
+\textbf{Indexation avancée :} Support de multiples types d'index (B-tree, Hash, GiST, GIN, BRIN) optimisant les performances selon les patterns d'accès.
+
+\textbf{Performances et optimisation :} Optimiseur de requêtes sophistiqué, parallélisation des requêtes, partitionnement de tables, réplication et haute disponibilité.
+
+\textbf{Sécurité :} Gestion fine des permissions (RBAC), chiffrement des connexions SSL/TLS, Row-Level Security (RLS) pour contrôle d'accès granulaire.
+
+\subsection{Justification du choix pour notre projet}
+
+Le choix de PostgreSQL pour notre système Andon intelligent repose sur plusieurs critères déterminants :
+
+\textbf{Fiabilité et intégrité :} Les propriétés ACID garantissent qu'aucune donnée de panne ou d'intervention ne sera corrompue ou perdue, même en cas de défaillance système.
+
+\textbf{Support JSON natif :} Le type JSONB permet de stocker de manière performante des métadonnées variables (observations techniciens, paramètres contextuels) sans rigidifier le schéma.
+
+
+\textbf{Requêtes analytiques :} Les fonctionnalités avancées (window functions, CTEs) facilitent le calcul des KPI complexes (MTTA, MTTR, disponibilité par période) directement en SQL.
+
+\textbf{Évolutivité :} PostgreSQL gère efficacement des bases de données de plusieurs téraoctets, permettant l'archivage historique long terme sans dégradation de performance.
+
+\textbf{Écosystème Node.js :} Bibliothèques clientes matures et performantes (node-postgres, Sequelize ORM) facilitant l'intégration avec notre backend Node.js.
+
+\textbf{Coût :} Solution open-source sans frais de licence, réduisant le TCO (Total Cost of Ownership) par rapport aux solutions propriétaires (Oracle, SQL Server).
+
+\textbf{Compatibilité cloud :} Support natif par tous les principaux fournisseurs cloud (AWS RDS, Google Cloud SQL, Azure Database, Railway, Supabase) facilitant le déploiement et la maintenance.
+
+\section{Progressive Web Application (PWA)}
+
+\subsection{Définition et philosophie}
+
+Les \textbf{Progressive Web Applications} (PWA) représentent une évolution majeure du web moderne, combinant les avantages des sites web (accessibilité universelle, référencement, mises à jour instantanées) et des applications natives (expérience utilisateur riche, fonctionnement hors ligne, notifications push, installation sur l'écran d'accueil).
+
+Le terme PWA a été introduit par Google en 2015 et repose sur une philosophie d'amélioration progressive : l'application fonctionne dans tous les navigateurs avec des fonctionnalités de base, mais tire parti des capacités avancées des navigateurs modernes lorsqu'elles sont disponibles.
+
+\subsection{Caractéristiques fondamentales d'une PWA}
+
+Selon Google, une PWA doit respecter les principes suivants :
+
+\textbf{Progressive :} Fonctionne pour tous les utilisateurs, quel que soit le navigateur, grâce à l'amélioration progressive.
+
+\textbf{Responsive :} S'adapte automatiquement à tous les facteurs de forme (desktop, mobile, tablette).
+
+
+\textbf{Connectivity independent :} Fonctionne hors ligne ou en conditions réseau dégradées grâce aux Service Workers.
+
+\textbf{App-like :} Offre une expérience utilisateur similaire aux applications natives (navigation fluide, animations, interactions).
+
+\textbf{Fresh :} Toujours à jour grâce aux mises à jour automatiques des Service Workers.
+
+\textbf{Safe :} Servie exclusivement via HTTPS pour prévenir les attaques man-in-the-middle et garantir l'intégrité du contenu.
+
+\textbf{Discoverable :} Identifiable comme « application » par les moteurs de recherche grâce au manifeste Web App.
+
+\textbf{Re-engageable :} Permet de réengager les utilisateurs via notifications push même lorsque le navigateur est fermé.
+
+\textbf{Installable :} Peut être ajoutée à l'écran d'accueil sans passer par un store applicatif.
+
+\textbf{Linkable :} Peut être partagée via une simple URL sans installation complexe.
+
+\subsection{Technologies clés des PWA}
+
+\subsubsection{Service Workers}
+
+Les \textbf{Service Workers} constituent le cœur technologique des PWA. Il s'agit de scripts JavaScript s'exécutant en arrière-plan, indépendamment de la page web, et jouant le rôle de proxy réseau programmable.
+
+Fonctionnalités principales :
+\begin{itemize}
+    \item \textbf{Mise en cache intelligente} : Interception des requêtes réseau et service du contenu depuis le cache pour fonctionnement hors ligne.
+    \item \textbf{Synchronisation en arrière-plan} : Synchronisation différée des données lorsque la connexion est rétablie.
+    \item \textbf{Notifications push} : Réception et affichage de notifications même application fermée.
+    \item \textbf{Mises à jour automatiques} : Détection et installation de nouvelles versions de l'application.
+\end{itemize}
+
+
+\subsubsection{Web App Manifest}
+
+Le \textbf{manifeste} est un fichier JSON décrivant l'application (nom, icônes, couleurs, orientation préférée) permettant au navigateur de proposer l'installation sur l'écran d'accueil et de contrôler l'apparence au lancement.
+
+Exemple de manifeste minimaliste :
+\begin{lstlisting}[language=json,caption={Exemple de manifeste PWA}]
+{
+  "name": "SEWS Andon System",
+  "short_name": "Andon",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#003366",
+  "theme_color": "#003366",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+\end{lstlisting}
+
+\subsubsection{HTTPS obligatoire}
+
+Les PWA nécessitent impérativement un contexte sécurisé (HTTPS) pour garantir que le Service Worker et les APIs sensibles (géolocalisation, caméra, notifications) ne puissent être compromis par des attaques réseau.
+
+\subsection{Avantages des PWA pour notre contexte industriel}
+
+Le choix d'une PWA pour notre application mobile techniciens présente plusieurs avantages stratégiques :
+
+\textbf{Déploiement instantané :} Aucune validation par un store applicatif (App Store, Google Play), permettant des mises à jour immédiates sans délai d'approbation.
+
+\textbf{Installation simplifiée :} Les techniciens accèdent simplement à l'URL et peuvent installer l'application d'un clic, sans nécessiter de compte Google ou Apple.
+
+
+\textbf{Compatibilité multiplateforme :} Une seule base de code fonctionne sur Android, iOS, Windows, Linux, macOS, réduisant drastiquement les coûts de développement et de maintenance.
+
+\textbf{Fonctionnement hors ligne :} Les techniciens peuvent consulter les informations des pannes et préparer leurs interventions même en cas de perte temporaire de connexion Wi-Fi.
+
+\textbf{Mises à jour transparentes :} Chaque accès à l'application vérifie automatiquement la disponibilité d'une nouvelle version et la télécharge en arrière-plan.
+
+\textbf{Coût réduit :} Pas de frais récurrents liés aux stores applicatifs (99\$/an pour Apple Developer Program, 25\$ unique pour Google Play).
+
+\textbf{Expérience utilisateur native :} L'application s'affiche en plein écran sans barre d'adresse, offrant une expérience indiscernable d'une application native.
+
+\section{HTML5, CSS3 et JavaScript}
+
+\subsection{HTML5 — Structure sémantique moderne}
+
+\textbf{HTML5} représente la cinquième révision majeure du langage HTML, standardisée en 2014 par le W3C. HTML5 introduit de nombreux éléments sémantiques (header, nav, article, section, footer) améliorant la structuration du contenu et l'accessibilité, ainsi que de nouvelles APIs JavaScript (Canvas, Web Storage, Geolocation, Web Workers).
+
+Pour notre projet, HTML5 offre :
+\begin{itemize}
+    \item Balises sémantiques structurant logiquement les différentes sections du dashboard.
+    \item Formulaires enrichis avec validation native (types input email, number, date).
+    \item Web Storage (localStorage, sessionStorage) pour persistance locale des préférences utilisateur.
+\end{itemize}
+
+\subsection{CSS3 — Mise en forme avancée et responsive}
+
+\textbf{CSS3} (Cascading Style Sheets Level 3) apporte de nombreuses améliorations permettant des interfaces modernes et responsives sans recourir systématiquement à JavaScript ou images.
+
+
+Fonctionnalités clés utilisées dans notre projet :
+
+\textbf{Flexbox et CSS Grid :} Systèmes de mise en page modernes facilitant la création de layouts responsives complexes sans frameworks lourds.
+
+\textbf{Media Queries :} Adaptation dynamique de la mise en page selon la taille de l'écran (desktop, tablette, mobile).
+
+\textbf{Transitions et animations :} Animations fluides améliorant l'expérience utilisateur (feedback visuel lors des interactions, transitions de pages).
+
+\textbf{Variables CSS :} Définition de thèmes cohérents et maintenables (couleurs corporate, espacements standardisés).
+
+\textbf{Pseudo-classes avancées :} Interactivité sophistiquée (:hover, :focus, :active, :disabled) améliorant l'accessibilité.
+
+\subsection{JavaScript moderne (ES6+)}
+
+\textbf{JavaScript} constitue le langage de programmation côté client universel, permettant d'ajouter interactivité et dynamisme aux pages web. Les versions récentes (ECMAScript 2015/ES6 et ultérieures) ont considérablement modernisé le langage.
+
+Fonctionnalités ES6+ exploitées dans notre projet :
+
+\textbf{Arrow functions :} Syntaxe concise et gestion simplifiée du contexte \texttt{this}.
+
+\textbf{Promises et Async/Await :} Gestion élégante de l'asynchronisme (requêtes AJAX, WebSocket) évitant le callback hell.
+
+\textbf{Modules ES6 :} Structuration modulaire du code (import/export) améliorant la maintenabilité.
+
+\textbf{Destructuring et spread operator :} Manipulation simplifiée d'objets et tableaux.
+
+\textbf{Template literals :} Concaténation de chaînes et interpolation de variables lisible.
+
+\textbf{Classes :} Programmation orientée objet moderne facilitant la structuration du code.
+
+
+\section{Wokwi — Simulateur IoT en ligne}
+
+\subsection{Présentation}
+
+\textbf{Wokwi} est un simulateur en ligne d'électronique et de microcontrôleurs permettant de concevoir, programmer et tester virtuellement des projets Arduino, ESP32, Raspberry Pi Pico et autres plateformes sans nécessiter de matériel physique. Lancé en 2020, Wokwi est devenu un outil populaire pour l'apprentissage, le prototypage rapide et la démonstration de concepts.
+
+\subsection{Fonctionnalités principales}
+
+\textbf{Simulation matérielle complète :} Wokwi simule avec précision le comportement des microcontrôleurs, composants électroniques (LEDs, boutons, capteurs, afficheurs, moteurs) et bus de communication (I2C, SPI, UART).
+
+\textbf{Éditeur de code intégré :} IDE complet avec coloration syntaxique, autocomplétion et compilation dans le navigateur.
+
+\textbf{Bibliothèques Arduino compatibles :} Support de la majorité des bibliothèques Arduino populaires, facilitant le développement sans modification de code.
+
+\textbf{Débogage interactif :} Moniteur série, visualisation des signaux, inspection des variables en temps réel.
+
+\textbf{Partage et collaboration :} Projets partageables via URL, facilitant la collaboration et la revue de code.
+
+\textbf{Support ESP32 complet :} Simulation fidèle de l'ESP32 incluant Wi-Fi virtuel, permettant de tester des communications MQTT sans matériel.
+
+\subsection{Utilisation dans notre projet}
+
+Wokwi a joué un rôle crucial dans les phases initiales de notre projet :
+
+\textbf{Prototypage rapide :} Validation du concept technique (détection boutons, communication MQTT, identification RFID) avant investissement matériel.
+
+\textbf{Tests de communication :} Vérification de la connectivité MQTT et du format des messages échangés entre ESP32 simulé et broker réel.
+
+
+\textbf{Démonstration et formation :} Présentation du fonctionnement du système aux parties prenantes sans nécessiter de matériel physique.
+
+\textbf{Tests de résilience :} Simulation de pannes réseau et vérification du comportement du système en conditions dégradées.
+
+\textbf{Documentation :} Génération de schémas électroniques clairs et partageables pour la documentation technique.
+
+\ph{Interface de simulation Wokwi avec ESP32 et composants Andon}{fig:wokwi_simulation}
+
+\section{Comparaison des technologies utilisées}
+
+Cette section présente des analyses comparatives justifiant les choix technologiques effectués pour notre système.
+
+\subsection{Comparaison des microcontrôleurs IoT}
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Comparaison des microcontrôleurs IoT}
+\label{tab:mcu_comparison}
+\begin{tabular}{|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|}
+\hline
+\rowcolor{sewesblu!20}
+\textbf{Critère} & \textbf{ESP32} & \textbf{ESP8266} & \textbf{Arduino Uno + Shield} & \textbf{Raspberry Pi Pico W} \\
+\hline
+\textbf{Processeur} & Dual-core 240MHz & Single-core 80MHz & Single-core 16MHz & Dual-core 133MHz \\
+\hline
+\textbf{RAM} & 520 KB & 80 KB & 2 KB & 264 KB \\
+\hline
+\textbf{Wi-Fi} & Intégré & Intégré & Module externe & Intégré \\
+\hline
+\textbf{Bluetooth} & Oui (BLE) & Non & Non & Oui (BLE) \\
+\hline
+\textbf{GPIO} & 34 & 17 & 14 & 26 \\
+\hline
+\textbf{Prix} & 3-5€ & 2-3€ & 20-25€ & 5-7€ \\
+\hline
+\textbf{Consommation} & Moyenne & Faible & Élevée & Moyenne \\
+\hline
+\textbf{Écosystème} & Excellent & Bon & Excellent & Émergent \\
+\hline
+\rowcolor{green!10}
+\textbf{Choix} & \textbf{Retenu} & Insuffisant & Trop cher & Alternative viable \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{Justification du choix ESP32 :} Meilleur rapport performance/prix/fonctionnalités, écosystème mature, GPIO suffisants pour nos besoins, support Bluetooth pour extensions futures.
+
+
+\subsection{Comparaison des protocoles de communication IoT}
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Comparaison des protocoles de communication IoT}
+\label{tab:protocol_comparison}
+\begin{tabular}{|p{2.5cm}|p{2cm}|p{2cm}|p{2cm}|p{2cm}|p{2cm}|}
+\hline
+\rowcolor{sewesblu!20}
+\textbf{Critère} & \textbf{MQTT} & \textbf{HTTP REST} & \textbf{WebSocket} & \textbf{CoAP} & \textbf{AMQP} \\
+\hline
+\textbf{Modèle} & Pub/Sub & Req/Resp & Full-duplex & Req/Resp & Pub/Sub \\
+\hline
+\textbf{Transport} & TCP & TCP & TCP & UDP & TCP \\
+\hline
+\textbf{Overhead} & Très faible & Élevé & Faible & Très faible & Moyen \\
+\hline
+\textbf{QoS} & 3 niveaux & Non & Non & 2 niveaux & Oui \\
+\hline
+\textbf{Latence} & Faible & Moyenne & Faible & Faible & Moyenne \\
+\hline
+\textbf{Complexité} & Faible & Faible & Moyenne & Moyenne & Élevée \\
+\hline
+\textbf{Bande passante} & Optimisée & Élevée & Moyenne & Optimisée & Moyenne \\
+\hline
+\textbf{Support ESP32} & Excellent & Excellent & Bon & Limité & Limité \\
+\hline
+\rowcolor{green!10}
+\textbf{Choix} & \textbf{Retenu} & Dashboard & Dashboard & Non adapté & Trop complexe \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{Justification du choix MQTT :} Protocole conçu spécifiquement pour l'IoT, overhead minimal, QoS flexible, modèle pub/sub adapté aux architectures distribuées, support excellent sur ESP32.
+
+\subsection{Comparaison des bases de données}
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Comparaison des systèmes de gestion de bases de données}
+\label{tab:database_comparison}
+\begin{tabular}{|p{2.8cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|}
+\hline
+\rowcolor{sewesblu!20}
+\textbf{Critère} & \textbf{PostgreSQL} & \textbf{MySQL} & \textbf{MongoDB} & \textbf{InfluxDB} \\
+\hline
+\textbf{Type} & Relationnelle & Relationnelle & NoSQL Document & Time-Series \\
+\hline
+\textbf{ACID} & Complet & Complet & Limité & Limité \\
+\hline
+\textbf{JSON natif} & Oui (JSONB) & Oui (JSON) & Oui (BSON) & Non \\
+\hline
+\textbf{Requêtes complexes} & Excellent & Bon & Limité & Spécialisé \\
+\hline
+\textbf{Intégrité référentielle} & Forte & Forte & Absente & Absente \\
+\hline
+\textbf{Scalabilité} & Verticale & Verticale & Horizontale & Horizontale \\
+\hline
+\textbf{Maturité} & Très élevée & Très élevée & Élevée & Moyenne \\
+\hline
+\textbf{Coût} & Gratuit & Gratuit & Gratuit & Gratuit \\
+\hline
+\rowcolor{green!10}
+\textbf{Choix} & \textbf{Retenu} & Alternative & Structure inadaptée & Trop spécialisé \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{Justification du choix PostgreSQL :} Données relationnelles structurées, intégrité référentielle critique, requêtes analytiques complexes pour KPI, support JSON pour flexibilité, maturité et fiabilité éprouvées.
+
+
+\subsection{Comparaison des frameworks backend}
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Comparaison des frameworks backend}
+\label{tab:backend_comparison}
+\begin{tabular}{|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|}
+\hline
+\rowcolor{sewesblu!20}
+\textbf{Critère} & \textbf{Node.js/Express} & \textbf{Django (Python)} & \textbf{Spring Boot (Java)} & \textbf{Flask (Python)} \\
+\hline
+\textbf{Langage} & JavaScript & Python & Java & Python \\
+\hline
+\textbf{Performance} & Excellente & Bonne & Excellente & Bonne \\
+\hline
+\textbf{Temps réel} & Excellent & Moyen & Bon & Moyen \\
+\hline
+\textbf{Concurrence} & Excellente & Moyenne & Excellente & Moyenne \\
+\hline
+\textbf{Courbe apprentissage} & Faible & Moyenne & Élevée & Faible \\
+\hline
+\textbf{Écosystème} & Très riche & Riche & Très riche & Moyen \\
+\hline
+\textbf{WebSocket/MQTT} & Natif & Modules tiers & Modules tiers & Modules tiers \\
+\hline
+\textbf{Déploiement} & Simple & Moyen & Complexe & Simple \\
+\hline
+\rowcolor{green!10}
+\textbf{Choix} & \textbf{Retenu} & Alternative & Trop lourd & Trop minimaliste \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{Justification du choix Node.js/Express :} Architecture événementielle idéale pour temps réel, JavaScript full-stack (partage code frontend/backend), excellente gestion concurrence, écosystème riche (MQTT, Socket.IO), déploiement simplifié.
+
+\subsection{Comparaison des approches frontend mobile}
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Comparaison des approches de développement mobile}
+\label{tab:mobile_comparison}
+\begin{tabular}{|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|}
+\hline
+\rowcolor{sewesblu!20}
+\textbf{Critère} & \textbf{PWA} & \textbf{React Native} & \textbf{Flutter} & \textbf{Applications natives} \\
+\hline
+\textbf{Technologies} & HTML/CSS/JS & JavaScript/React & Dart & Swift/Kotlin \\
+\hline
+\textbf{Code partagé} & 100\% & 80-90\% & 80-90\% & 0\% \\
+\hline
+\textbf{Performance} & Bonne & Très bonne & Excellente & Excellente \\
+\hline
+\textbf{Installation} & Simple (URL) & App Store & App Store & App Store \\
+\hline
+\textbf{Mises à jour} & Instantanées & Validation store & Validation store & Validation store \\
+\hline
+\textbf{Accès APIs} & Limité & Complet & Complet & Complet \\
+\hline
+\textbf{Hors ligne} & Oui & Oui & Oui & Oui \\
+\hline
+\textbf{Coût développement} & Très faible & Moyen & Moyen & Élevé \\
+\hline
+\rowcolor{green!10}
+\textbf{Choix} & \textbf{Retenu} & Alternative & Alternative & Trop coûteux \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{Justification du choix PWA :} Déploiement instantané sans validation store, mises à jour transparentes, code unique multiplateforme, installation simplifiée, coût développement minimal, APIs suffisantes pour nos besoins.
+
+
+\section{Conclusion}
+
+Ce chapitre a présenté de manière exhaustive les fondements théoriques et les technologies sous-tendant notre système Andon intelligent basé sur l'IIoT. Nous avons d'abord contextualisé le projet en rappelant les enjeux industriels de SEWS Maroc et les limitations du système Andon traditionnel. L'analyse approfondie de la problématique a permis d'identifier précisément les défis à relever : absence de traçabilité numérique, calcul manuel des KPI, gestion papier des interventions et absence de supervision centralisée.
+
+Les objectifs fonctionnels et non fonctionnels ont été explicités, définissant un périmètre clair pour la solution à développer : détection automatique des pannes, notification temps réel, traçabilité complète, calcul automatique des indicateurs de performance et interfaces de supervision modernes.
+
+Nous avons ensuite exploré les concepts fondamentaux du système Andon et ses évolutions vers l'intelligence connectée, ainsi que les paradigmes de l'Industrie 4.0 et de l'Internet Industriel des Objets, positionnant notre projet dans une démarche globale de transformation digitale industrielle.
+
+L'analyse détaillée des technologies clés a justifié nos choix architecturaux :
+
+\begin{itemize}
+    \item \textbf{ESP32} comme plateforme matérielle edge offrant connectivité Wi-Fi native, puissance de calcul suffisante et coût maîtrisé.
+    \item \textbf{MQTT} comme protocole de communication IoT assurant légèreté, fiabilité et découplage architectural.
+    \item \textbf{WebSocket/Socket.IO} pour les communications temps réel bidirectionnelles entre backend et dashboards web.
+    \item \textbf{Node.js/Express.js} comme plateforme backend exploitant l'architecture événementielle pour gérer efficacement les flux temps réel.
+    \item \textbf{PostgreSQL} comme système de gestion de base de données garantissant intégrité, fiabilité et capacités analytiques avancées.
+    \item \textbf{PWA} comme approche frontend mobile offrant déploiement instantané, mises à jour transparentes et compatibilité universelle.
+\end{itemize}
+
+
+Les tableaux comparatifs présentés ont démontré que chaque choix technologique résulte d'une analyse objective des alternatives disponibles, privilégiant systématiquement les critères de performance, fiabilité, coût, maintenabilité et adéquation aux contraintes industrielles spécifiques de SEWS Maroc.
+
+L'utilisation de l'outil de simulation Wokwi a permis un prototypage rapide et une validation précoce des concepts techniques avant investissement matériel, illustrant l'importance d'une démarche itérative et agile dans le développement de solutions IoT industrielles.
+
+Les technologies standard du web moderne (HTML5, CSS3, JavaScript ES6+) ont été retenues pour le développement des interfaces utilisateur, garantissant une accessibilité universelle, une maintenabilité facilitée et une évolutivité à long terme.
+
+En synthèse, l'architecture technologique retenue repose sur des standards ouverts, des protocoles éprouvés dans l'industrie et des outils open-source matures, minimisant les risques techniques, réduisant les coûts de licence et garantissant la pérennité de la solution. Cette stack technologique cohérente constitue un socle solide pour l'implémentation concrète du système, qui sera détaillée dans le chapitre suivant.
+
+Le prochain chapitre abordera la conception détaillée du système : modélisation UML des processus métier, architecture logicielle multi-couches, conception de la base de données relationnelle, spécification de l'architecture réseau MQTT et définition des interfaces utilisateur. Cette phase de conception transformera les exigences fonctionnelles et les choix technologiques en un blueprint architectural précis et implémentable.
+
+\clearpage
+

@@ -1,15 +1,15 @@
 # Fix: Green Button State Persistence Issue
 
-## Problem Description (المشكلة)
+## Problem Description
 
-عندما يتم الضغط على الزر الأخضر (Green Button) في Dashboard، كانت حالة الماكينة تتغير إلى "Operational/Green" لمدة ثانية أو ثانيتين، ثم تعود تلقائيًا إلى الحالة السابقة (Previous State) مثل Orange أو Red.
+When the Green button was pressed in Dashboard, the machine status changed to "Operational/Green" for 1-2 seconds, then automatically reverted to the previous state (such as Orange or Red).
 
 **When the Green button was pressed in Dashboard:**
 1. Machine status changed to "Operational/Green" ✓
 2. After 1-2 seconds → status reverted to previous state (Orange/Red/etc.) ✗
 3. Expected: Status should stay Green until new MQTT message from Wokwi arrives ✓
 
-## Root Cause (السبب الجذري)
+## Root Cause
 
 The problem was caused by **duplicate MQTT message handling**:
 
@@ -27,7 +27,7 @@ The problem was caused by **duplicate MQTT message handling**:
 3. **Result:**
    - Dashboard receives the old state from MQTT and reverts the Green status
 
-## Solution (الحل)
+## Solution
 
 ### Changes Made:
 
@@ -92,7 +92,7 @@ app.post('/api/machines/update-status', async (req, res) => {
 });
 ```
 
-## How It Works Now (كيف يعمل الآن)
+## How It Works Now
 
 ### Scenario 1: Manual Green Button Press
 
@@ -120,7 +120,7 @@ app.post('/api/machines/update-status', async (req, res) => {
 5. mqtt-bridge emits `updateMachines` with Red/Downtime status ✓
 6. Dashboard receives event and shows Red ✓
 
-## Testing (الاختبار)
+## Testing
 
 ### Test Case 1: Green Button Persistence
 - ✅ Press Green button on any machine
@@ -138,7 +138,7 @@ app.post('/api/machines/update-status', async (req, res) => {
 - ✅ All should work as before
 - ✅ No regression in existing functionality
 
-## Files Modified (الملفات المعدلة)
+## Files Modified
 
 1. **mqtt-bridge.js**
    - Added `lastKnownMachineState` tracker
@@ -149,7 +149,7 @@ app.post('/api/machines/update-status', async (req, res) => {
    - Modified `/api/machines/update-status` endpoint
    - Calls `updateMachineStateTracker()` after manual interventions
 
-## Deployment (النشر)
+## Deployment
 
 After deploying these changes:
 
@@ -163,14 +163,14 @@ git push origin main
 # No database changes needed
 ```
 
-## Important Notes (ملاحظات مهمة)
+## Important Notes
 
 1. **No Database Changes:** This fix is purely logic-based, no schema changes
 2. **Backward Compatible:** All existing functionality remains unchanged
 3. **All Buttons Work:** Orange, Red, Blue, Yellow buttons work exactly as before
 4. **Wokwi Control Preserved:** Wokwi can still override any manual state with new MQTT messages
 
-## Success Criteria (معايير النجاح)
+## Success Criteria
 
 ✅ Green button status persists indefinitely until new MQTT message arrives
 ✅ No reversion to previous state after 1-2 seconds

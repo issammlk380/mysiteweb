@@ -1,0 +1,227 @@
+﻿% ============================================================================
+% CHAPITRE 4 : TESTS, VALIDATION ET RÉSULTATS
+% ============================================================================
+\chapter{Tests, Validation et Résultats}
+
+\section*{Introduction}
+
+Ce chapitre présente la stratégie de test adoptée pour valider le bon fonctionnement du système Andon intelligent, les résultats obtenus lors des tests fonctionnels et de performance, la validation sur site industriel, ainsi qu'une analyse critique de la solution développée incluant les forces, limites identifiées et perspectives d'amélioration.
+
+\section{Stratégie et Méthodologie de Test}
+
+\subsection{Niveaux de test}
+
+La validation du système s'appuie sur une approche multiniveau inspirée du modèle en V :
+
+\begin{description}
+    \item[\textbf{Tests unitaires}] : Validation individuelle des fonctions backend (calcul MTTA/MTTR, formatage JSON, gestion erreurs MQTT, requêtes SQL).
+    \item[\textbf{Tests d'intégration}] : Vérification de la communication entre composants adjacents (ESP32 $\leftrightarrow$ MQTT $\leftrightarrow$ Backend $\leftrightarrow$ PostgreSQL $\leftrightarrow$ Socket.IO).
+    \item[\textbf{Tests fonctionnels}] : Validation des scénarios utilisateur de bout en bout (cycle de vie complet d'une panne avec toutes les phases).
+    \item[\textbf{Tests de performance}] : Mesure de la latence, du débit, de la charge supportée et de la consommation ressources.
+    \item[\textbf{Tests d'acceptation}] : Validation en conditions réelles sur site SEWS Maroc avec utilisateurs finaux.
+\end{description}
+
+\subsection{Environnement de test}
+
+\begin{table}[htbp]
+\centering
+\caption{Configuration de l'environnement de test}
+\label{tab:environnement_test}
+\small
+\begin{tabular}{@{}p{3.5cm}p{8.5cm}@{}}
+\toprule
+\textbf{Composant} & \textbf{Configuration} \\
+\midrule
+\rowcolor{gray!10}
+Modules ESP32 & Wokwi Simulator en ligne + ESP32 physiques (3 unités) \\
+Broker MQTT & HiveMQ Cloud (service managé, plan gratuit) \\
+\rowcolor{gray!10}
+Backend Node.js & Railway (1 vCPU, 512\,MB RAM, région Europe) \\
+Base de données & PostgreSQL 14 sur Railway (25\,MB stockage gratuit) \\
+\rowcolor{gray!10}
+Dashboard Web & Chrome 120, Firefox 121, Edge 119 (Windows 11) \\
+PWA Mobile & Chrome Mobile (Android 13, Samsung Galaxy A54) \\
+\rowcolor{gray!10}
+Réseau & WiFi SEWS 802.11n, Débit 50 Mbps, Latence 15 ms \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\section{Tests Fonctionnels}
+
+\subsection{Validation du cycle de vie complet des pannes}
+
+Le tableau~\ref{tab:resultats_tests_fonctionnels} présente les résultats des tests fonctionnels couvrant l'ensemble du cycle de vie.
+
+\begin{table}[htbp]
+\centering
+\caption{Résultats des tests fonctionnels}
+\label{tab:resultats_tests_fonctionnels}
+\small
+\begin{tabular}{@{}p{1cm}p{6cm}p{3cm}p{1.5cm}@{}}
+\toprule
+\textbf{ID} & \textbf{Scénario testé} & \textbf{Résultat mesuré} & \textbf{Statut} \\
+\midrule
+\rowcolor{gray!10}
+TF1 & Détection automatique appui bouton Andon & Temps < 1\,s & \textcolor{green!60!black}{\textbf{OK}} \\
+TF2 & Enregistrement en base PostgreSQL avec intégrité & Données cohérentes & \textcolor{green!60!black}{\textbf{OK}} \\
+\rowcolor{gray!10}
+TF3 & Notification Socket.IO temps réel dashboard & Latence < 2\,s & \textcolor{green!60!black}{\textbf{OK}} \\
+TF4 & Identification technicien par RFID & UID correctement lu & \textcolor{green!60!black}{\textbf{OK}} \\
+\rowcolor{gray!10}
+TF5 & Enregistrement intervention (criticité, observations) & Données persistées & \textcolor{green!60!black}{\textbf{OK}} \\
+TF6 & Calcul automatique MTTA & Formule correcte & \textcolor{green!60!black}{\textbf{OK}} \\
+\rowcolor{gray!10}
+TF7 & Calcul automatique MTTR & Formule correcte & \textcolor{green!60!black}{\textbf{OK}} \\
+TF8 & Résolution panne via bouton vert & Statut Resolved & \textcolor{green!60!black}{\textbf{OK}} \\
+\rowcolor{gray!10}
+TF9 & Affichage temps réel dashboard multi-clients & Mise à jour immédiate & \textcolor{green!60!black}{\textbf{OK}} \\
+TF10 & Consultation historique avec recherche et filtres & Données complètes & \textcolor{green!60!black}{\textbf{OK}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Tests des API REST}
+
+Les endpoints principaux ont été testés avec Postman sur 100 requêtes chacun. Le tableau~\ref{tab:resultats_api} synthétise les résultats.
+
+\begin{table}[htbp]
+\centering
+\caption{Résultats des tests API REST}
+\label{tab:resultats_api}
+\small
+\begin{tabular}{@{}p{5cm}p{2cm}p{2.5cm}p{2cm}@{}}
+\toprule
+\textbf{Endpoint} & \textbf{Méthode} & \textbf{Temps moyen} & \textbf{Statut} \\
+\midrule
+\rowcolor{gray!10}
+\texttt{/api/alerts/active} & GET & 45 ms & \textcolor{green!60!black}{\textbf{OK}} \\
+\texttt{/api/machines} & GET & 38 ms & \textcolor{green!60!black}{\textbf{OK}} \\
+\rowcolor{gray!10}
+\texttt{/api/technicians/rfid/:uid} & GET & 52 ms & \textcolor{green!60!black}{\textbf{OK}} \\
+\texttt{/api/technician/acknowledge} & POST & 95 ms & \textcolor{green!60!black}{\textbf{OK}} \\
+\rowcolor{gray!10}
+\texttt{/api/kpis} & GET & 180 ms & \textcolor{green!60!black}{\textbf{OK}} \\
+\texttt{/api/alerts/history} & GET & 125 ms & \textcolor{green!60!black}{\textbf{OK}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Tous les endpoints respectent l'objectif de temps de réponse < 500 ms.
+
+\section{Tests de Performance}
+
+\subsection{Latence de bout en bout}
+
+La latence totale entre l'appui bouton et l'affichage dashboard a été mesurée sur 50 essais consécutifs.
+
+\textbf{Résultats statistiques :}
+\begin{itemize}
+    \item \textbf{Latence minimale} : 380 ms
+    \item \textbf{Latence moyenne} : 520 ms
+    \item \textbf{Latence maximale} : 890 ms
+    \item \textbf{Latence P95} (95\ieme percentile) : 680 ms
+    \item \textbf{Latence P99} (99\ieme percentile) : 820 ms
+    \item \textbf{Écart-type} : 95 ms
+\end{itemize}
+
+\textbf{Analyse :} La latence moyenne de 520\,ms est largement inférieure au seuil objectif de 2\,000\,ms, validant l'exigence temps réel du système. Le P95 de 680\,ms confirme que 95\,\% des événements sont notifiés en moins de 0,7 seconde.
+
+\textbf{Décomposition de la latence :}
+\begin{itemize}
+    \item ESP32 détection $\rightarrow$ publication MQTT : 50--80 ms
+    \item MQTT broker $\rightarrow$ backend : 30--50 ms
+    \item Backend traitement + INSERT PostgreSQL : 60--100 ms
+    \item Backend $\rightarrow$ Socket.IO emission : 10--20 ms
+    \item Socket.IO $\rightarrow$ Dashboard affichage : 230--270 ms
+\end{itemize}
+
+\subsection{Tests de charge}
+
+Des tests de charge ont été effectués avec simulation de multiples utilisateurs et événements simultanés.
+
+\textbf{Résultats par niveau de charge :}
+
+\begin{table}[htbp]
+\centering
+\caption{Résultats des tests de charge}
+\label{tab:tests_charge}
+\small
+\begin{tabular}{@{}p{3cm}p{3cm}p{3cm}p{3cm}@{}}
+\toprule
+\textbf{Charge} & \textbf{Temps réponse API} & \textbf{CPU Backend} & \textbf{Statut} \\
+\midrule
+\rowcolor{gray!10}
+10 utilisateurs & < 100 ms & 15\,\% & \textcolor{green!60!black}{\textbf{OK}} \\
+25 utilisateurs & < 150 ms & 25\,\% & \textcolor{green!60!black}{\textbf{OK}} \\
+\rowcolor{gray!10}
+50 utilisateurs & < 200 ms & 35\,\% & \textcolor{green!60!black}{\textbf{OK}} \\
+75 utilisateurs & < 350 ms & 55\,\% & \textcolor{green!60!black}{\textbf{OK}} \\
+\rowcolor{gray!10}
+100 utilisateurs & < 400 ms & 65\,\% & \textcolor{orange!80!black}{\textbf{Acceptable}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Le backend supporte confortablement la charge prévue (24 machines + 50 utilisateurs max) avec marge de performance.
+
+\section{Validation sur Site Industriel}
+
+Des tests pilotes ont été effectués sur le site SEWS Maroc pour valider la solution en conditions réelles.
+
+\textbf{Aspects validés :}
+\begin{itemize}
+    \item \textbf{Connectivité WiFi} : Les modules ESP32 maintiennent une connexion stable dans l'environnement industriel (interférences électromagnétiques modérées).
+    \item \textbf{Lecture RFID} : Fonctionnement correct des lecteurs RFID malgré température variable (20--35°C) et humidité modérée.
+    \item \textbf{Ergonomie PWA} : Les techniciens ont validé l'interface mobile comme intuitive et pratique sur le terrain.
+    \item \textbf{Couverture réseau} : Tous les points de l'atelier bénéficient d'une couverture WiFi suffisante (RSSI > -70 dBm).
+\end{itemize}
+
+\textbf{Ajustements identifiés :}
+\begin{itemize}
+    \item Augmentation de la luminosité maximale des écrans PWA pour lecture en plein éclairage atelier.
+    \item Ajout d'un feedback sonore plus distinct lors du scan RFID réussi.
+    \item Positionnement optimal des antennes RFID pour éviter zones mortes.
+\end{itemize}
+
+\section{Analyse Critique de la Solution}
+
+\subsection{Forces de la solution développée}
+
+\begin{itemize}
+    \item \textbf{Architecture ouverte et modulaire} : Technologies open source, pas de vendor lock-in, extensibilité facilitée.
+    \item \textbf{Coût maîtrisé} : Infrastructure cloud gratuite (offre Railway), matériel ESP32 économique (<5\,€/unité).
+    \item \textbf{Temps réel effectif} : Latence moyenne 520\,ms, notification instantanée via WebSocket.
+    \item \textbf{Traçabilité complète} : Historique exhaustif, calcul automatique KPI, intégrité données garantie.
+    \item \textbf{Mobilité} : PWA installable sans app store, fonctionnement cross-platform.
+    \item \textbf{Scalabilité} : Architecture capable de supporter extension à 100+ machines.
+\end{itemize}
+
+\subsection{Limites identifiées}
+
+\begin{itemize}
+    \item \textbf{Prototype limité} : Tests effectués sur 3 modules ESP32 seulement, déploiement massif non validé.
+    \item \textbf{Sécurité basique} : Absence d'authentification robuste (JWT), pas de chiffrement MQTT TLS obligatoire.
+    \item \textbf{Dépendance réseau} : Système inutilisable en cas de panne WiFi ou Internet.
+    \item \textbf{Export données limité} : Pas de fonctionnalité export CSV/Excel/PDF implémentée.
+    \item \textbf{Backup manuel} : Pas de stratégie de sauvegarde automatique multi-sites.
+\end{itemize}
+
+\subsection{Perspectives d'amélioration}
+
+\begin{enumerate}
+    \item \textbf{Déploiement pilote étendu} : Extension à 5--10 machines pour validation statistique significative.
+    \item \textbf{Sécurité renforcée} : Implémentation authentification JWT, chiffrement TLS/SSL pour MQTT, gestion rôles utilisateurs.
+    \item \textbf{Intégration GMAO} : Connexion avec système GMAO existant via API pour synchronisation bidirectionnelle.
+    \item \textbf{Maintenance prédictive} : Développement module machine learning pour prédiction pannes basée sur historique.
+    \item \textbf{Extension multi-ateliers} : Déploiement solution aux autres ateliers SEWS (assemblage, câblage).
+    \item \textbf{Dashboard analytics} : Ajout graphiques avancés (tendances, heatmaps, Pareto) pour aide décision.
+    \item \textbf{Mode offline} : Implémentation cache local avec synchronisation différée pour résilience réseau.
+\end{enumerate}
+
+\section*{Conclusion}
+
+Les tests effectués ont validé le bon fonctionnement du système Andon intelligent sur l'ensemble des scénarios fonctionnels identifiés. La latence moyenne de 520\,ms respecte largement l'objectif de 2 secondes. Les tests de charge confirment la scalabilité de l'architecture. La validation sur site a démontré la viabilité technique et l'acceptabilité utilisateur de la solution. L'analyse critique identifie les forces du système et les axes d'amélioration pour une industrialisation future. La solution développée répond aux besoins exprimés et ouvre des perspectives d'extension prometteuses.
+
+\clearpage

@@ -1,0 +1,173 @@
+\chapter{Analyse des besoins}
+
+Ce chapitre pr\'esente l'analyse d\'etaill\'ee des besoins fonctionnels et non fonctionnels du syst\`eme Andon \`a d\'evelopper. L'approche adopt\'ee combine le recueil des besoins par observation directe et entretiens, et leur formalisation \`a l'aide du langage de mod\'elisation UML.
+
+\section{M\'ethodologie d'analyse}
+
+\subsection{Sources de besoins}
+
+Les besoins ont \'et\'e collect\'es \`a partir de plusieurs sources :
+
+\begin{itemize}
+    \item \textbf{Observations directes :} immersion de trois mois au sein de l'atelier Test \'Electrique.
+    \item \textbf{Entretiens :} conversations avec les techniciens de maintenance, les chefs d'atelier et le responsable maintenance.
+    \item \textbf{Documentation existante :} fiches d'intervention, rapports d'arr\^et, tableaux de suivi.
+    \item \textbf{\'Etat de l'art :} analyse des solutions existantes dans la litt\'erature.
+\end{itemize}
+
+\subsection{Acteurs du syst\`eme}
+
+L'identification des acteurs est une \'etape fondamentale de l'analyse. Le syst\`eme Andon pr\'evu int\`egre les acteurs suivants :
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{l p{10cm}}
+\toprule
+\textbf{Acteur} & \textbf{R\^ole} \\
+\midrule
+Op\'erateur de production & Signale les anomalies en appuyant sur le bouton Andon de son poste de travail. \\
+Technicien de maintenance & Intervient pour diagnostiquer et r\'e-soudre les pannes signal\'ees. \\
+Chef d'atelier & Supervise l'ensemble des lignes et g\`ere les priorit\'es d'intervention. \\
+Responsable maintenance & Analyse les statistiques et optimise les processus de maintenance. \\
+Administrateur syst\`eme & Configure et administre le syst\`eme Andon. \\
+\bottomrule
+\end{tabular}
+\caption{Acteurs du syst\`eme Andon}
+\label{tab:acteurs}
+\end{table}
+
+\section{Besoin fonctionnels}
+
+\subsection{Module de signalisation (capteurs)}
+
+Ce module correspond \`a la couche physique de collecte des \'ev\'enements :
+
+\begin{itemize}
+    \item \textbf{F-SIG-01 :} D\'etection de l'appui sur le bouton Andon physique.
+    \item \textbf{F-SIG-02 :} Identification automatique de la ligne de production.
+    \item \textbf{F-SIG-03 :} Envoi imm\'ediat de la notification au serveur.
+    \item \textbf{F-SIG-04 :} Indication visuelle locale (LED verte/rouge) de l'\`etat.
+    \item \textbf{F-SIG-05 :} R\'esistance aux conditions industrielles (poussi\`ere, vibrations, temp\'erature).
+\end{itemize}
+
+\subsection{Module de traitement (backend)}
+
+Ce module assure le traitement centralis\'e des \'ev\'enements :
+
+\begin{itemize}
+    \item \textbf{F-BACK-01 :} R\'eception et validation des messages MQTT.
+    \item \textbf{F-BACK-02 :} Enregistrement des \'ev\'enements dans la base de donn\'ees.
+    \item \textbf{F-BACK-03 :} Gestion des utilisateurs et des droits d'acc\`es.
+    \item \textbf{F-BACK-04 :} G\'en\'eration des notifications (e-mail, alertes visuelles).
+    \item \textbf{F-BACK-05 :} Exposition d'une API REST pour le frontend.
+    \item \textbf{F-BACK-06 :} Diffusion des \'ev\'enements en temps r\'eel via WebSocket.
+    \item \textbf{F-BACK-07 :} Calcul des m\'etriques et indicateurs de performance.
+\end{itemize}
+
+\subsection{Module de visualisation (frontend)}
+
+Ce module fournit l'interface utilisateur :
+
+\begin{itemize}
+    \item \textbf{F-FRONT-01 :} Tableau de bord principal avec vue d'ensemble des lignes.
+    \item \textbf{F-FRONT-02 :} D\'etail de chaque ligne avec chronologie des \'ev\'enements.
+    \item \textbf{F-FRONT-03 :} Vue temps r\'eel des alertes actives.
+    \item \textbf{F-FRONT-04 :} Rapports et statistiques (par p\'eriode, par ligne, par type).
+    \item \textbf{F-FRONT-05 :} Authentification et gestion des profils utilisateurs.
+    \item \textbf{F-FRONT-06 :} Responsive design pour utilisation sur tablette et smartphone.
+    \item \textbf{F-FRONT-07 :} Historique des pannes avec capacit\'e de recherche et filtrage.
+\end{itemize}
+
+\section{Besoins non fonctionnels}
+
+\subsection{Performance}
+
+\begin{itemize}
+    \item \textbf{NF-PERF-01 :} Le temps de transmission d'un \'ev\'enement du capteur au serveur doit \^etre inf\'erieur \`a 1 seconde.
+    \item \textbf{NF-PERF-02 :} Le frontend doit afficher les donn\'ees en temps r\'eel avec une latence inf\'erieure \`a 2 secondes.
+    \item \textbf{NF-PERF-03 :} Le serveur doit supporter au moins 50 connexions simultan\'ees.
+    \item \textbf{NF-PERF-04 :} Les requ\^etes API doivent r\'epondre en moins de 500 ms.
+\end{itemize}
+
+\subsection{Fiabilit\'e}
+
+\begin{itemize}
+    \item \textbf{NF-FIAB-01 :} Le syst\`eme doit \^etre disponible 99,5\% du temps.
+    \item \textbf{NF-FIAB-02 :} Les donn\'ees ne doivent jamais \^etre perdues (persistence fiable).
+    \item \textbf{NF-FIAB-03 :} Le syst\`eme doit g\'erer les pannes de r\'eseau sans perte de donn\'ees.
+\end{itemize}
+
+\subsection{S\'ecurit\'e}
+
+\begin{itemize}
+    \item \textbf{NF-SEC-01 :} Authentification requise pour tout acc\`es au syst\`eme.
+    \item \textbf{NF-SEC-02 :} Les mots de passe doivent \^etre hash\'es et sal\'es.
+    \item \textbf{NF-SEC-03 :} Les donn\'ees doivent \^etre transmises de mani\`ere s\'ecuris\'ee (TLS/HTTPS).
+    \item \textbf{NF-SEC-04 :} Journalisation de toutes les actions critiques.
+\end{itemize}
+
+\subsection{Maintenabilit\'e}
+
+\begin{itemize}
+    \item \textbf{NF-MAINT-01 :} Le code doit suivre les bonnes pratiques de d\'eveloppement.
+    \item \textbf{NF-MAINT-02 :} La documentation technique doit \^etre compl\`ete et \`a jour.
+    \item \textbf{NF-MAINT-03 :} Le syst\`eme doit \^etre modulaire pour faciliter les \'evolutions.
+\end{itemize}
+
+\section{Mod\`elisation UML}
+
+\subsection{Diagramme de cas d'utilisation}
+
+Le diagramme de cas d'utilisation d\'ecrit les interactions entre les acteurs et le syst\`eme. Les cas d'utilisation principaux sont :
+
+\begin{enumerate}
+    \item \textbf{Signaler une panne :} l'op\'erateur appuie sur le bouton Andon.
+    \item \textbf{Consulter le tableau de bord :} le chef d'atelier visualise l'\`etat des lignes.
+    \item \textbf{Diagnostiquer une panne :} le technicien acc\`ede aux d\'etails de la panne.
+    \item \textbf{Cl\^oturer une intervention :} le technicien enregistre la r\'e-solution.
+    \item \textbf{Consulter les rapports :} le responsable maintenance analyse les statistiques.
+    \item \textbf{G\'erer les utilisateurs :} l'administrateur configure les acc\`es.
+\end{enumerate}
+
+\subsection{Diagramme de s\'equence}
+
+Le sc\'enario principal de signalement d'une panne suit le flux suivant :
+
+\begin{enumerate}
+    \item L'op\'erateur appuie sur le bouton Andon physique.
+    \item L'ESP32 d\'etecte l'appui et g\'en\`ere un message JSON.
+    \item Le message est publi\'e sur le topic MQTT correspondant.
+    \item Le serveur Node.js re\c{c}oit le message via la connexion MQTT.
+    \item L'\'ev\'enement est enregistr\'e dans PostgreSQL.
+    \item Le serveur diffuse l'\'ev\'enement via Socket.IO.
+    \item Le frontend Angular re\c{c}oit la notification et met \`a jour l'affichage.
+    \item Un e-mail de notification est envoy\'e au technicien de garde.
+\end{enumerate}
+
+\section{Sp\'ecifications fonctionnelles}
+
+\subsection{Mod\`ele de donn\'ees pr\'eliminaire}
+
+Les entit\'es principales du syst\`eme sont d\'efinies comme suit :
+
+\begin{itemize}
+    \item \textbf{Ligne :} identifiant, nom, num\'ero, statut (active/inactive/en panne).
+    \item \textbf{Evenement :} identifiant, date, type, statut, id\_ligne, description.
+    \item \textbf{Utilisateur :} identifiant, nom, pr\'enom, e-mail, r\^ole, mot\_de\_passe.
+    \item \textbf{Notification :} identifiant, date, type, destinataire, contenu, statut.
+\end{itemize}
+
+\subsection{R\`egles de gestion}
+
+\begin{enumerate}
+    \item Un m\^eme bouton Andon ne peut g\'en\'erer qu'un seul \'ev\'enement actif \`a la fois.
+    \item La cl\^oture d'un \'ev\'enement requiert la saisie d'un compte-rendu d'intervention.
+    \item Seul un administrateur peut cr\'eer ou supprimer des comptes utilisateurs.
+    \item Les rapports ne peuvent \^etre g\'en\'er\'es que pour des p\'eriodes inf\'erieures \`a 12 mois.
+    \item Toute action critique (cl\^oture, suppression) doit \^etre trac\'ee dans le journal.
+\end{enumerate}
+
+\section{Synth\`ese du chapitre}
+
+L'analyse des besoins a permis de formaliser les exigences fonctionnelles et non fonctionnelles du syst\`eme Andon. Quatre modules principaux ont \'et\'e identifi\'es : signalisation (capteurs), traitement (backend), visualisation (frontend) et notifications. Les contraintes de performance, fiabilit\'e et s\'ecurit\'e ont \'et\'e d\'efinies pour guider la phase de conception d\'etaill\'ee.

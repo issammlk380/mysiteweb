@@ -1,0 +1,246 @@
+\chapter{Conception de la base de donn\'ees}
+
+Ce chapitre pr\'esente la conception du mod\`ele de donn\'ees du syst\`eme Andon, depuis l'analyse des besoins en donn\'ees jusqu'\`a l'impl\'ementation SQL dans PostgreSQL.
+
+\section{M\'ethodologie de conception}
+
+\subsection{Approche adopt\'ee}
+
+La conception de la base de donn\'ees suit une approche descendante :
+
+\begin{enumerate}
+    \item Identification des entit\'es et de leurs attributs.
+    \item D\'efinition des relations entre les entit\'es.
+    \item Normalisation du mod\`ele (3FN minimum).
+    \item Impl\'ementation du sch\'ema SQL.
+    \item Ajout des index et optimisations.
+\end{enumerate}
+
+\subsection{Entit\'es principales}
+
+L'analyse des besoins a permis d'identifier les entit\'es suivantes :
+
+\begin{itemize}
+    \item \textbf{Ligne :} repr\'esente une ligne de production de l'atelier.
+    \item \textbf{Evenement :} repr\'esente un \'ev\'enement Andon (panne, anomalie).
+    \item \textbf{Utilisateur :} repr\'esente un utilisateur du syst\`eme.
+    \item \textbf{Notification :} repr\'esente une notification envoy\'ee.
+    \item \textbf{Capteur :} repr\'esente un n\oe{}ud ESP32 connect\'e.
+\end{itemize}
+
+\section{Mod\`ele Entit\'e-Association}
+
+\subsection{Diagramme EA}
+
+Le mod\`ele Entit\'e-Association d\'ecrit les entit\'es, leurs attributs et les relations entre elles :
+
+\begin{itemize}
+    \item \textbf{Ligne -- Evenement} : une ligne peut g\'en\'erer plusieurs \'ev\'enements (relation 1:N).
+    \item \textbf{Utilisateur -- Evenement} : un utilisateur peut cr\'eer ou g\'erer plusieurs \'ev\'enements (relation 1:N).
+    \item \textbf{Ligne -- Capteur} : une ligne est associ\'ee \`a un capteur (relation 1:1).
+    \item \textbf{Evenement -- Notification} : un \'ev\'enement peut d\'eclencher plusieurs notifications (relation 1:N).
+\end{itemize}
+
+\figplaceholder{Diagramme Entit\'e-Association du syst\`eme Andon}{fig:diagramme_ea}
+
+\subsection{D\'efinition des attributs}
+
+\subsubsection{Entit\'e Ligne}
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Attribut} & \textbf{Type} & \textbf{Description} \\
+\midrule
+id & SERIAL (PK) & Identifiant unique \\
+nom & VARCHAR(100) & Nom de la ligne \\
+numero & INTEGER & Num\'ero de la ligne \\
+statut & VARCHAR(20) & Statut actuel \\
+date\_creation & TIMESTAMP & Date de cr\'eation \\
+\bottomrule
+\end{tabular}
+\caption{Attributs de l'entit\'e Ligne}
+\label{tab:attributs_ligne}
+\end{table}
+
+\subsubsection{Entit\'e Evenement}
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Attribut} & \textbf{Type} & \textbf{Description} \\
+\midrule
+id & SERIAL (PK) & Identifiant unique \\
+ligne\_id & INTEGER (FK) & R\'ef\'erence \`a la ligne \\
+type & VARCHAR(50) & Type d'\'ev\'enement \\
+statut & VARCHAR(20) & En cours / R\'e-solu \\
+description & TEXT & Description d\'etail\'ee \\
+date\_debut & TIMESTAMP & Heure de d\'etection \\
+date\_fin & TIMESTAMP & Heure de r\'e-solution \\
+technicien\_id & INTEGER (FK) & Technicien assign\'e \\
+compte\_rendu & TEXT & Compte-rendu d'intervention \\
+\bottomrule
+\end{tabular}
+\caption{Attributs de l'entit\'e Evenement}
+\label{tab:attributs_evenement}
+\end{table}
+
+\section{Mod\`ele relationnel}
+
+\subsection{Sch\'ema relationnel}
+
+Le passage du mod\`ele EA au mod\`ele relationnel produit les tables suivantes :
+
+\begin{lstlisting}[caption={Sch\'ema relationnel},label={lst:schema_relational}]
+Ligne (id, nom, numero, statut, date_creation)
+Evenement (id, ligne_id, type, statut, 
+           description, date_debut, date_fin, 
+           technicien_id, compte_rendu)
+Utilisateur (id, nom, prenom, email, role, 
+             mot_de_passe, date_creation)
+Notification (id, evenement_id, destinataire_id, 
+              type, contenu, date_envoi, statut)
+Capteur (id, ligne_id, mac_address, 
+         firmware_version, date_installation)
+\end{lstlisting}
+
+\subsection{R\`egles d'int\'egrit\'e}
+
+Les contraintes d'int\'egrit\'e suivantes sont appliqu\'ees :
+
+\begin{itemize}
+    \item \textbf{Cl\'es primaires :} chaque table poss\`ede un identifiant unique auto-incr\'ement\'e (SERIAL).
+    \item \textbf{Cl\'es \'etrang\`eres :} les r\'ef\'erences entre tables sont contr\^ol\'ees par des contraintes FOREIGN KEY.
+    \item \textbf{NOT NULL :} les attributs critiques ne peuvent \^etre nuls.
+    \item \textbf{UNIQUE :} l'adresse e-mail des utilisateurs doit \^etre unique.
+    \item \textbf{CHECK :} les statuts doivent respecter les valeurs d\'efinies.
+\end{itemize}
+
+\section{Impl\'ementation SQL}
+
+\subsection{Cr\'eation des tables}
+
+\begin{lstlisting}[language=SQL,caption={Cr\'eation des tables principales},label={lst:create_tables}]
+CREATE TABLE lignes (
+    id SERIAL PRIMARY KEY,
+    nom VARCHAR(100) NOT NULL,
+    numero INTEGER UNIQUE NOT NULL,
+    statut VARCHAR(20) DEFAULT 'active' 
+        CHECK (statut IN (
+            'active','inactive','en_panne'
+        )),
+    date_creation TIMESTAMP 
+        DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE utilisateurs (
+    id SERIAL PRIMARY KEY,
+    nom VARCHAR(100) NOT NULL,
+    prenom VARCHAR(100) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    role VARCHAR(50) NOT NULL
+        CHECK (role IN (
+            'admin','technicien','chef','operateur'
+        )),
+    mot_de_passe VARCHAR(255) NOT NULL,
+    date_creation TIMESTAMP 
+        DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE evenements (
+    id SERIAL PRIMARY KEY,
+    ligne_id INTEGER NOT NULL 
+        REFERENCES lignes(id),
+    type VARCHAR(50) NOT NULL,
+    statut VARCHAR(20) DEFAULT 'en_cours'
+        CHECK (statut IN ('en_cours','resolu')),
+    description TEXT,
+    date_debut TIMESTAMP 
+        DEFAULT CURRENT_TIMESTAMP,
+    date_fin TIMESTAMP,
+    technicien_id INTEGER 
+        REFERENCES utilisateurs(id),
+    compte_rendu TEXT
+);
+
+CREATE TABLE notifications (
+    id SERIAL PRIMARY KEY,
+    evenement_id INTEGER 
+        REFERENCES evenements(id),
+    destinataire_id INTEGER 
+        REFERENCES utilisateurs(id),
+    type VARCHAR(50) NOT NULL,
+    contenu TEXT,
+    date_envoi TIMESTAMP 
+        DEFAULT CURRENT_TIMESTAMP,
+    statut VARCHAR(20) DEFAULT 'envoyee'
+);
+\end{lstlisting}
+
+\subsection{Index de performance}
+
+Pour garantir des performances optimales, les index suivants sont cr\'e\'es :
+
+\begin{lstlisting}[language=SQL,caption={Index de performance},label={lst:indexes}]
+CREATE INDEX idx_evenements_ligne 
+    ON evenements(ligne_id);
+CREATE INDEX idx_evenements_date 
+    ON evenements(date_debut);
+CREATE INDEX idx_evenements_statut 
+    ON evenements(statut);
+CREATE INDEX idx_evenements_date_ligne 
+    ON evenements(date_debut, ligne_id);
+CREATE INDEX idx_notifications_dest 
+    ON notifications(destinataire_id);
+\end{lstlisting}
+
+\subsection{Donn\'ees de test}
+
+Des donn\'ees de test ont \'et\'e ins\'er\'ees pour valider le syst\`eme :
+
+\begin{lstlisting}[language=SQL,caption={Insertion des lignes de test},label={lst:insert}]
+INSERT INTO lignes (nom, numero, statut) VALUES
+('Ligne T1', 1, 'active'),
+('Ligne T2', 2, 'active'),
+('Ligne T3', 3, 'active'),
+('Ligne T4', 4, 'active'),
+('Ligne T5', 5, 'active'),
+('Ligne T6', 6, 'active'),
+('Ligne T7', 7, 'active'),
+('Ligne T8', 8, 'active');
+\end{lstlisting}
+
+\section{Gestion des volumes de donn\'ees}
+
+\subsection{Strat\'egie de r\'etention}
+
+\'Etant donn\'e le volume croissant d'\'ev\'enements g\'en\'er\'es, une strat\'egie de r\'etention est mise en place :
+
+\begin{itemize}
+    \item Les \'ev\'enements d\'etaill\'es sont conserv\'es pendant 12 mois.
+    \item Les donn\'ees agr\'eg\'ees sont conserv\'ees ind\'efiniment.
+    \item Un job de nettoyage p\'eriodique supprime les donn\'ees anciennes.
+\end{itemize}
+
+\subsection{Partitionnement temporel}
+
+Pour les volumes importants, le partitionnement temporel est envisag\'e :
+
+\begin{lstlisting}[language=SQL,caption={Partitionnement temporel},label={lst:partition}]
+CREATE TABLE evenements (
+    ...
+) PARTITION BY RANGE (date_debut);
+
+CREATE TABLE evenements_2026_q1 
+    PARTITION OF evenements
+    FOR VALUES FROM ('2026-01-01') 
+    TO ('2026-04-01');
+\end{lstlisting}
+
+\section{Synth\`ese du chapitre}
+
+La conception de la base de donn\'ees suit une approche rigoureuse allant du mod\`ele EA au sch\'ema SQL. Le mod\`ele comprend cinq entit\'es principales : Ligne, Evenement, Utilisateur, Notification et Capteur. L'impl\'ementation dans PostgreSQL int\`egre les contraintes d'int\'egrit\'e, les index de performance et une strat\'egie de gestion des volumes de donn\'ees adapt\'ee aux besoins du syst\`eme Andon.

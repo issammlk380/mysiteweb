@@ -1,0 +1,303 @@
+\chapter{Impl\'ementation du backend}
+
+Ce chapitre d\'eveloppe en d\'etail l'impl\'ementation du serveur backend du syst\`eme Andon, en pr\'esentant la structure du code, les middleware, les routes API et les services m\'etier.
+
+\section{Point d'entr\'ee : server.js}
+
+\subsection{Initialisation du serveur}
+
+Le fichier \texttt{server.js} constitue le point d'entr\'ee principal. Il configure et initialise l'ensemble des composants :
+
+\begin{lstlisting}[language=JavaScript,caption={Initialisation du serveur Express},label={lst:init_express}]
+const express = require('express');
+const cors = require('cors');
+const http = require('http');
+const { Server } = require('socket.io');
+const mqtt = require('mqtt');
+const { Pool } = require('pg');
+
+const app = express();
+const server = http.createServer(app);
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Socket.IO
+const io = new Server(server, {
+  cors: { origin: '*' }
+});
+
+// PostgreSQL
+const pool = new Pool({
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  max: 20
+});
+\end{lstlisting}
+
+\subsection{Connexion MQTT et gestion des messages}
+
+\begin{lstlisting}[language=JavaScript,caption={Gestion des messages MQTT},label={lst:mqtt_handler}]
+const mqttClient = mqtt.connect(
+  process.env.MQTT_URL, {
+    clientId: 'sews-server',
+    clean: true,
+    reconnectPeriod: 5000
+  }
+);
+
+mqttClient.on('connect', () => {
+  console.log('MQTT connecte');
+  mqttClient.subscribe('sews/andon/+/alert');
+  mqttClient.subscribe('sews/capteurs/+/status');
+});
+
+mqttClient.on('message', async (topic, msg) => {
+  const parts = topic.split('/');
+  const type = parts[1];
+  const ligneId = parts[2];
+  const data = JSON.parse(msg.toString());
+
+  if (type === 'andon') {
+    await handleAndonAlert(ligneId, data);
+  } else if (type === 'capteurs') {
+    await handleCapteurStatus(ligneId, data);
+  }
+});
+\end{lstlisting}
+
+\subsection{Traitement des alertes Andon}
+
+\begin{lstlisting}[language=JavaScript,caption={Traitement d'une alerte Andon},
+label={lst:handle_alert}]
+async function handleAndonAlert(ligneId, data) {
+  const query = `
+    INSERT INTO evenements 
+      (ligne_id, type, description, date_debut)
+    VALUES ($1, $2, $3, NOW())
+    RETURNING *
+  `;
+  const values = [
+    ligneId,
+    data.type || 'panne',
+    data.description || ''
+  ];
+
+  const result = await pool.query(query, values);
+  const evenement = result.rows[0];
+
+  // Diffusion Socket.IO
+  io.to('dashboard').emit('andon-event', {
+    evenement,
+    ligneId: parseInt(ligneId)
+  });
+
+  // Commande LED rouge
+  const cmdTopic = `sews/command/${ligneId}/led`;
+  mqttClient.publish(cmdTopic, 
+    JSON.stringify({ rouge: true, verte: false })
+  );
+}
+\end{lstlisting}
+
+\section{Middleware d'authentification}
+
+\subsection{G\'en\'eration et validation des tokens JWT}
+
+\begin{lstlisting}[language=JavaScript,caption={Middleware JWT},label={lst:middleware_jwt}]
+const jwt = require('jsonwebtoken');
+const SECRET = process.env.JWT_SECRET;
+
+function genererToken(user) {
+  return jwt.sign(
+    { id: user.id, role: user.role },
+    SECRET,
+    { expiresIn: '24h' }
+  );
+}
+
+function authMiddleware(req, res, next) {
+  const token = req.headers.authorization
+    ?.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({
+      error: 'Token requis'
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(token, SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({
+      error: 'Token invalide'
+    });
+  }
+}
+\end{lstlisting}
+
+\section{Routes API}
+
+\subsection{Route d'authentification}
+
+\begin{lstlisting}[language=JavaScript,caption={Route de connexion},label={lst:route_login}]
+const bcrypt = require('bcrypt');
+
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  const result = await pool.query(
+    'SELECT * FROM utilisateurs WHERE email=$1',
+    [email]
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(401).json({
+      error: 'Identifiants incorrects'
+    });
+  }
+
+  const user = result.rows[0];
+  const valid = await bcrypt.compare(
+    password, user.mot_de_passe
+  );
+
+  if (!valid) {
+    return res.status(401).json({
+      error: 'Identifiants incorrects'
+    });
+  }
+
+  const token = genererToken(user);
+  res.json({ token, user: {
+    id: user.id,
+    nom: user.nom,
+    prenom: user.prenom,
+    role: user.role
+  }});
+});
+\end{lstlisting}
+
+\subsection{Routes CRUD des \'ev\'enements}
+
+\begin{lstlisting}[language=JavaScript,caption={Routes des \'ev\'enements},label={lst:routes_evenements}]
+// GET /api/evenements
+app.get('/api/evenements', 
+  authMiddleware, async (req, res) => {
+  const { page = 1, limite = 20 } = req.query;
+  const offset = (page - 1) * limite;
+
+  const result = await pool.query(`
+    SELECT e.*, l.nom as ligne_nom
+    FROM evenements e
+    JOIN lignes l ON e.ligne_id = l.id
+    ORDER BY e.date_debut DESC
+    LIMIT $1 OFFSET $2
+  `, [limite, offset]);
+
+  res.json(result.rows);
+});
+
+// PUT /api/evenements/:id
+app.put('/api/evenements/:id', 
+  authMiddleware, async (req, res) => {
+  const { statut, compte_rendu } = req.body;
+
+  const result = await pool.query(`
+    UPDATE evenements 
+    SET statut = $1, 
+        compte_rendu = $2,
+        date_fin = CASE WHEN $1='resolu' 
+                   THEN NOW() ELSE date_fin END
+    WHERE id = $3
+    RETURNING *
+  `, [statut, compte_rendu, req.params.id]);
+
+  // Diffusion Socket.IO
+  io.to('dashboard').emit('resolution', {
+    evenement: result.rows[0]
+  });
+
+  // Commande LED verte
+  const ligneId = result.rows[0].ligne_id;
+  mqttClient.publish(
+    `sews/command/${ligneId}/led`,
+    JSON.stringify({ rouge: false, verte: true })
+  );
+
+  res.json(result.rows[0]);
+});
+\end{lstlisting}
+
+\subsection{Route de rapports}
+
+\begin{lstlisting}[language=JavaScript,caption={Route de rapports},
+label={lst:route_rapports}]
+app.get('/api/rapports', 
+  authMiddleware, async (req, res) => {
+  const { dateDebut, dateFin } = req.query;
+
+  const stats = await pool.query(`
+    SELECT 
+      l.nom as ligne,
+      COUNT(*) as nb_evenements,
+      AVG(EXTRACT(EPOCH FROM 
+        (COALESCE(date_fin, NOW()) 
+         - date_debut))) as duree_moyenne,
+      COUNT(CASE WHEN statut='resolu' 
+            THEN 1 END) as nb_resolus
+    FROM evenements e
+    JOIN lignes l ON e.ligne_id = l.id
+    WHERE e.date_debut BETWEEN $1 AND $2
+    GROUP BY l.nom
+    ORDER BY nb_evenements DESC
+  `, [dateDebut, dateFin]);
+
+  res.json(stats.rows);
+});
+\end{lstlisting}
+
+\section{Gestion des notifications}
+
+\subsection{Notifications par e-mail}
+
+Le serveur int\`egre un module d'envoi d'e-mails via Nodemailer :
+
+\begin{lstlisting}[language=JavaScript,caption={Envoi de notification e-mail},
+label={lst:send_email}]
+const nodemailer = require('nodemailer');
+
+const transporter = nodemailer.createTransport({
+  host: 'smtp.sews.ma',
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
+
+async function envoyerNotification(event, user) {
+  await transporter.sendMail({
+    from: '"Andon SEWS" <andon@sews.ma>',
+    to: user.email,
+    subject: `Alerte panne - Ligne ${event.ligne_id}`,
+    html: `
+      <h2>Alerte Andon</h2>
+      <p>Ligne: ${event.ligne_id}</p>
+      <p>Type: ${event.type}</p>
+      <p>Heure: ${event.date_debut}</p>
+    `
+  });
+}
+\end{lstlisting}
+
+\section{Synth\`ese du chapitre}
+
+Le serveur backend du syst\`eme Andon est impl\'ement\'e en Node.js avec Express. Il int\`egre la connexion MQTT, la persistance PostgreSQL, l'authentification JWT, les routes API REST et la diffusion temps r\'eel via Socket.IO. Le code est organis\'e de mani\`ere modulaire pour faciliter la maintenance et les \'evolutions futures.

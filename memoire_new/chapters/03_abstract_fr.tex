@@ -1,0 +1,14 @@
+\chapter*{R\'esum\'e}
+\addcontentsline{toc}{chapter}{R\'esum\'e}
+\markboth{R\'esum\'e}{R\'esum\'e}
+
+Dans le contexte de l'industrie 4.0 et de la digitalisation croissante des processus de production, la gestion efficace des pannes constitue un enjeu majeur pour les entreprises manufacturi\`eres. Ce m\'emoire pr\'esente la conception, le d\'eveloppement et la mise en \ oeuvre d'un syst\`eme Andon intelligent bas\'e sur l'Internet Industriel des Objets (\iiot) pour la gestion en temps r\'eel des pannes de production chez \sews.
+
+Le syst\`eme d\'evelopp\'e s'appuie sur une architecture mat\'erielle compos\'ee de capteurs connect\'es (ESP32) interfa\c{c}\'es avec des boutons poussoirs physiques, permettant aux op\'erateurs de signaler instantan\'ement les anomalies de production. Les donn\'ees sont transmises via le protocole MQTT vers un serveur backend d\'evelopp\'e en Node.js avec le framework Express, qui assure le traitement, le routage et la persistance des \'ev\'enements dans une base de donn\'ees PostgreSQL.
+
+Le frontend web, d\'evelopp\'e en HTML5, JavaScript ES6 et Socket.IO, offre un tableau de bord interactif en temps r\'eel permettant aux \'equipes de maintenance de visualiser l'\'etat des lignes de production, de suivre la chronologie des pannes et d'analyser les m\'etriques de performance (temps moyen de r\'eponse, taux de disponibilit\'e, fr\'equence des pannes par cat\'egorie). Un syst\`eme de notifications par e-mail et des alertes visuelles compl\`etent la plateforme.
+
+Les r\'esultats exp\'erimentaux, obtenus sur une dur\'ee de trois mois en conditions r\'eelles de production, d\'emontrent une am\'elioration significative du temps de r\'eponse moyen aux pannes (r\'eduction de 35\%), une augmentation du taux de disponibilit\'e des lignes (de 87\% \`a 94\%) et une meilleure tra\c{c}abilit\'e des \'ev\'enements. Le syst\`eme a \'et\'e valid\'e sur l'atelier Test \'Electrique de \sews, couvrant 8 lignes de production.
+
+\vspace{1em}
+\noindent\textbf{Mots-cl\'es :} Internet Industriel des Objets, Andon, MQTT, Node.js, PostgreSQL, HTML5, Socket.IO, ESP32, Gestion des pannes, Industrie 4.0

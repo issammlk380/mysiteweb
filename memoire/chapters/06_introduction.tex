@@ -1,0 +1,86 @@
+﻿% ============================================================================
+% INTRODUCTION GÉNÉRALE
+% ============================================================================
+\chapter*{Introduction Générale}
+\addcontentsline{toc}{chapter}{Introduction Générale}
+
+\section*{Contexte général}
+
+L'industrie manufacturière mondiale traverse une période de transformation profonde sous l'impulsion de la quatrième révolution industrielle, communément désignée sous le terme \textbf{Industrie 4.0}. Cette révolution se caractérise par la convergence des technologies numériques, physiques et biologiques, et repose sur des piliers technologiques tels que l'Internet des Objets (IoT), l'intelligence artificielle, le Big Data, le cloud computing et la cybersécurité industrielle. Dans ce contexte, l'Internet Industriel des Objets (IIoT) s'impose comme un levier stratégique majeur permettant la connexion, la surveillance et l'analyse en temps réel des équipements et des processus de production.
+
+Le secteur automobile, soumis à des contraintes de compétitivité accrues et à des exigences élevées en matière de qualité, de coûts et de délais, doit garantir une disponibilité maximale de ses équipements de production tout en optimisant les performances opérationnelles. Dans cette optique, la maintenance industrielle évolue d'une approche réactive vers une approche prédictive et prescriptive, s'appuyant sur la collecte et l'exploitation intelligente des données de production.
+
+\section*{Problématique industrielle}
+
+SEWS Maroc, filiale marocaine du groupe japonais Sumitomo Electric Industries et leader mondial dans le domaine du câblage automobile, dispose actuellement d'un système Andon classique hérité des principes du Lean Manufacturing et du Toyota Production System. Ce système permet aux opérateurs de signaler visuellement et rapidement les anomalies de production via des boutons lumineux de couleur (vert, orange, rouge).
+
+Bien que fonctionnel et conforme aux standards du management visuel, ce système présente plusieurs limitations structurelles dans le contexte actuel de l'Industrie 4.0 :
+
+\begin{itemize}
+    \item \textbf{Absence de traçabilité numérique} : Les événements ne sont pas enregistrés automatiquement, rendant l'analyse historique difficile et sujette à erreurs.
+    \item \textbf{Pas de calcul automatique des KPI} : Les indicateurs de performance maintenance (MTTA, MTTR, disponibilité) sont calculés manuellement, avec des risques d'imprécision.
+    \item \textbf{Gestion manuelle des interventions} : La traçabilité des techniciens, la saisie des observations et le suivi des actions correctives s'effectuent sur support papier.
+    \item \textbf{Absence de vision centralisée temps réel} : Le superviseur doit se déplacer physiquement pour évaluer l'état global de l'atelier.
+    \item \textbf{Limitation géographique} : Le système n'est accessible que depuis l'atelier, empêchant toute supervision ou intervention à distance.
+\end{itemize}
+
+Face à ces limitations, le département Maintenance de SEWS Maroc a exprimé le besoin de moderniser ce système en l'intégrant dans une démarche globale d'Industrie 4.0, permettant de passer d'un système de signalisation passif à un système intelligent couvrant l'ensemble du cycle de vie des pannes.
+
+\section*{Objectifs du projet}
+
+L'objectif principal de ce projet de fin d'études consiste à \textbf{concevoir et développer un système Andon intelligent basé sur l'IIoT pour la supervision en temps réel et la gestion du cycle de vie complet des pannes industrielles} au sein de l'Atelier Test Électrique de SEWS Maroc.
+
+Les objectifs spécifiques se déclinent comme suit :
+
+\textbf{Objectifs fonctionnels :}
+\begin{itemize}
+    \item Détecter automatiquement les pannes via connexion des boutons Andon existants à des modules IoT.
+    \item Notifier en temps réel (latence < 2 secondes) tous les acteurs concernés (superviseurs, responsables maintenance).
+    \item Tracer numériquement les interventions des techniciens par identification RFID.
+    \item Enregistrer de manière structurée les observations, la criticité, les pièces remplacées et les actions correctives.
+    \item Calculer automatiquement les indicateurs de performance (MTTA, MTTR, disponibilité).
+    \item Offrir une interface de supervision centralisée accessible via dashboard web temps réel.
+    \item Fournir une application mobile (PWA) pour faciliter les interventions terrain des techniciens.
+\end{itemize}
+
+\textbf{Objectifs techniques :}
+\begin{itemize}
+    \item Concevoir une architecture distribuée scalable et modulaire.
+    \item Utiliser des protocoles de communication industriels légers et fiables (MQTT).
+    \item Assurer la persistance et l'intégrité des données dans une base relationnelle.
+    \item Garantir la sécurité des communications et la confidentialité des données.
+    \item Déployer la solution sur une infrastructure cloud fiable et accessible.
+\end{itemize}
+
+\section*{Approche méthodologique}
+
+La réalisation de ce projet s'appuie sur une méthodologie structurée en quatre phases :
+
+\begin{enumerate}
+    \item \textbf{Phase d'analyse} : Étude du contexte industriel, analyse des besoins fonctionnels et non fonctionnels, identification des acteurs et des processus métier.
+    \item \textbf{Phase de conception} : Modélisation UML (diagrammes de cas d'utilisation, de séquence, d'activités), conception de l'architecture système et de la base de données.
+    \item \textbf{Phase d'implémentation} : Développement des différents composants (modules ESP32, backend Node.js, base PostgreSQL, dashboard web, PWA mobile), intégration et tests unitaires.
+    \item \textbf{Phase de validation} : Tests fonctionnels, tests de performance, validation sur site et analyse critique de la solution.
+\end{enumerate}
+
+\section*{Organisation du mémoire}
+
+Ce mémoire s'articule autour de quatre chapitres principaux :
+
+\begin{description}
+    \item[\textbf{Chapitre 1 : Contexte général et cadre du projet}] ~\\
+    Ce chapitre présente l'entreprise SEWS Maroc, son organisation, le département Maintenance et l'Atelier Test Électrique. Il décrit le système Andon existant, identifie ses limitations et formule la problématique. La solution proposée y est également introduite.
+    
+    \item[\textbf{Chapitre 2 : Analyse des besoins et conception du système}] ~\\
+    Ce chapitre détaille l'analyse des besoins fonctionnels et non fonctionnels, présente la modélisation UML du système, décrit l'architecture technique multi-couches, conçoit le schéma de la base de données et spécifie l'architecture réseau MQTT. Les choix technologiques y sont justifiés.
+    
+    \item[\textbf{Chapitre 3 : Implémentation du système}] ~\\
+    Ce chapitre expose l'implémentation concrète de chaque composant du système : la programmation des modules ESP32, le développement du backend Node.js avec MQTT et Socket.IO, la mise en place de la base PostgreSQL, le développement du dashboard web temps réel et de la PWA mobile, ainsi que le déploiement sur Railway.
+    
+    \item[\textbf{Chapitre 4 : Tests, validation et résultats}] ~\\
+    Ce chapitre présente la stratégie de test adoptée, les résultats des tests fonctionnels et de performance, la validation sur site, et propose une analyse critique de la solution avec identification des forces, limites et perspectives d'amélioration.
+\end{description}
+
+Le mémoire se termine par une conclusion générale synthétisant les contributions du projet et proposant des perspectives d'évolution et d'extension de la solution développée.
+
+\clearpage

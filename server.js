@@ -1,7 +1,7 @@
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
  * ║     SMI ENTERPRISE — BACKEND API SERVER v2.8 (RAILWAY)        ║
- * ║     FIX ROUTING: / -> issam.html, /technicien -> technicien    ║
+ * ║     FIX ROUTING: / -> index.html, /technicien -> technicien    ║
  * ║     + MQTT Bridge Wokwi Integration                            ║
  * ╚══════════════════════════════════════════════════════════════════╝
  */
@@ -407,7 +407,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // ✅ 1. ROUTES EXPLICITES (prioritaires)
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'issam.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.get('/technicien', (req, res) => {
@@ -529,13 +529,13 @@ app.post('/api/logs', validateLogPayload, async (req, res) => {
     const piece_observation = sanitizeStr(body.observation || body.piece_observation, null) || null;
     const operator = sanitizeStr(body.operator, 'Unknown');
     
-    // ✅ استخدام الأعمدة الصحيحة (بعد cleanup)
+    // ✅ Using correct columns (after cleanup)
     const heure_panne = sanitizeStr(body.startTime || body.heure_panne, new Date().toLocaleTimeString('fr-FR'));
     const date_panne = new Date();
     const atelier = deriveAtelier(machine);
 
     try {
-        // ✅ INSERT بالأعمدة الصحيحة فقط (بدون start_time و duration المحذوفة)
+        // ✅ INSERT with correct columns only (without removed start_time and duration)
         const result = await safeQuery(
             `INSERT INTO downtime_logs 
             (machine, status, alert_type, operator, technician, criticite, piece_observation, atelier, 
@@ -1855,7 +1855,7 @@ async function startServer() {
       console.log(`  DB Status : ${dbHealthy ? 'Healthy' : 'Unhealthy'}`);
       console.log('========================================');
       console.log('  ROUTING:');
-      console.log('    GET  /                  -> issam.html (Dashboard)');
+      console.log('    GET  /                  -> index.html (Dashboard)');
       console.log('    GET  /technicien        -> technicien.html');
       console.log('    GET  /technicien.html   -> technicien.html');
       console.log('    GET  /login             -> login.html');

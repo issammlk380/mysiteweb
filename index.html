@@ -13,7 +13,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 
     <style>
-        /* [KOLL CSS DYALEK KIF MA KAYN] */
+        /* Global CSS Reset and Box Sizing */
         * {
             margin: 0;
             padding: 0;
@@ -1559,7 +1559,7 @@
                             </svg>
                             Export
                         </button>
-                        <button class="data-management-btn" onclick="clearLocalData()" title="حذف جميع البيانات المحفوظة">
+                        <button class="data-management-btn" onclick="clearLocalData()" title="Delete all saved data">
                             🗑️ Clear Data
                         </button>
                     </div>
@@ -2467,7 +2467,7 @@ async function resolveAlert() {
             console.warn(`⚠️ No active log found for ${machineID}`);
         }
 
-        // تحديث machines table
+        // Update machines table
         await fetch(`${API_BASE_URL}/api/machines/update-status`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

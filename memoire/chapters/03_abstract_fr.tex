@@ -1,0 +1,19 @@
+﻿% ============================================================================
+% RÉSUMÉ (FRANÇAIS)
+% ============================================================================
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+
+Dans le contexte actuel de transformation digitale de l'industrie manufacturière, marqué par l'émergence de l'Industrie 4.0 et de l'Internet Industriel des Objets (IIoT), la gestion proactive et efficiente des pannes constitue un enjeu stratégique majeur pour les entreprises du secteur automotive. Le système Andon, hérité des principes du Lean Manufacturing et du Toyota Production System, permet une détection visuelle rapide des anomalies sur les lignes de production. Toutefois, ce système classique demeure limité en matière de traçabilité numérique, d'analyse temps réel et de calcul automatisé des indicateurs de performance maintenance.
+
+Ce projet de fin d'études, réalisé au sein du département Maintenance de \textbf{SEWS Maroc} (Sumitomo Electric Wiring Systems), leader mondial du câblage automobile, vise à concevoir et développer un \textbf{système Andon intelligent basé sur l'IIoT} pour la supervision en temps réel et la gestion du cycle de vie complet des pannes industrielles dans l'Atelier Test Électrique.
+
+La solution proposée repose sur une architecture distribuée multi-couches intégrant des capteurs connectés (\textbf{ESP32}), un protocole de communication industriel léger (\textbf{MQTT}), un backend applicatif développé en \textbf{Node.js} et déployé sur la plateforme cloud \textbf{Railway}, une base de données relationnelle \textbf{PostgreSQL}, un dashboard web temps réel exploitant les WebSockets, ainsi qu'une Progressive Web App (\textbf{PWA}) mobile destinée aux techniciens de maintenance.
+
+Le système développé couvre l'ensemble du cycle de vie d'une panne : détection automatique via boutons Andon connectés, notification temps réel avec latence inférieure à 2 secondes, intervention tracée par identification RFID des techniciens, enregistrement structuré des observations et actions correctives, résolution automatisée et calcul instantané des indicateurs clés de performance (\textbf{MTTA} --- Mean Time to Acknowledge, \textbf{MTTR} --- Mean Time to Repair, disponibilité des équipements).
+
+Les tests fonctionnels et de performance ont confirmé la fiabilité de la solution avec une latence moyenne de 520 millisecondes, une précision des calculs KPI conforme aux attentes, et une architecture scalable capable de supporter jusqu'à 100 machines et 50 utilisateurs simultanés. Ce projet démontre la faisabilité technique et la valeur ajoutée d'une approche IIoT pour moderniser les systèmes de maintenance industrielle.
+
+\vspace{0.5cm}
+\noindent\textbf{Mots-clés :} Système Andon, Internet Industriel des Objets (IIoT), Industrie 4.0, MQTT, Maintenance Intelligente, ESP32, Node.js, Progressive Web App, SEWS Maroc, MTTA, MTTR.
+\clearpage

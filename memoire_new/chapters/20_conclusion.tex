@@ -1,0 +1,78 @@
+\chapter{Conclusion g\'en\'erale}
+
+\section{Synth\`ese des travaux}
+
+Ce m\'emoire a pr\'esent\'e la conception, le d\'eveloppement et la validation d'un syst\`eme Andon intelligent bas\'e sur l'Internet Industriel des Objets (\iiot) pour la gestion en temps r\'eel des pannes de production chez \sews.
+
+Le travail r\'ealis\'e a mobilis\'e un large \'eventail de comp\'etences techniques : d\'eveloppement embarqu\'e (ESP32/Arduino), architecture r\'eseau (MQTT, Wi-Fi), d\'eveloppement backend (Node.js/Express), conception de base de donn\'ees (PostgreSQL) et d\'eveloppement frontend (Angular). L'ensemble des composants a \'et\'e int\'egr\'e de mani\`ere coh\'erente pour former un syst\`eme fonctionnel et performant.
+
+\section{R\'ealisation des objectifs}
+
+Les objectifs d\'efinis en d\'ebut de projet ont \'et\'e atteints :
+
+\begin{enumerate}
+    \item \textbf{Analyse du contexte :} l'immersion au sein de l'atelier Test \'Electrique de \sews a permis d'identifier pr\'ecis\'ement les besoins en mati\`ere de gestion des pannes.
+    
+    \item \textbf{Conception de l'architecture :} une architecture en quatre couches (perception, communication, traitement, pr\'esentation) a \'et\'e d\'efinie et valid\'ee.
+    
+    \item \textbf{Impl\'ementation :} chaque composant a \'et\'e d\'evelopp\'e : firmware ESP32, serveur Node.js, base de donn\'ees PostgreSQL et application Angular.
+    
+    \item \textbf{Validation :} les tests en conditions r\'eelles pendant 3 mois ont d\'emontr\'e les performances du syst\`eme.
+\end{enumerate}
+
+\section{Principaux r\'esultats}
+
+Les r\'esultats obtenus confirment l'efficacit\'e du syst\`eme d\'evelopp\'e :
+
+\begin{itemize}
+    \item \textbf{Temps de d\'etection :} 189 ms en moyenne, inf\'erieur \`a la cible de 1 seconde.
+    \item \textbf{Temps de r\'eponse :} r\'eduction de 33\% (de 18 \`a 12 minutes).
+    \item \textbf{Taux de disponibilit\'e :} am\'elioration de 6,6 points (de 87,2\% \`a 93,8\%).
+    \item \textbf{Fiabilit\'e :} 99,98\% de messages MQTT livr\'es sans perte.
+    \item \textbf{Co\^ut :} mat\'eriel \`a 96EUR, infrastructure 696EUR/an.
+\end{itemize}
+
+\section{Difficult\'es rencontr\'ees}
+
+La r\'ealisation de ce projet a confront\'e \`a plusieurs difficult\'es :
+
+\begin{itemize}
+    \item \textbf{Environnement industriel :} les perturbations \'electromagn\'etiques de l'atelier ont n\'ecessit\'e des pr\'e-cautions suppl\'ementaires pour les n\oe{}uds ESP32.
+    \item \textbf{R\'eseau Wi-Fi :} la couverture et la stabilit\'e du r\'eseau sans fil dans un environnement industriel ont requis des optimisations.
+    \item \textbf{Int\'e-gration :} la coordination entre les diff\'erents composants (mat\'eriel, backend, frontend) a n\'ecessit\'e une approche it\'erative.
+    \item \textbf{Temps de d\'eveloppement :} la dur\'ee limit\'ee du stage (4 mois) a impos\'e des choix pragmatiques de prioritisation.
+\end{itemize}
+
+\section{Perspectives d'\'evolution}
+
+Plusieurs pistes d'am\'elioration et d'\'evolution sont envisageables :
+
+\subsection{Court terme}
+
+\begin{itemize}
+    \item \textbf{Mobile :} d\'eveloppement d'une application mobile native (React Native) pour un acc\`es mobile optimis\'e.
+    \item \textbf{Offline :} ajout d'un mode d\'egrad\'e pour les n\oe{}uds ESP32 en cas de perte de connexion.
+    \item \textbf{Multilingue :} internationalisation de l'interface en fran\c{c}ais, arabe et anglais.
+\end{itemize}
+
+\subsection{Moyen terme}
+
+\begin{itemize}
+    \item \textbf{Analyse pr\'edictive :} int\'e-gration de mod\`eles d'apprentissage automatique pour la pr\'ediction des pannes.
+    \item \textbf{Capteurs suppl\'ementaires :} ajout de capteurs de temp\'erature, vibration et courant pour un diagnostic enrichi.
+    \item \textbf{Extension multi-sites :} g\'en\'eralisation du syst\`eme \`a tous les sites de production SEWS.
+\end{itemize}
+
+\subsection{Long terme}
+
+\begin{itemize}
+    \item \textbf{Jumeau num\'erique :} cr\'eation d'une maquette num\'erique de l'atelier pour la simulation.
+    \item \textbf{Int\'e-gration ERP :} connexion avec le syst\`eme d'information de l'entreprise (SAP, Oracle).
+    \item \textbf{Microservices :} migration vers une architecture microservices pour la scalabilit\'e.
+\end{itemize}
+
+\section{Conclusion personnelle}
+
+Ce stage a \'et\'e une exp\'erience enrichissante sur les plans technique et humain. Il m'a permis de mettre en pratique les connaissances acquises durant ma formation de Master, tout en d\'e-couvrant les r\'ealit\'es de l'environnement industriel. Le d\'eveloppement de ce syst\`eme Andon IIoT m'a offert l'opportunit\'e d'explorer des technologies modernes de l'IoT et de comprendre les enjeux de la transformation num\'erique dans l'industrie.
+
+Je suis reconnaissant envers mon encadrant acad\'emique, Pr. Kaoutar ALLABOUCHE, et mon encadrant industriel, M. Mohamed EDDOUCH, pour leur accompagnement et leurs conseils tout au long de ce projet.

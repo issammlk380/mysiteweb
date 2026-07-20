@@ -1,0 +1,293 @@
+\chapter{Impl\'ementation du frontend}
+
+Ce chapitre pr\'esente l'impl\'ementation de l'application frontend Angular du syst\`eme Andon, en d\'ecrivant la structure du projet, les composants principaux, les services et les m\'ecanismes de communication avec le backend.
+
+\section{Initialisation du projet Angular}
+
+\subsection{Cr\'eation du projet}
+
+Le projet Angular a \'et\'e initialis\'e avec Angular CLI :
+
+\begin{lstlisting}[caption={Cr\'eation du projet Angular},label={lst:ng_new}]
+ng new client --routing --style=scss
+cd client
+ng add @angular/material
+npm install socket.io-client
+npm install chart.js ng2-charts
+\end{lstlisting}
+
+\section{Composants principaux}
+
+\subsection{Le tableau de bord (Dashboard)}
+
+Le DashboardComponent est le composant central de l'application. Il affiche la vue d'ensemble des 8 lignes de production :
+
+\begin{lstlisting}[language=JavaScript,
+caption={Composant Dashboard},label={lst:dashboard_comp}]
+@Component({
+  selector: 'app-dashboard',
+  templateUrl: './dashboard.component.html'
+})
+export class DashboardComponent 
+  implements OnInit, OnDestroy {
+  
+  lignes: Ligne[] = [];
+  evenementsRecents: Evenement[] = [];
+  private subscription: any;
+
+  constructor(
+    private apiService: ApiService,
+    private socketService: SocketService
+  ) {}
+
+  ngOnInit() {
+    this.chargerLignes();
+    this.ecouterEvenements();
+  }
+
+  chargerLignes() {
+    this.apiService.getLignes()
+      .subscribe(data => {
+        this.lignes = data;
+      });
+  }
+
+  ecouterEvenements() {
+    this.subscription = 
+      this.socketService
+        .on('andon-event')
+        .subscribe(event => {
+          this.mettreAJourLigne(event);
+          this.ajouterEvenement(event);
+        });
+  }
+
+  ngOnDestroy() {
+    this.subscription?.unsubscribe();
+  }
+}
+\end{lstlisting}
+
+\subsection{Le template du tableau de bord}
+
+\begin{lstlisting}[caption={Template du Dashboard},
+label={lst:dashboard_template}]
+<div class="dashboard">
+  <h1>Tableau de bord</h1>
+  
+  <div class="lignes-grid">
+    <div *ngFor="let ligne of lignes" 
+         class="ligne-card"
+         [class.en-panne]="ligne.statut==='en_panne'"
+         [class.active]="ligne.statut==='active'">
+      
+      <h3>{{ ligne.nom }}</h3>
+      <span class="statut-badge">
+        {{ ligne.statut }}
+      </span>
+      
+      <div *ngIf="ligne.alerteActive" 
+           class="alerte">
+        <span class="pulse"></span>
+        PANNE EN COURS
+        <small>{{ ligne.derniereAlerte }}</small>
+      </div>
+    </div>
+  </div>
+  
+  <div class="evenements-recents">
+    <h2>Evenements recents</h2>
+    <div *ngFor="let evt of evenementsRecents" 
+         class="evt-item">
+      <strong>Ligne {{ evt.ligneId }}</strong>
+      - {{ evt.type }} - {{ evt.timestamp | date }}
+    </div>
+  </div>
+</div>
+\end{lstlisting}
+
+\subsection{La page de d\'etail d'une ligne}
+
+Le LigneDetailComponent affiche les informations d\'etaill\'ees d'une ligne et sa chronologie d'\'ev\'enements :
+
+\begin{lstlisting}[language=JavaScript,
+caption={Composant d\'etail de ligne},
+label={lst:ligne_detail}]
+@Component({
+  selector: 'app-ligne-detail',
+  templateUrl: './ligne-detail.component.html'
+})
+export class LigneDetailComponent 
+  implements OnInit {
+  
+  ligne: Ligne | null = null;
+  evenements: Evenement[] = [];
+  ligneId: number = 0;
+
+  constructor(
+    private route: ActivatedRoute,
+    private apiService: ApiService,
+    private socketService: SocketService
+  ) {}
+
+  ngOnInit() {
+    this.ligneId = +this.route.snapshot
+      .paramMap.get('id')!;
+    
+    this.apiService
+      .getLigneById(this.ligneId)
+      .subscribe(data => this.ligne = data);
+    
+    this.apiService
+      .getEvenementsByLigne(this.ligneId)
+      .subscribe(data => this.evenements = data);
+  }
+}
+\end{lstlisting}
+
+\section{Services de communication}
+
+\subsection{Service API REST}
+
+\begin{lstlisting}[language=JavaScript,
+caption={Service API REST},label={lst:api_service}]
+@Injectable({ providedIn: 'root' })
+export class ApiService {
+  private apiUrl = environment.apiUrl;
+
+  constructor(private http: HttpClient) {}
+
+  getLignes(): Observable<Ligne[]> {
+    return this.http.get<Ligne[]>(
+      `${this.apiUrl}/api/lignes`
+    );
+  }
+
+  getLigneById(id: number): Observable<Ligne> {
+    return this.http.get<Ligne>(
+      `${this.apiUrl}/api/lignes/${id}`
+    );
+  }
+
+  getEvenements(params?: any): 
+    Observable<Evenement[]> {
+    return this.http.get<Evenement[]>(
+      `${this.apiUrl}/api/evenements`,
+      { params }
+    );
+  }
+
+  resoudreEvenement(
+    id: number, data: any
+  ): Observable<Evenement> {
+    return this.http.put<Evenement>(
+      `${this.apiUrl}/api/evenements/${id}`,
+      data
+    );
+  }
+
+  login(email: string, password: string):
+    Observable<any> {
+    return this.http.post(
+      `${this.apiUrl}/api/auth/login`,
+      { email, password }
+    );
+  }
+}
+\end{lstlisting}
+
+\subsection{Service Socket.IO (temps r\'eel)}
+
+\begin{lstlisting}[language=JavaScript,
+caption={Service Socket.IO},
+label={lst:socket_service}]
+@Injectable({ providedIn: 'root' })
+export class SocketService {
+  private socket: any;
+
+  connect() {
+    this.socket = io(environment.apiUrl);
+    
+    this.socket.on('connect', () => {
+      console.log('WebSocket connecte');
+      this.socket.emit('subscribe', 'dashboard');
+    });
+  }
+
+  on(event: string): Observable<any> {
+    return new Observable(observer => {
+      this.socket.on(event, (data: any) => {
+        observer.next(data);
+      });
+    });
+  }
+
+  disconnect() {
+    this.socket?.disconnect();
+  }
+}
+\end{lstlisting}
+
+\section{Composants de visualisation}
+
+\subsection{Graphiques de tendances}
+
+L'application int\`egre des graphiques pour visualiser les tendances :
+
+\begin{itemize}
+    \item \textbf{Graphique de barres :} nombre d'\'ev\'enements par ligne.
+    \item \textbf{Graphique circulaire :} r\'epartition par type de panne.
+    \item \textbf{Graphique lin\'eaire :} tendance temporelle des pannes.
+    \item \textbf{Indicateurs KPI :} temps moyen de r\'eponse, taux de disponibilit\'e.
+\end{itemize}
+
+\section{Authentification et gestion des sessions}
+
+\subsection{Routeur et gardes de navigation}
+
+\begin{lstlisting}[language=JavaScript,
+caption={Configuration du routeur},
+label={lst:router_config}]
+const routes: Routes = [
+  { path: 'login', component: LoginComponent },
+  { 
+    path: '', 
+    component: DashboardComponent,
+    canActivate: [AuthGuard]
+  },
+  { 
+    path: 'lignes', 
+    component: LignesComponent,
+    canActivate: [AuthGuard]
+  },
+  { 
+    path: 'lignes/:id', 
+    component: LigneDetailComponent,
+    canActivate: [AuthGuard]
+  },
+  { 
+    path: 'evenements', 
+    component: EvenementsComponent,
+    canActivate: [AuthGuard]
+  },
+  { 
+    path: 'rapports', 
+    component: RapportsComponent,
+    canActivate: [AuthGuard]
+  }
+];
+\end{lstlisting}
+
+\section{Responsive design}
+
+L'application est optimis\'ee pour diff\'erents terminaux :
+
+\begin{itemize}
+    \item \textbf{Desktop :} vue compl\`ete avec tous les graphiques et panneaux.
+    \item \textbf{Tablette :} disposition en grille adapt\'ee \`a la taille d'\'ecran.
+    \item \textbf{Smartphone :} navigation simplifi\'ee avec vues empil\'ees.
+\end{itemize}
+
+\section{Synth\`ese du chapitre}
+
+L'application frontend Angular du syst\`eme Andon offre une interface moderne, r\'eactive et intuitive. Les composants Dashboard, Lignes, Evenements et Rapports couvrent l'ensemble des besoins fonctionnels. La communication temps r\'eel via Socket.IO et l'authentification JWT assurent une utilisation s\'ecuris\'ee et en direct.

@@ -1,0 +1,175 @@
+\chapter{Annexes}
+
+\section{Annexe A : Code source du firmware ESP32}
+
+\subsection{Programme principal}
+
+\begin{lstlisting}[language=C++,
+caption={Firmware Andon ESP32 - complet},
+label={lst:firmware_complet}]
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
+
+const char* SSID = "SEWS_IOT";
+const char* PASSWORD = "****";
+const char* MQTT_SERVER = "192.168.1.100";
+const int MQTT_PORT = 1883;
+const int LIGNE_ID = 1;
+const int BOUTON_PIN = 4;
+const int LED_VERTE = 16;
+const int LED_ROUGE = 17;
+const unsigned long DEBOUNCE = 200;
+
+WiFiClient wifiClient;
+PubSubClient mqtt(wifiClient);
+unsigned long dernierAppui = 0;
+
+void connectWiFi() {
+  WiFi.begin(SSID, PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+  }
+}
+
+void connectMQTT() {
+  while (!mqtt.connected()) {
+    if (mqtt.connect("esp32_ligne1")) {
+      String topic = "sews/command/" 
+        + String(LIGNE_ID) + "/led";
+      mqtt.subscribe(topic.c_str());
+    } else {
+      delay(5000);
+    }
+  }
+}
+
+void envoyerAlerte() {
+  StaticJsonDocument<256> doc;
+  doc["ligneId"] = LIGNE_ID;
+  doc["type"] = "panne";
+  doc["urgence"] = "haute";
+  char buffer[256];
+  serializeJson(doc, buffer);
+  String topic = "sews/andon/" 
+    + String(LIGNE_ID) + "/alert";
+  mqtt.publish(topic.c_str(), buffer, true);
+}
+
+void callbackMQTT(char* topic, byte* payload,
+    unsigned int len) {
+  StaticJsonDocument<128> doc;
+  deserializeJson(doc, payload, len);
+  digitalWrite(LED_ROUGE, 
+    doc["rouge"] ? HIGH : LOW);
+  digitalWrite(LED_VERTE, 
+    doc["verte"] ? HIGH : LOW);
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(BOUTON_PIN, INPUT);
+  pinMode(LED_VERTE, OUTPUT);
+  pinMode(LED_ROUGE, OUTPUT);
+  digitalWrite(LED_VERTE, HIGH);
+  connectWiFi();
+  mqtt.setServer(MQTT_SERVER, MQTT_PORT);
+  mqtt.setCallback(callbackMQTT);
+  connectMQTT();
+}
+
+void loop() {
+  if (!mqtt.connected()) connectMQTT();
+  mqtt.loop();
+  if (digitalRead(BOUTON_PIN) == HIGH) {
+    unsigned long now = millis();
+    if (now - dernierAppui > DEBOUNCE) {
+      dernierAppui = now;
+      envoyerAlerte();
+      digitalWrite(LED_VERTE, LOW);
+      digitalWrite(LED_ROUGE, HIGH);
+    }
+  }
+}
+\end{lstlisting}
+
+\section{Annexe B : Script SQL}
+
+\begin{lstlisting}[language=SQL,
+caption={Initialisation de la base},
+label={lst:sql_init}]
+CREATE TABLE lignes (
+    id SERIAL PRIMARY KEY,
+    nom VARCHAR(100) NOT NULL,
+    numero INTEGER UNIQUE NOT NULL,
+    statut VARCHAR(20) DEFAULT 'active'
+);
+
+CREATE TABLE evenements (
+    id SERIAL PRIMARY KEY,
+    ligne_id INTEGER REFERENCES lignes(id),
+    type VARCHAR(50) NOT NULL,
+    statut VARCHAR(20) DEFAULT 'en_cours',
+    description TEXT,
+    date_debut TIMESTAMP DEFAULT NOW(),
+    date_fin TIMESTAMP,
+    technicien_id INTEGER 
+      REFERENCES utilisateurs(id),
+    compte_rendu TEXT
+);
+
+CREATE TABLE utilisateurs (
+    id SERIAL PRIMARY KEY,
+    nom VARCHAR(100) NOT NULL,
+    prenom VARCHAR(100) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    role VARCHAR(50) NOT NULL,
+    mot_de_passe VARCHAR(255) NOT NULL
+);
+
+INSERT INTO lignes (nom, numero) VALUES
+  ('Ligne T1', 1),
+  ('Ligne T2', 2),
+  ('Ligne T3', 3),
+  ('Ligne T4', 4),
+  ('Ligne T5', 5),
+  ('Ligne T6', 6),
+  ('Ligne T7', 7),
+  ('Ligne T8', 8);
+\end{lstlisting}
+
+\section{Annexe C : package.json}
+
+\begin{lstlisting}[caption={Dependances backend},
+label={lst:package_backend}]
+{
+  "name": "sews-andon-server",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "mqtt": "^5.3.0",
+    "pg": "^8.11.3",
+    "jsonwebtoken": "^9.0.2",
+    "bcrypt": "^5.1.1"
+  }
+}
+\end{lstlisting}
+
+\section{Annexe D : Pinout ESP32}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{l l l}
+\toprule
+\textbf{Broche} & \textbf{GPIO} & \textbf{Fonction} \\
+\midrule
+D4 & GPIO 4 & Bouton Andon \\
+D16 & GPIO 16 & LED verte \\
+D17 & GPIO 17 & LED rouge \\
+VIN & 5V & Alimentation \\
+GND & GND & Masse \\
+\bottomrule
+\end{tabular}
+\caption{Pinout ESP32}
+\label{tab:pinout}
+\end{table}

@@ -1,0 +1,468 @@
+﻿% ============================================================================
+% ANNEXES
+% ============================================================================
+\chapter{Annexes}
+
+\section{Annexe A : Code Source Complet ESP32}
+
+Le listing complet du firmware ESP32 intègre la gestion WiFi, MQTT, interruptions et RFID.
+
+\begin{lstlisting}[language=C++,caption={Firmware ESP32 complet --- Configuration et setup}]
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
+
+// Configuration WiFi
+const char* ssid = "SEWS_WIFI_ATELIER";
+const char* password = "********";
+
+// Configuration MQTT
+const char* mqtt_server = "broker.hivemq.com";
+const int mqtt_port = 1883;
+
+// Topics MQTT
+const char* TOPIC_ALERT = "factory/ligne1/andon/alert";
+const char* TOPIC_RESOLUTION = "factory/ligne1/andon/resolution";
+
+// GPIO Configuration
+#define PIN_ORANGE 32
+#define PIN_ROUGE 33
+#define PIN_VERT 25
+#define LED_STATUS 2
+
+// Variables globales
+WiFiClient espClient;
+PubSubClient mqttClient(espClient);
+String machineId = "KA01";  // Unique par machine
+volatile bool orangePressed = false;
+volatile bool rougePressed = false;
+volatile bool vertPressed = false;
+
+// Handlers interruptions
+void IRAM_ATTR handleOrangeButton() {
+    orangePressed = true;
+}
+
+void IRAM_ATTR handleRougeButton() {
+    rougePressed = true;
+}
+
+void IRAM_ATTR handleVertButton() {
+    vertPressed = true;
+}
+
+void connectWiFi() {
+    Serial.println("Connexion WiFi...");
+    WiFi.begin(ssid, password);
+    int attempts = 0;
+    
+    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+        delay(500);
+        Serial.print(".");
+        attempts++;
+    }
+    
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("\nWiFi connecte!");
+        Serial.print("IP: ");
+        Serial.println(WiFi.localIP());
+    }
+}
+
+void reconnectMQTT() {
+    while (!mqttClient.connected()) {
+        String clientId = "ESP32-" + machineId + "-";
+        clientId += String(random(0xffff), HEX);
+        
+        if (mqttClient.connect(clientId.c_str())) {
+            Serial.println("MQTT connecte");
+            digitalWrite(LED_STATUS, HIGH);
+        } else {
+            digitalWrite(LED_STATUS, LOW);
+            delay(5000);
+        }
+    }
+}
+
+void publishAlert(String status, String type) {
+    StaticJsonDocument<256> doc;
+    doc["machine_id"] = machineId;
+    doc["status"] = status;
+    doc["type"] = type;
+    doc["zone"] = "KA";
+    doc["timestamp"] = millis();
+    doc["operator"] = "Operator_01";
+    
+    char buffer[256];
+    serializeJson(doc, buffer);
+    
+    const char* topic = (status == "OPERATIONAL") ? 
+                        TOPIC_RESOLUTION : TOPIC_ALERT;
+    
+    mqttClient.publish(topic, buffer, true);
+    Serial.println("Publie: " + String(buffer));
+}
+
+void setup() {
+    Serial.begin(115200);
+    
+    // Configuration GPIO
+    pinMode(PIN_ORANGE, INPUT_PULLUP);
+    pinMode(PIN_ROUGE, INPUT_PULLUP);
+    pinMode(PIN_VERT, INPUT_PULLUP);
+    pinMode(LED_STATUS, OUTPUT);
+    
+    // Interruptions
+    attachInterrupt(digitalPinToInterrupt(PIN_ORANGE), 
+                    handleOrangeButton, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PIN_ROUGE), 
+                    handleRougeButton, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PIN_VERT), 
+                    handleVertButton, FALLING);
+    
+    // Connexions
+    connectWiFi();
+    mqttClient.setServer(mqtt_server, mqtt_port);
+}
+
+void loop() {
+    if (!mqttClient.connected()) {
+        reconnectMQTT();
+    }
+    mqttClient.loop();
+    
+    // Traitement evenements avec debounce
+    if (orangePressed) {
+        delay(50);
+        orangePressed = false;
+        publishAlert("DOWNTIME", "Panne");
+    }
+    
+    if (rougePressed) {
+        delay(50);
+        rougePressed = false;
+        publishAlert("MAINTENANCE", "Maintenance");
+    }
+    
+    if (vertPressed) {
+        delay(50);
+        vertPressed = false;
+        publishAlert("OPERATIONAL", "Resolved");
+    }
+    
+    delay(100);
+}
+\end{lstlisting}
+
+\section{Annexe B : Schéma Base de Données PostgreSQL}
+
+Script complet de création de la base de données avec tables, index et triggers.
+
+\begin{lstlisting}[language=SQL,caption={Script création base de données PostgreSQL}]
+-- Table principale downtime_logs
+CREATE TABLE downtime_logs (
+    id SERIAL PRIMARY KEY,
+    machine VARCHAR(10) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    alert_type VARCHAR(100),
+    operator VARCHAR(100),
+    date_panne TIMESTAMP NOT NULL,
+    heure_panne TIME,
+    technician VARCHAR(100),
+    date_arrivee_technicien TIMESTAMP,
+    heure_arrivee TIME,
+    criticite VARCHAR(50),
+    piece_observation TEXT,
+    rfid_uid VARCHAR(50),
+    date_reparation TIMESTAMP,
+    heure_reparation TIME,
+    resolved_by VARCHAR(100),
+    temps_reaction_minutes INTEGER,
+    temps_reparation_minutes INTEGER,
+    temps_total_arret_minutes INTEGER,
+    lifecycle_phase VARCHAR(50) DEFAULT 'detected',
+    atelier VARCHAR(50) DEFAULT 'Test Electrique',
+    zone VARCHAR(10),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index pour optimisation performances
+CREATE INDEX idx_downtime_machine ON downtime_logs(machine);
+CREATE INDEX idx_downtime_date ON downtime_logs(date_panne);
+CREATE INDEX idx_downtime_status ON downtime_logs(status);
+CREATE INDEX idx_downtime_phase ON downtime_logs(lifecycle_phase);
+
+-- Table technicians
+CREATE TABLE technicians (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    rfid_uid VARCHAR(50) UNIQUE NOT NULL,
+    specialite VARCHAR(50),
+    email VARCHAR(100),
+    phone VARCHAR(20),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX idx_technician_rfid ON technicians(rfid_uid);
+
+-- Table machines
+CREATE TABLE machines (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(10) UNIQUE NOT NULL,
+    zone VARCHAR(10) NOT NULL,
+    type VARCHAR(50),
+    description TEXT,
+    status VARCHAR(50) DEFAULT 'operational',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX idx_machine_code ON machines(code);
+
+-- Trigger auto-update updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_downtime_updated_at 
+    BEFORE UPDATE ON downtime_logs
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Insertion donnees exemple technicians
+INSERT INTO technicians (name, rfid_uid, specialite) VALUES
+    ('Mohamed TAZI', 'A1B2C3D4', 'Electronique'),
+    ('Ali BENNANI', 'E5F6G7H8', 'Mecanique'),
+    ('Fatima ALAMI', 'I9J0K1L2', 'Electricite');
+
+-- Insertion donnees exemple machines
+INSERT INTO machines (code, zone, type, description) VALUES
+    ('KA01', 'KA', 'Test continuite', 'Banc test ligne KA'),
+    ('KA02', 'KA', 'Test continuite', 'Banc test ligne KA'),
+    ('KB01', 'KB', 'Test court-circuit', 'Banc test ligne KB'),
+    ('KB02', 'KB', 'Test court-circuit', 'Banc test ligne KB');
+\end{lstlisting}
+
+
+\section{Annexe C : Configuration Déploiement}
+
+\subsection{Fichier package.json}
+
+\begin{lstlisting}[language=json,caption={package.json --- Configuration projet Node.js}]
+{
+  "name": "andon-system-iiot",
+  "version": "2.1.0",
+  "description": "Systeme Andon Intelligent base sur l'IIoT pour SEWS Maroc",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1",
+    "mqtt": "^5.0.3",
+    "pg": "^8.11.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "keywords": [
+    "iot",
+    "iiot",
+    "andon",
+    "industry-4.0",
+    "mqtt",
+    "nodejs",
+    "sews"
+  ],
+  "author": "Aissam MALKOUT",
+  "license": "MIT"
+}
+\end{lstlisting}
+
+\subsection{Variables d'environnement Railway}
+
+\begin{lstlisting}[caption={Variables d'environnement (.env)}]
+# Database
+DATABASE_URL=postgresql://user:password@host:5432/dbname
+
+# Server
+PORT=8080
+NODE_ENV=production
+
+# MQTT
+MQTT_URL=mqtt://broker.hivemq.com:1883
+
+# Security (optionnel)
+JWT_SECRET=your_secret_key_here
+SESSION_SECRET=your_session_secret_here
+\end{lstlisting}
+
+\section{Annexe D : Requêtes SQL Avancées}
+
+Requêtes SQL utilisées pour les analyses et rapports.
+
+\begin{lstlisting}[language=SQL,caption={Requêtes SQL analytiques}]
+-- KPI par machine
+SELECT 
+    machine,
+    COUNT(*) as total_pannes,
+    AVG(temps_reaction_minutes) as mtta_moyen,
+    AVG(temps_reparation_minutes) as mttr_moyen,
+    AVG(temps_total_arret_minutes) as arret_moyen,
+    MAX(temps_total_arret_minutes) as arret_max
+FROM downtime_logs
+WHERE date_panne >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY machine
+ORDER BY total_pannes DESC;
+
+-- Top 5 pannes les plus frequentes
+SELECT 
+    alert_type,
+    COUNT(*) as occurrences,
+    AVG(temps_total_arret_minutes) as duree_moyenne
+FROM downtime_logs
+WHERE date_panne >= CURRENT_DATE - INTERVAL '90 days'
+GROUP BY alert_type
+ORDER BY occurrences DESC
+LIMIT 5;
+
+-- Performance techniciens
+SELECT 
+    technician,
+    COUNT(*) as interventions,
+    AVG(temps_reparation_minutes) as mttr_moyen,
+    MIN(temps_reparation_minutes) as mttr_min,
+    MAX(temps_reparation_minutes) as mttr_max
+FROM downtime_logs
+WHERE technician IS NOT NULL
+  AND date_panne >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY technician
+ORDER BY interventions DESC;
+
+-- Disponibilite par zone
+SELECT 
+    zone,
+    COUNT(*) as total_pannes,
+    SUM(temps_total_arret_minutes) as temps_arret_total,
+    ROUND(100.0 * (1.0 - (SUM(temps_total_arret_minutes) / 
+          (30.0 * 24.0 * 60.0))), 2) as disponibilite_pct
+FROM downtime_logs
+WHERE date_panne >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY zone
+ORDER BY disponibilite_pct ASC;
+\end{lstlisting}
+
+\section{Annexe E : Architecture Réseau}
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.85\textwidth}{\centering\vspace{3cm}{\Large\bfseries\color{sewesblu} Architecture Réseau Complète}\vspace{0.5cm}\\{\normalsize\color{gray}Schéma détaillé infrastructure IoT + Cloud}\vspace{3cm}}}
+\caption{Architecture réseau et infrastructure de déploiement}
+\label{fig:network_architecture}
+\end{figure}
+
+\textbf{Description de l'architecture réseau :}
+
+\textbf{Zone Edge (Atelier) :}
+\begin{itemize}
+    \item 24 modules ESP32 (un par machine)
+    \item Réseau WiFi industriel 802.11n (SSID: SEWS\_WIFI\_ATELIER)
+    \item Routeur industriel avec firewall
+    \item Connexion Internet via fibre optique 100 Mbps
+\end{itemize}
+
+\textbf{Zone Internet :}
+\begin{itemize}
+    \item Broker MQTT HiveMQ Cloud (broker.hivemq.com:1883)
+    \item Latence moyenne : 30--50 ms
+    \item Disponibilité : 99,9\,\%
+\end{itemize}
+
+\textbf{Zone Cloud (Railway) :}
+\begin{itemize}
+    \item Application Node.js (conteneur Docker)
+    \item PostgreSQL 14 managé
+    \item Load balancer + HTTPS automatique
+    \item Région : Europe (Frankfurt)
+\end{itemize}
+
+\section{Annexe F : Glossaire Technique Détaillé}
+
+\begin{description}
+    \item[ACID] Atomicity, Consistency, Isolation, Durability --- Propriétés garantissant l'intégrité des transactions en base de données.
+    
+    \item[Andon] Système de management visuel d'origine japonaise permettant aux opérateurs de signaler rapidement les anomalies de production.
+    
+    \item[API REST] Application Programming Interface utilisant le protocole HTTP et respectant les principes REST pour l'exposition de services web.
+    
+    \item[Broker MQTT] Serveur central gérant la distribution des messages MQTT entre publishers et subscribers.
+    
+    \item[ESP32] Microcontrôleur 32 bits développé par Espressif Systems, intégrant WiFi, Bluetooth et processeur dual-core 240 MHz.
+    
+    \item[GPIO] General Purpose Input/Output --- Broches programmables d'un microcontrôleur pouvant servir d'entrées ou sorties numériques.
+    
+    \item[IIoT] Industrial Internet of Things --- Extension de l'IoT appliquée spécifiquement aux environnements industriels et manufacturiers.
+    
+    \item[Jidoka] Principe du Toyota Production System donnant aux opérateurs l'autonomie d'arrêter la production en cas d'anomalie.
+    
+    \item[KPI] Key Performance Indicator --- Indicateur mesurable permettant d'évaluer la performance d'un processus.
+    
+    \item[Latence] Délai entre l'envoi d'un message et sa réception par le destinataire.
+    
+    \item[Middleware] Logiciel intermédiaire facilitant la communication entre différents composants d'une application.
+    
+    \item[MTTA] Mean Time to Acknowledge --- Temps moyen entre la détection d'une panne et l'arrivée du technicien.
+    
+    \item[MTTR] Mean Time to Repair --- Temps moyen nécessaire pour réparer une panne une fois l'intervention démarrée.
+    
+    \item[Node.js] Environnement d'exécution JavaScript côté serveur basé sur le moteur V8 de Chrome.
+    
+    \item[Publish/Subscribe] Modèle de communication asynchrone où émetteurs et récepteurs sont découplés via topics.
+    
+    \item[PWA] Progressive Web App --- Application web utilisant les standards modernes pour offrir une expérience similaire aux applications natives.
+    
+    \item[QoS] Quality of Service --- Niveau de garantie de livraison des messages dans le protocole MQTT (0, 1 ou 2).
+    
+    \item[RFID] Radio Frequency Identification --- Technologie d'identification automatique par radiofréquences.
+    
+    \item[Socket.IO] Bibliothèque JavaScript facilitant la communication bidirectionnelle temps réel entre clients et serveur.
+    
+    \item[TPS] Toyota Production System --- Système de production développé par Toyota, fondement du Lean Manufacturing.
+    
+    \item[WebSocket] Protocole de communication full-duplex sur une connexion TCP unique, permettant échanges bidirectionnels temps réel.
+\end{description}
+
+\section{Annexe G : Références et Ressources}
+
+\textbf{Documentation technique :}
+\begin{itemize}
+    \item ESP32 Datasheet : \url{https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf}
+    \item MQTT Specification v5.0 : \url{https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html}
+    \item Node.js Documentation : \url{https://nodejs.org/en/docs/}
+    \item PostgreSQL Manual : \url{https://www.postgresql.org/docs/14/}
+    \item Socket.IO Documentation : \url{https://socket.io/docs/v4/}
+    \item Railway Documentation : \url{https://docs.railway.app/}
+\end{itemize}
+
+\textbf{Standards et normes :}
+\begin{itemize}
+    \item ISO 9001:2015 --- Systèmes de management de la qualité
+    \item IATF 16949:2016 --- Qualité automobile
+    \item ISO 14001:2015 --- Management environnemental
+    \item ISO/IEC 14443 --- Cartes RFID sans contact
+    \item IEEE 802.11 --- Standards WiFi
+\end{itemize}
+
+\clearpage

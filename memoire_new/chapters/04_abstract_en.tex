@@ -1,0 +1,14 @@
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+\markboth{Abstract}{Abstract}
+
+In the context of Industry 4.0 and the growing digitalization of production processes, effective fault management represents a major challenge for manufacturing companies. This thesis presents the design, development, and implementation of an intelligent Andon system based on the Industrial Internet of Things (IIoT) for real-time production fault management at SEWS Maroc.
+
+The developed system relies on a hardware architecture consisting of connected sensors (ESP32) interfaced with physical push buttons, enabling operators to instantly report production anomalies. Data is transmitted via the MQTT protocol to a backend server developed in Node.js with the Express framework, which handles processing, routing, and persistence of events in a PostgreSQL database.
+
+The web frontend, developed with HTML5, JavaScript ES6, and Socket.IO, provides an interactive real-time dashboard allowing maintenance teams to visualize production line status, track fault chronology, and analyze performance metrics (average response time, availability rate, fault frequency by category). An email notification system and visual alerts complement the platform.
+
+Experimental results, obtained over a three-month period in real production conditions, demonstrate a significant improvement in average fault response time (35\% reduction), an increase in line availability rate (from 87\% to 94\%), and better event traceability. The system was validated on the SEWS Maroc electrical test workshop, covering 8 production lines.
+
+\vspace{1em}
+\noindent\textbf{Keywords:} Industrial Internet of Things, Andon, MQTT, Node.js, PostgreSQL, HTML5, Socket.IO, ESP32, Fault Management, Industry 4.0

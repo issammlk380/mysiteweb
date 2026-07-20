@@ -1,0 +1,173 @@
+{
+  "version": 1,
+  "author": "Andon KA01 - Industrial System",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-breadboard",
+      "id": "breadboard",
+      "top": -200,
+      "left": 200,
+      "attrs": { "rows": "30", "columns": "60" }
+    },
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": -150,
+      "left": 300,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_down",
+      "top": -100,
+      "left": 600,
+      "attrs": { "color": "red", "label": "🔴 DOWNTIME", "bounce": "0" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_maint",
+      "top": -30,
+      "left": 600,
+      "attrs": { "color": "blue", "label": "🔵 MAINT", "bounce": "0" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_break",
+      "top": 40,
+      "left": 600,
+      "attrs": { "color": "yellow", "label": "🟡 BREAK", "bounce": "0" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_mat",
+      "top": 110,
+      "left": 600,
+      "attrs": { "color": "orange", "label": "🟠 MATERIAL", "bounce": "0" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_resolve",
+      "top": 180,
+      "left": 600,
+      "attrs": { "color": "green", "label": "🟢 RESOLVE", "bounce": "0" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_red",
+      "top": -90,
+      "left": 800,
+      "attrs": { "color": "red", "label": "DOWNTIME" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_blue",
+      "top": -20,
+      "left": 800,
+      "attrs": { "color": "blue", "label": "MAINT" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_yellow",
+      "top": 50,
+      "left": 800,
+      "attrs": { "color": "yellow", "label": "BREAK" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_orange",
+      "top": 120,
+      "left": 800,
+      "attrs": { "color": "orange", "label": "MATERIAL" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_green",
+      "top": 190,
+      "left": 800,
+      "attrs": { "color": "green", "label": "OPERATIONAL" }
+    },
+    {
+      "type": "board-mfrc522",
+      "id": "rfid",
+      "top": 280,
+      "left": 600,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": -80,
+      "left": 750,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r2",
+      "top": -10,
+      "left": 750,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r3",
+      "top": 60,
+      "left": 750,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r4",
+      "top": 130,
+      "left": 750,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r5",
+      "top": 200,
+      "left": 750,
+      "attrs": { "value": "220" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "esp:GND.1", "breadboard:bn.1", "black", [ "h0" ] ],
+    [ "esp:GND.2", "breadboard:bn.25", "black", [ "h0" ] ],
+    [ "esp:3V3", "breadboard:bp.1", "red", [ "h0" ] ],
+    [ "btn_down:1.l", "breadboard:bn.5", "black", [ "h0" ] ],
+    [ "btn_down:2.r", "esp:12", "red", [ "h0" ] ],
+    [ "btn_maint:1.l", "breadboard:bn.8", "black", [ "h0" ] ],
+    [ "btn_maint:2.r", "esp:14", "blue", [ "h0" ] ],
+    [ "btn_break:1.l", "breadboard:bn.11", "black", [ "h0" ] ],
+    [ "btn_break:2.r", "esp:27", "yellow", [ "h0" ] ],
+    [ "btn_mat:1.l", "breadboard:bn.14", "black", [ "h0" ] ],
+    [ "btn_mat:2.r", "esp:26", "orange", [ "h0" ] ],
+    [ "btn_resolve:1.l", "breadboard:bn.17", "black", [ "h0" ] ],
+    [ "btn_resolve:2.r", "esp:25", "green", [ "h0" ] ],
+    [ "esp:13", "r1:1", "red", [ "h0" ] ],
+    [ "r1:2", "led_red:A", "red", [ "h0" ] ],
+    [ "led_red:C", "breadboard:bn.20", "black", [ "h0" ] ],
+    [ "esp:16", "r2:1", "blue", [ "h0" ] ],
+    [ "r2:2", "led_blue:A", "blue", [ "h0" ] ],
+    [ "led_blue:C", "breadboard:bn.23", "black", [ "h0" ] ],
+    [ "esp:17", "r3:1", "yellow", [ "h0" ] ],
+    [ "r3:2", "led_yellow:A", "yellow", [ "h0" ] ],
+    [ "led_yellow:C", "breadboard:bn.26", "black", [ "h0" ] ],
+    [ "esp:4", "r4:1", "orange", [ "h0" ] ],
+    [ "r4:2", "led_orange:A", "orange", [ "h0" ] ],
+    [ "led_orange:C", "breadboard:bn.29", "black", [ "h0" ] ],
+    [ "esp:2", "r5:1", "green", [ "h0" ] ],
+    [ "r5:2", "led_green:A", "green", [ "h0" ] ],
+    [ "led_green:C", "breadboard:bn.32", "black", [ "h0" ] ],
+    [ "rfid:GND", "breadboard:bn.35", "black", [ "h0" ] ],
+    [ "rfid:3.3V", "breadboard:bp.30", "red", [ "h0" ] ],
+    [ "rfid:SDA", "esp:5", "green", [ "h0" ] ],
+    [ "rfid:SCK", "esp:18", "orange", [ "h0" ] ],
+    [ "rfid:MOSI", "esp:23", "purple", [ "h0" ] ],
+    [ "rfid:MISO", "esp:19", "gray", [ "h0" ] ],
+    [ "rfid:RST", "esp:22", "blue", [ "h0" ] ]
+  ],
+  "dependencies": {}
+}

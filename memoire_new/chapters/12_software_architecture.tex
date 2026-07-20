@@ -1,0 +1,198 @@
+\chapter{Architecture logicielle}
+
+Ce chapitre pr\'esente l'architecture logicielle du syst\`eme Andon, en d\'ecrivant l'organisation du code source, les modules du serveur backend et de l'application frontend, ainsi que les m\'ecanismes d'int\'e-gration.
+
+\section{Organisation globale du code}
+
+Le code source du syst\`eme est organis\'e en deux parties principales :
+
+\begin{itemize}
+    \item \textbf{Backend (serveur Node.js) :} r\'epertoire \texttt{server/} contenant le serveur Express, le client MQTT et les routes API.
+    \item \textbf{Frontend (Angular) :} r\'epertoire \texttt{client/} contenant l'application Angular.
+\end{itemize}
+
+\figplaceholder{Organisation du code source du syst\`eme}{fig:organisation_code}
+
+\section{Le serveur backend}
+
+\subsection{Point d'entr\'ee : server.js}
+
+Le fichier \texttt{server.js} constitue le point d'entr\'ee principal du serveur. Il initialise les composants suivants :
+
+\begin{enumerate}
+    \item Le serveur Express avec ses middleware (JSON, CORS, authentification).
+    \item Le serveur Socket.IO pour les communications temps r\'eel.
+    \item La connexion au broker MQTT (Mosquitto).
+    \item La connexion \`a la base de donn\'ees PostgreSQL.
+    \item Le d\'emarrage du serveur HTTP sur le port 3000.
+\end{enumerate}
+
+\subsection{Structure modulaire}
+
+Le serveur suit une architecture modulaire :
+
+\begin{itemize}
+    \item \texttt{routes/} : d\'efinition des endpoints API (REST).
+    \item \texttt{middleware/} : middleware d'authentification JWT, gestion des erreurs.
+    \item \texttt{models/} : mod\`eles de donn\'ees et requ\^etes SQL.
+    \item \texttt{services/} : logique m\'etier (traitement MQTT, g\'en\'eration de rapports).
+    \item \texttt{config/} : configuration du serveur (port, bases de donn\'ees, MQTT).
+\end{itemize}
+
+\subsection{Connexion MQTT}
+
+Le serveur se connecte au broker MQTT au d\'emarrage et s'abonne aux topics pertinents :
+
+\begin{lstlisting}[language=JavaScript,caption={Connexion et abonnement MQTT},label={lst:mqtt_connect}]
+const mqtt = require('mqtt');
+const client = mqtt.connect('mqtt://localhost:1883', {
+  clientId: 'sews-server',
+  clean: true,
+  reconnectPeriod: 5000
+});
+
+client.on('connect', () => {
+  client.subscribe('sews/andon/+/alert');
+  client.subscribe('sews/capteurs/+/status');
+});
+\end{lstlisting}
+
+\subsection{Diffusion Socket.IO}
+
+Le serveur utilise Socket.IO pour diffuser les \'ev\'enements en temps r\'eel :
+
+\begin{lstlisting}[language=JavaScript,caption={Diffusion des \'ev\'enements via Socket.IO},label={lst:socketio}]
+const io = require('socket.io')(server);
+
+io.on('connection', (socket) => {
+  socket.on('subscribe', (room) => {
+    socket.join(room);
+  });
+});
+
+function broadcastAndonEvent(event) {
+  io.to('dashboard').emit('andon-event', event);
+  io.to('ligne-' + event.ligneId)
+    .emit('ligne-update', event);
+}
+\end{lstlisting}
+
+\subsection{API REST}
+
+L'API REST expose les endpoints suivants :
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{l l l}
+\toprule
+\textbf{M\'ethode} & \textbf{Endpoint} & \textbf{Description} \\
+\midrule
+GET & /api/lignes & Liste des lignes \\
+GET & /api/lignes/:id & D\'etail d'une ligne \\
+GET & /api/evenements & Liste des \'ev\'enements \\
+POST & /api/evenements & Cr\'eer un \'ev\'enement \\
+PUT & /api/evenements/:id & Modifier un \'ev\'enement \\
+GET & /api/rapports & Statistiques et rapports \\
+POST & /api/auth/login & Authentification \\
+GET & /api/users & Liste des utilisateurs \\
+\bottomrule
+\end{tabular}
+\caption{Endpoints de l'API REST}
+\label{tab:api_endpoints}
+\end{table}
+
+\section{L'application frontend Angular}
+
+\subsection{Modules fonctionnels}
+
+L'application Angular est structur\'ee en modules fonctionnels :
+
+\begin{itemize}
+    \item \textbf{AppModule :} module racine avec le routeur et la configuration g\'en\'erale.
+    \item \textbf{DashboardModule :} tableau de bord principal avec vue d'ensemble des lignes.
+    \item \textbf{LignesModule :} liste et d\'etail des lignes de production.
+    \item \textbf{EvenementsModule :} historique et suivi des pannes.
+    \item \textbf{RapportsModule :} g\'en\'eration de rapports et statistiques.
+    \item \textbf{AdminModule :} administration des utilisateurs.
+    \item \textbf{AuthModule :} authentification et gestion des sessions.
+\end{itemize}
+
+\subsection{Services Angular}
+
+Les services assurent la communication avec le backend :
+
+\begin{lstlisting}[language=JavaScript,caption={Service de communication temps r\'eel},label={lst:socket_service}]
+@Injectable({ providedIn: 'root' })
+export class SocketService {
+  private socket: any;
+
+  connect() {
+    this.socket = io(environment.apiUrl);
+  }
+
+  subscribeToEvent(event: string, callback: Function) {
+    this.socket.on(event, callback);
+  }
+
+  joinRoom(room: string) {
+    this.socket.emit('subscribe', room);
+  }
+}
+\end{lstlisting}
+
+\subsection{Routing}
+
+Le routing de l'application d\'efinit les paths suivants :
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{l l}
+\toprule
+\textbf{Path} & \textbf{Composant} \\
+\midrule
+/ & DashboardComponent \\
+/lignes & LignesComponent \\
+/lignes/:id & LigneDetailComponent \\
+/evenements & EvenementsComponent \\
+/rapports & RapportsComponent \\
+/admin & AdminComponent \\
+/login & LoginComponent \\
+\bottomrule
+\end{tabular}
+\caption{Routes de l'application Angular}
+\label{tab:routes_angular}
+\end{table}
+
+\section{Int\'e-gration des composants}
+
+\subsection{Flux de communication}
+
+La communication entre les composants suit le flux suivant :
+
+\begin{enumerate}
+    \item L'ESP32 publie un message MQTT.
+    \item Le broker MQTT redistribue aux abonn\'es.
+    \item Le serveur Node.js re\c{c}oit le message via le client MQTT.
+    \item Le serveur traite et enregistre l'\'ev\'enement.
+    \item Le serveur diffuse via Socket.IO.
+    \item Le frontend Angular re\c{c}oit la notification.
+    \item Le composant Angular met \`a jour l'affichage.
+\end{enumerate}
+
+\subsection{S\'ecurit\'e}
+
+La s\'ecurit\'e est assur\'ee par :
+
+\begin{itemize}
+    \item \textbf{Authentification JWT :} tokens sign\'es avec expiration.
+    \item \textbf{Mots de passe hash\'es :} algorithme bcrypt.
+    \item \textbf{HTTPS :} chiffrement des communications.
+    \item \textbf{Validation des entr\'ees :} v\'erification c\^ot\'e serveur.
+    \item \textbf{Journalisation :} logs de toutes les actions critiques.
+\end{itemize}
+
+\section{Synth\`ese du chapitre}
+
+L'architecture logicielle du syst\`eme repose sur un serveur Node.js (Express, MQTT, Socket.IO), une base de donn\'ees PostgreSQL et une application Angular. L'int\'e-gration est assur\'ee par le protocole MQTT pour les capteurs et Socket.IO pour le temps r\'eel. La structure modulaire du code facilite la maintenance et l'\'evolution du syst\`eme.

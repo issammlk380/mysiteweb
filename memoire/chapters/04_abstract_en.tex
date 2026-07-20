@@ -1,0 +1,19 @@
+﻿% ============================================================================
+% ABSTRACT (ENGLISH)
+% ============================================================================
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+In the current context of digital transformation within the manufacturing industry, characterized by the emergence of Industry 4.0 and the Industrial Internet of Things (IIoT), proactive and efficient breakdown management represents a critical strategic challenge for automotive sector companies. The Andon system, inherited from Lean Manufacturing principles and the Toyota Production System, enables rapid visual detection of anomalies on production lines. However, this traditional system remains limited in terms of digital traceability, real-time analysis, and automated calculation of maintenance performance indicators.
+
+This Master's thesis project, conducted within the Maintenance Department of \textbf{SEWS Morocco} (Sumitomo Electric Wiring Systems), a global leader in automotive wiring systems, aims to design and develop an \textbf{intelligent IIoT-based Andon system} for real-time monitoring and complete lifecycle management of industrial breakdowns in the Electrical Test Workshop.
+
+The proposed solution relies on a distributed multi-layer architecture integrating connected sensors (\textbf{ESP32}), a lightweight industrial communication protocol (\textbf{MQTT}), an application backend developed in \textbf{Node.js} and deployed on the \textbf{Railway} cloud platform, a \textbf{PostgreSQL} relational database, a real-time web dashboard leveraging WebSockets, and a mobile Progressive Web App (\textbf{PWA}) designed for maintenance technicians.
+
+The developed system covers the entire breakdown lifecycle: automatic detection via connected Andon buttons, real-time notification with latency below 2 seconds, RFID-traced technician intervention, structured recording of observations and corrective actions, automated resolution, and instantaneous calculation of key performance indicators (\textbf{MTTA} --- Mean Time to Acknowledge, \textbf{MTTR} --- Mean Time to Repair, equipment availability).
+
+Functional and performance testing confirmed the solution's reliability with an average latency of 520 milliseconds, KPI calculation accuracy meeting expectations, and a scalable architecture capable of supporting up to 100 machines and 50 simultaneous users. This project demonstrates the technical feasibility and added value of an IIoT approach to modernize industrial maintenance systems.
+
+\vspace{0.5cm}
+\noindent\textbf{Keywords:} Andon System, Industrial Internet of Things (IIoT), Industry 4.0, MQTT, Smart Maintenance, ESP32, Node.js, Progressive Web App, SEWS Morocco, MTTA, MTTR.
+\clearpage

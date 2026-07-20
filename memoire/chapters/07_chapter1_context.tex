@@ -1,0 +1,298 @@
+﻿% ============================================================================
+% CHAPITRE 1 : CONTEXTE GÉNÉRAL ET CADRE DU PROJET
+% ============================================================================
+\chapter{Contexte Général et Cadre du Projet}
+
+\section*{Introduction}
+
+Ce premier chapitre vise à situer le projet dans son contexte industriel et académique. Nous présentons d'abord l'entreprise d'accueil SEWS Maroc, son positionnement dans l'industrie automotive mondiale, son organisation et les missions du département Maintenance. Nous décrivons ensuite l'Atelier Test Électrique où se déroule le stage, analysons le système Andon existant et ses limitations, formulons la problématique du projet, et présentons la solution IIoT proposée avec ses objectifs et ses bénéfices attendus.
+
+\section{Présentation de l'Entreprise SEWS Maroc}
+
+\subsection{Le Groupe Sumitomo Electric}
+
+SEWS Maroc est une filiale du groupe japonais \textbf{Sumitomo Electric Industries, Ltd.}, conglomérat industriel fondé en 1897 à Osaka, Japon. Initialement spécialisé dans la fabrication de câbles électriques en cuivre, le groupe s'est progressivement diversifié et occupe aujourd'hui une position de leader mondial dans cinq domaines d'activité stratégiques : câbles et produits électriques, systèmes de télécommunications, électronique et matériaux avancés, produits de l'environnement et de l'énergie, et câblages automobiles\cite{sumitomo_electric}.
+
+Avec un chiffre d'affaires annuel dépassant 30 milliards de dollars US et plus de 280\,000 collaborateurs répartis dans près de 40 pays, Sumitomo Electric figure parmi les 500 plus grandes entreprises mondiales selon le classement Fortune Global 500. La division \textbf{SEWS (Sumitomo Electric Wiring Systems)}, spécialisée dans la conception et la fabrication de câblages automobiles complexes, représente l'une des activités les plus stratégiques du groupe et constitue l'un des trois principaux fournisseurs mondiaux de l'industrie automotive.
+
+\subsection{SEWS Maroc : Implantation et activités}
+
+Implantée au Maroc depuis 2001 dans le cadre de la stratégie d'internationalisation du groupe, SEWS Maroc bénéficie de la position géographique stratégique du royaume, de sa proximité avec le marché européen, de la qualité de ses infrastructures industrielles et de la disponibilité d'une main-d'œuvre qualifiée. L'entreprise dispose de plusieurs sites de production répartis entre Kénitra, Tanger et Casablanca.
+
+SEWS Maroc assure la conception, la fabrication et la livraison de câblages automobiles complets (faisceaux électriques) destinés aux constructeurs automobiles de premier rang mondial : \textbf{Renault}, \textbf{Groupe PSA (Stellantis)}, \textbf{Volkswagen}, \textbf{Ford} et \textbf{Daimler-Mercedes}. Ces câblages, véritables systèmes nerveux des véhicules modernes, assurent la transmission de l'énergie électrique et des signaux de communication entre l'ensemble des équipements embarqués.
+
+Avec un effectif de plus de 15\,000 collaborateurs, SEWS Maroc représente l'un des employeurs industriels majeurs du royaume. L'entreprise s'engage dans une démarche d'excellence opérationnelle et détient les principales certifications internationales du secteur automotive :
+
+\begin{itemize}
+    \item \textbf{ISO 9001:2015} --- Management de la qualité
+    \item \textbf{IATF 16949:2016} --- Système de management qualité automobile\cite{iatf16949}
+    \item \textbf{ISO 14001:2015} --- Management environnemental
+    \item \textbf{ISO 45001:2018} --- Management de la santé et sécurité au travail
+\end{itemize}
+
+\subsection{Organisation et départements}
+
+L'organisation de SEWS Maroc repose sur une structure matricielle articulée autour de plusieurs départements fonctionnels et opérationnels dont les missions sont complémentaires. Le tableau~\ref{tab:departements_sews} présente les principaux départements et leurs missions respectives.
+
+\begin{table}[htbp]
+\centering
+\caption{Principaux départements de SEWS Maroc}
+\label{tab:departements_sews}
+\small
+\begin{tabular}{@{}p{3.5cm}p{9cm}@{}}
+\toprule
+\textbf{Département} & \textbf{Missions principales} \\
+\midrule
+Production & Fabrication, assemblage et contrôle des faisceaux électriques selon cahiers des charges clients \\
+\rowcolor{gray!10}
+Qualité & Assurance qualité produit et processus, audits internes et externes, contrôle final \\
+\textbf{Maintenance} & \textbf{Maintenance préventive et curative, amélioration continue des équipements, suivi des indicateurs de disponibilité} \\
+\rowcolor{gray!10}
+Logistique & Approvisionnement matières, gestion des stocks, expédition produits finis \\
+Ingénierie & Industrialisation nouveaux produits, optimisation des processus, support technique \\
+\rowcolor{gray!10}
+Ressources Humaines & Recrutement, formation, gestion des compétences, administration du personnel \\
+Sécurité-Environnement & Prévention des risques professionnels, gestion environnementale, conformité réglementaire \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Le Département Maintenance et l'Atelier Test Électrique}
+
+\subsection{Missions du département Maintenance}
+
+Le département Maintenance de SEWS Maroc joue un rôle stratégique dans la performance industrielle globale de l'entreprise. Ses missions s'articulent autour de trois axes principaux : garantir la disponibilité maximale des équipements de production, minimiser les coûts de maintenance, et contribuer à l'amélioration continue des processus industriels.
+
+Les activités du département couvrent :
+
+\begin{description}
+    \item[Maintenance préventive systématique] : Interventions planifiées selon plans de maintenance équipements (lubrification, remplacement pièces d'usure, étalonnages).
+    \item[Maintenance curative] : Diagnostic et réparation des pannes, remplacement composants défectueux, remise en état des équipements.
+    \item[Maintenance prédictive] : Surveillance de l'état des équipements par analyse vibratoire, thermographie infrarouge, analyse des huiles.
+    \item[Amélioration continue] : Participation aux chantiers TPM (Total Productive Maintenance), optimisation des temps d'arrêt, réduction des coûts.
+    \item[Gestion technique] : Gestion du stock de pièces de rechange, gestion documentaire (fiches techniques, historiques), suivi des KPI maintenance.
+    \item[Formation et développement] : Formation des techniciens aux nouvelles technologies, transfert de compétences, montée en compétences.
+\end{description}
+
+Le département Maintenance s'appuie sur des indicateurs de performance clés (KPI) pour piloter son activité : \textbf{MTTA} (Mean Time to Acknowledge --- temps moyen de prise en charge), \textbf{MTTR} (Mean Time to Repair --- temps moyen de réparation), \textbf{MTBF} (Mean Time Between Failures --- temps moyen entre pannes), \textbf{disponibilité} des équipements, et \textbf{TRS} (Taux de Rendement Synthétique).
+
+\subsection{L'Atelier Test Électrique : contexte opérationnel}
+
+L'Atelier Test Électrique constitue l'une des étapes critiques du processus de fabrication des câblages automobiles chez SEWS Maroc. Situé en aval de la chaîne d'assemblage et en amont de l'expédition, cet atelier assure le contrôle qualité final et la validation de la conformité électrique des faisceaux produits avant leur livraison aux clients constructeurs.
+
+L'atelier dispose de plusieurs types d'équipements de test :
+
+\begin{itemize}
+    \item \textbf{Bancs de test de continuité} : Vérification de la continuité électrique de chaque circuit, détection des circuits ouverts.
+    \item \textbf{Bancs de test de court-circuit} : Détection des courts-circuits entre circuits, tests d'isolation.
+    \item \textbf{Bancs de mesure de résistance} : Mesure précise de la résistance électrique des circuits pour validation des spécifications.
+    \item \textbf{Systèmes de vision industrielle} : Contrôle visuel automatisé de l'assemblage, vérification des positions connecteurs.
+    \item \textbf{Stations de calibration} : Calibration et étalonnage des équipements de mesure.
+\end{itemize}
+
+L'atelier est organisé en plusieurs lignes de test (désignées KA, KB, KC, KD) correspondant à différents modèles de câblages. Chaque ligne comprend plusieurs machines de test opérant en flux continu. Les lignes fonctionnent sur trois équipes (3×8) pour maximiser la capacité de production, ce qui exige une disponibilité maximale des équipements et une réactivité optimale en cas de panne.
+
+\section{Le Système Andon Existant}
+
+\subsection{Origine et principe du système Andon}
+
+Le système Andon trouve son origine dans le \textbf{Toyota Production System (TPS)}\cite{andon_system} développé par l'ingénieur Taiichi Ohno dans les années 1950. Le terme japonais \textit{Andon} désigne une lanterne traditionnelle japonaise, métaphore de la fonction de signalisation visuelle du système.
+
+Le principe fondamental de l'Andon s'inscrit dans la philosophie du \textbf{Jidoka} (autonomation) et du management visuel : donner aux opérateurs le pouvoir et la responsabilité d'arrêter la production dès la détection d'une anomalie, afin d'éviter la propagation des défauts et de résoudre les problèmes à la source. Ce système favorise une culture de qualité, de transparence et de résolution proactive des problèmes\cite{lean_manufacturing}.
+
+\subsection{Mise en œuvre actuelle chez SEWS Maroc}
+
+Dans l'Atelier Test Électrique de SEWS Maroc, le système Andon actuel se compose de boutons lumineux installés à proximité de chaque machine de test. Chaque poste opérateur dispose de trois boutons de couleur :
+
+\begin{description}
+    \item[\textcolor{green!70!black}{\textbf{BOUTON VERT}}] : Signale un fonctionnement normal ou la résolution d'une anomalie.
+    \item[\textcolor{orange!90!black}{\textbf{BOUTON ORANGE}}] : Signale une anomalie mineure ou un ralentissement de production (problème matériel, besoin d'approvisionnement).
+    \item[\textcolor{red!80!black}{\textbf{BOUTON ROUGE}}] : Signale une panne critique nécessitant une intervention urgente de la maintenance.
+\end{description}
+
+Lorsqu'un opérateur appuie sur un bouton, une lampe de la couleur correspondante s'allume au-dessus de la machine et reste visible par l'ensemble de l'atelier. Cette signalisation permet au superviseur et aux techniciens de maintenance de localiser visuellement et rapidement les machines nécessitant une attention.
+
+\subsection{Limitations du système actuel}
+
+Bien que le système Andon actuel remplisse sa fonction de signalisation visuelle, il présente plusieurs limitations majeures dans le contexte des exigences actuelles de traçabilité, d'analyse de performance et de digitalisation des processus. Le tableau~\ref{tab:limites_andon} synthétise ces limitations.
+
+\begin{table}[htbp]
+\centering
+\caption{Limitations du système Andon classique et besoins identifiés}
+\label{tab:limites_andon}
+\small
+\begin{tabular}{@{}p{3cm}p{4.5cm}p{5cm}@{}}
+\toprule
+\textbf{Critère} & \textbf{Système actuel} & \textbf{Besoin identifié} \\
+\midrule
+\rowcolor{gray!10}
+Signalisation & Visuelle locale uniquement & Notification temps réel multi-canaux \\
+Traçabilité & Support papier manuel & Traçabilité numérique automatique \\
+\rowcolor{gray!10}
+Calcul KPI & Calcul manuel hebdomadaire & Calcul automatique temps réel \\
+Supervision & Présence physique obligatoire & Dashboard centralisé accessible à distance \\
+\rowcolor{gray!10}
+Accessibilité & Limitée à l'atelier & Interface web et mobile \\
+Historique & Archives papier fragmentées & Base de données structurée \\
+\rowcolor{gray!10}
+Analyse & Difficile et chronophage & Outils d'analyse et reporting automatisés \\
+Intervention & Saisie manuelle a posteriori & Enregistrement numérique immédiat \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Ces limitations entraînent plusieurs conséquences opérationnelles :
+
+\begin{itemize}
+    \item \textbf{Risque de perte d'information} : Les événements non enregistrés immédiatement peuvent être oubliés ou mal documentés.
+    \item \textbf{Délai de réaction variable} : L'absence de notification automatique peut entraîner des retards dans la prise en charge des pannes.
+    \item \textbf{Difficulté d'analyse} : L'exploitation des données historiques pour identifier les machines problématiques ou les causes récurrentes est laborieuse.
+    \item \textbf{Calcul KPI imprécis} : Les calculs manuels des temps d'intervention et de réparation sont sujets à erreurs.
+    \item \textbf{Absence de vision globale} : Le responsable maintenance ne dispose pas d'une vue consolidée de l'état de l'atelier en temps réel.
+\end{itemize}
+
+\section{Problématique et Questions de Recherche}
+
+\subsection{Formulation de la problématique}
+
+Au regard des limitations identifiées et des exigences de l'Industrie 4.0 en matière de traçabilité, de digitalisation et d'optimisation des processus de maintenance, la problématique centrale de ce projet peut être formulée comme suit :
+
+\begin{center}
+\fbox{\parbox{0.92\textwidth}{\centering\normalsize
+\textbf{Comment moderniser le système de gestion des pannes de l'Atelier Test Électrique de SEWS Maroc en intégrant les technologies de l'Internet Industriel des Objets (IIoT) pour assurer une traçabilité complète, une supervision en temps réel et un calcul automatique des indicateurs de performance maintenance~?}
+}}
+\end{center}
+
+\subsection{Questions de recherche}
+
+Cette problématique générale se décline en plusieurs questions de recherche spécifiques :
+
+\begin{enumerate}
+    \item Comment connecter les boutons Andon existants à une infrastructure IoT tout en préservant leur fonction de signalisation visuelle~?
+    \item Quel protocole de communication industriel adopter pour garantir la fiabilité, la faible latence et la scalabilité du système~?
+    \item Comment concevoir une architecture distribuée permettant la collecte, le traitement, le stockage et la visualisation des données de pannes~?
+    \item Comment assurer la traçabilité automatique des interventions des techniciens sans alourdir leurs procédures de travail~?
+    \item Comment calculer automatiquement et avec précision les indicateurs clés de performance (MTTA, MTTR, disponibilité)~?
+    \item Quelles interfaces utilisateur développer pour répondre aux besoins des différents acteurs (superviseurs, techniciens, responsables)~?
+    \item Comment garantir la sécurité, la fiabilité et la disponibilité du système dans un environnement industriel contraint~?
+\end{enumerate}
+
+\section{Solution Proposée : Système Andon Intelligent Basé sur l'IIoT}
+
+\subsection{Vision globale de la solution}
+
+La solution proposée vise à transformer le système Andon classique en un \textbf{système intelligent, connecté et intégré}, exploitant les technologies de l'IIoT pour couvrir l'ensemble du cycle de vie des pannes industrielles. Cette transformation s'appuie sur cinq couches technologiques complémentaires :
+
+\begin{description}
+    \item[\textbf{Couche Perception}] : Capteurs et actionneurs IoT (modules ESP32, boutons Andon, lecteurs RFID).
+    \item[\textbf{Couche Communication}] : Protocole MQTT pour l'échange de messages temps réel entre dispositifs IoT et serveur applicatif.
+    \item[\textbf{Couche Application}] : Backend Node.js assurant la logique métier, le traitement des événements et l'exposition d'API REST.
+    \item[\textbf{Couche Données}] : Base de données relationnelle PostgreSQL pour la persistance et l'intégrité des données.
+    \item[\textbf{Couche Présentation}] : Dashboard web temps réel et Progressive Web App (PWA) mobile pour les différents acteurs.
+\end{description}
+
+\subsection{Cycle de vie d'une panne : approche processuelle}
+
+Le système proposé couvre les trois phases du cycle de vie d'une panne :
+
+\textbf{Phase 1 --- Détection et notification :}
+\begin{enumerate}
+    \item L'opérateur détecte une anomalie et appuie sur le bouton Andon approprié (orange ou rouge).
+    \item Le module ESP32 connecté détecte l'événement via interruption GPIO et publie un message MQTT contenant : identifiant machine, type d'alerte, horodatage précis, zone et opérateur.
+    \item Le backend Node.js, abonné au topic MQTT correspondant, reçoit le message et enregistre immédiatement l'événement dans PostgreSQL.
+    \item Le backend émet un événement Socket.IO vers tous les clients web connectés (dashboard, PWA).
+    \item Le dashboard affiche instantanément l'alerte avec code couleur, animation et notification sonore.
+\end{enumerate}
+
+\textbf{Phase 2 --- Intervention et traçabilité :}
+\begin{enumerate}
+    \item Le technicien de maintenance se rend sur site, ouvre la PWA mobile et scanne son badge RFID.
+    \item L'application envoie une requête GET à l'API REST pour récupérer les informations du technicien.
+    \item Le technicien sélectionne la machine en panne et saisit les informations d'intervention : criticité (Faible/Modérée/Majeure/Critique), observations, pièces remplacées, actions correctives.
+    \item L'application envoie une requête POST à l'API REST.
+    \item Le backend met à jour l'enregistrement en base de données, calcule automatiquement le MTTA (temps écoulé entre détection et arrivée technicien).
+    \item Le dashboard affiche le statut «~En cours d'intervention~» et le nom du technicien intervenant.
+\end{enumerate}
+
+\textbf{Phase 3 --- Résolution et clôture :}
+\begin{enumerate}
+    \item Une fois la réparation effectuée, l'opérateur appuie sur le bouton VERT.
+    \item L'ESP32 publie un message MQTT de résolution.
+    \item Le backend met à jour le statut en «~Résolu~», enregistre l'horodatage de résolution, calcule automatiquement le MTTR (temps de réparation) et le temps total d'arrêt.
+    \item Le dashboard met à jour l'état de la machine en vert «~Opérationnel~».
+    \item L'événement est clos et archivé dans l'historique.
+\end{enumerate}
+
+\subsection{Indicateurs de performance calculés automatiquement}
+
+Le système calcule automatiquement trois indicateurs clés de performance maintenance :
+
+\begin{equation}
+\text{MTTA (minutes)} = \frac{1}{n}\sum_{i=1}^{n} (\text{Heure d'arrivée technicien}_i - \text{Heure de détection}_i)
+\label{eq:mtta}
+\end{equation}
+
+\begin{equation}
+\text{MTTR (minutes)} = \frac{1}{n}\sum_{i=1}^{n} (\text{Heure de résolution}_i - \text{Heure d'arrivée technicien}_i)
+\label{eq:mttr}
+\end{equation}
+
+\begin{equation}
+\text{Disponibilité (\%)} = \frac{\text{Temps de fonctionnement opérationnel}}{\text{Temps total (fonctionnement + arrêts)}} \times 100
+\label{eq:disponibilite}
+\end{equation}
+
+Ces indicateurs sont calculés en temps réel à chaque mise à jour et sont accessibles via le dashboard pour chaque machine, ligne de production ou atelier dans son ensemble.
+
+\subsection{Bénéfices attendus}
+
+Le tableau~\ref{tab:benefices_solution} synthétise les bénéfices quantifiables attendus de la solution IIoT par rapport au système actuel.
+
+\begin{table}[htbp]
+\centering
+\caption{Bénéfices attendus de la solution IIoT proposée}
+\label{tab:benefices_solution}
+\small
+\begin{tabular}{@{}p{4.5cm}p{3.5cm}p{4.5cm}@{}}
+\toprule
+\textbf{Critère} & \textbf{Système actuel} & \textbf{Solution IIoT} \\
+\midrule
+\rowcolor{gray!10}
+Saisie manuelle événements & 10--15 min/panne & 0 min (automatique) \\
+Fréquence calcul KPI & Hebdomadaire & Temps réel continu \\
+\rowcolor{gray!10}
+Traçabilité interventions & Support papier & Numérique intégrale \\
+Latence notification & Variable (5--15 min) & < 2 secondes garanties \\
+\rowcolor{gray!10}
+Risque erreur humaine & Élevé & Minimal \\
+Accessibilité données & Locale, archives papier & Web, mobile, cloud \\
+\rowcolor{gray!10}
+Analyse historique & Manuelle, laborieuse & Automatisée, requêtes SQL \\
+Vision temps réel & Impossible & Dashboard centralisé \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Architecture technologique}
+
+L'architecture technique de la solution proposée s'articule autour des composants suivants :
+
+\begin{itemize}
+    \item \textbf{ESP32} : Microcontrôleur WiFi/Bluetooth 32 bits à faible coût pour connexion des boutons Andon.
+    \item \textbf{MQTT} : Protocole de messagerie publish/subscribe léger et fiable pour communications IoT\cite{mqtt_iot}.
+    \item \textbf{Node.js + Express} : Plateforme JavaScript côté serveur pour le backend applicatif\cite{nodejs_docs}.
+    \item \textbf{PostgreSQL} : Système de gestion de base de données relationnelle open source robuste\cite{postgresql_docs}.
+    \item \textbf{Socket.IO} : Bibliothèque JavaScript pour communication bidirectionnelle temps réel\cite{socketio_docs}.
+    \item \textbf{Railway} : Plateforme cloud PaaS pour déploiement et hébergement\cite{railway_platform}.
+    \item \textbf{PWA} : Application web progressive installable fonctionnant hors ligne\cite{pwa_standard}.
+\end{itemize}
+
+Ces technologies ont été sélectionnées pour leur fiabilité, leur maturité, leur large adoption dans l'industrie, leur documentation exhaustive et leur compatibilité avec les contraintes d'un environnement industriel.
+
+\section*{Conclusion}
+
+Ce chapitre a présenté le contexte industriel du projet en détaillant l'entreprise SEWS Maroc, son organisation, le département Maintenance et l'Atelier Test Électrique. Nous avons analysé le système Andon existant et identifié ses limitations face aux exigences actuelles de l'Industrie 4.0. La problématique a été formulée et les questions de recherche posées. Enfin, nous avons présenté la vision globale de la solution IIoT proposée, son approche processuelle du cycle de vie des pannes, les indicateurs de performance calculés automatiquement et les bénéfices attendus.
+
+Le chapitre suivant détaillera l'analyse des besoins fonctionnels et non fonctionnels, la modélisation UML du système, la conception de l'architecture technique et de la base de données, ainsi que la spécification de l'architecture réseau MQTT.
+
+\clearpage

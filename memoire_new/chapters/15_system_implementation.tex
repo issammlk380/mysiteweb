@@ -1,0 +1,245 @@
+\chapter{Impl\'ementation du syst\`eme}
+
+Ce chapitre pr\'esente l'impl\'ementation concr\`ete du syst\`eme Andon, en d\'ecrivant les \'etapes de d\'eveloppement, l'environnement de travail et la mise en \ oeuvre de chaque composant.
+
+\section{Environnement de d\'eveloppement}
+
+\subsection{Outils utilis\'es}
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{l l}
+\toprule
+\textbf{Cat\'egorie} & \textbf{Outil} \\
+\midrule
+Syst\`eme d'exploitation & Windows 10/11 \\
+Editeur de code & Visual Studio Code \\
+Serveur backend & Node.js v18 LTS + npm \\
+Base de donn\'ees & PostgreSQL 15 \\
+Broker MQTT & Mosquitto 2.0 \\
+Framework frontend & Angular 16 \\
+Microcontr\^oleur & ESP32 (Arduino IDE) \\
+Gestion de version & Git + GitHub \\
+\bottomrule
+\end{tabular}
+\caption{Environnement de d\'eveloppement}
+\label{tab:environnement_dev}
+\end{table}
+
+\subsection{Installation des d\'e-pendances}
+
+L'installation du projet se fait en quelques commandes :
+
+\begin{lstlisting}[caption={Installation du backend},label={lst:install_backend}]
+# Cloner le depot
+git clone https://github.com/sews/andon-iiot.git
+
+# Installer les d\'ependances du serveur
+cd server
+npm install
+
+# Installer les d\'ependances du client
+cd ../client
+npm install
+\end{lstlisting}
+
+\section{Mise en place de l'infrastructure}
+
+\subsection{Installation de PostgreSQL}
+
+La base de donn\'ees est cr\'e\'ee en ex\'e-cutant le script SQL d'initialisation :
+
+\begin{lstlisting}[caption={Initialisation de la base de donn\'ees},label={lst:init_db}]
+# Creation de la base
+createdb sews_andon
+
+# Execution du script de schema
+psql -d sews_andon -f schema.sql
+
+# Insertion des donnees de test
+psql -d sews_andon -f seed.sql
+\end{lstlisting}
+
+\subsection{Configuration de Mosquitto}
+
+Le broker MQTT est install\'e et configur\'e selon les besoins du syst\`eme :
+
+\begin{lstlisting}[caption={Installation de Mosquitto},label={lst:install_mosquitto}]
+# Installation (Ubuntu)
+sudo apt install mosquitto
+
+# Demarrage du service
+sudo systemctl start mosquitto
+sudo systemctl enable mosquitto
+
+# Test de connexion
+mosquitto_pub -t "test/topic" -m "hello"
+\end{lstlisting}
+
+\section{D\'eveloppement du firmware ESP32}
+
+\subsection{Programme principal}
+
+Le firmware de l'ESP32 est d\'evelopp\'e en Arduino (C/C++) et suit la logique suivante :
+
+\begin{lstlisting}[caption={Boucle principale du firmware ESP32},
+label={lst:firmware_main}]
+void setup() {
+  Serial.begin(115200);
+  pinMode(BOUTON_PIN, INPUT);
+  pinMode(LED_VERTE, OUTPUT);
+  pinMode(LED_ROUGE, OUTPUT);
+  
+  connectWiFi();
+  connectMQTT();
+  
+  digitalWrite(LED_VERTE, HIGH);
+}
+
+void loop() {
+  if (!mqttClient.connected()) {
+    reconnectMQTT();
+  }
+  mqttClient.loop();
+  
+  if (digitalRead(BOUTON_PIN) == HIGH) {
+    delay(200); // Debounce
+    envoyerAlerte();
+    digitalWrite(LED_VERTE, LOW);
+    digitalWrite(LED_ROUGE, HIGH);
+  }
+}
+\end{lstlisting}
+
+\subsection{Fonction d'envoi d'alerte}
+
+\begin{lstlisting}[caption={Envoi d'une alerte Andon via MQTT},
+label={lst:envoyer_alerte}]
+void envoyerAlerte() {
+  StaticJsonDocument<200> doc;
+  doc["ligneId"] = LIGNE_ID;
+  doc["timestamp"] =getTimestampTimestamp();
+  doc["type"] = "panne";
+  doc["urgence"] = "haute";
+  
+  char buffer[200];
+  serializeJson(doc, buffer);
+  
+  String topic = "sews/andon/" 
+    + String(LIGNE_ID) + "/alert";
+  mqttClient.publish(
+    topic.c_str(), buffer, true
+  );
+}
+\end{lstlisting}
+
+\section{D\'eveloppement du serveur backend}
+
+\subsection{Structure du projet}
+
+Le serveur backend suit la structure suivante :
+
+\begin{lstlisting}[caption={Arborescence du serveur backend},
+label={lst:server_structure}]
+server/
+  |-- server.js          Point d'entree
+  |-- package.json        Dependances
+  |-- config/
+  |   |-- db.js          Configuration PostgreSQL
+  |   |-- mqtt.js        Configuration MQTT
+  |-- routes/
+  |   |-- evenements.js  Routes API evenements
+  |   |-- lignes.js      Routes API lignes
+  |   |-- users.js       Routes API utilisateurs
+  |-- middleware/
+  |   |-- auth.js        Authentification JWT
+  |-- models/
+  |   |-- Evenement.js   Modele evenement
+  |   |-- Ligne.js       Modele ligne
+\end{lstlisting}
+
+\subsection{D\'emarrage du serveur}
+
+\begin{lstlisting}[caption={D\'emarrage du serveur backend},
+label={lst:server_start}]
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const mqtt = require('mqtt');
+const { Pool } = require('pg');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+// Connexion PostgreSQL
+const pool = new Pool({
+  host: 'localhost',
+  port: 5432,
+  database: 'sews_andon',
+  user: 'sews_admin',
+  password: process.env.DB_PASS
+});
+
+// Connexion MQTT
+const mqttClient = mqtt.connect(
+  'mqtt://localhost:1883'
+);
+
+server.listen(3000, () => {
+  console.log('Serveur demarre sur :3000');
+});
+\end{lstlisting}
+
+\section{D\'eveloppement du frontend Angular}
+
+\subsection{Structure du projet}
+
+\begin{lstlisting}[caption={Arborescence du frontend Angular},
+label={lst:client_structure}]
+client/
+  |-- src/
+  |   |-- app/
+  |   |   |-- components/
+  |   |   |   |-- dashboard/
+  |   |   |   |-- lignes/
+  |   |   |   |-- evenements/
+  |   |   |-- services/
+  |   |   |   |-- api.service.ts
+  |   |   |   |-- socket.service.ts
+  |   |   |-- models/
+  |   |   |-- app-routing.module.ts
+  |   |-- assets/
+  |   |-- environments/
+  |-- angular.json
+  |-- package.json
+\end{lstlisting}
+
+\section{Tests et validation}
+
+\subsection{Tests unitaires}
+
+Des tests unitaires ont \'et\'e r\'ealis\'es pour chaque composant :
+
+\begin{itemize}
+    \item Tests de l'API REST (CRUD op\'erations).
+    \item Tests de la connexion MQTT.
+    \item Tests de la base de donn\'ees (requ\^etes SQL).
+    \item Tests des composants Angular (navigation, affichage).
+\end{itemize}
+
+\subsection{Tests d'int\'e-gration}
+
+Les tests d'int\'e-gration v\'erifient le bon fonctionnement de l'ensemble :
+
+\begin{enumerate}
+    \item Envoi d'un message MQTT de test.
+    \item V\'erification de la cr\'eation de l'\'ev\'enement dans PostgreSQL.
+    \item V\'erification de la diffusion via Socket.IO.
+    \item V\'erification de l'affichage dans le frontend.
+\end{enumerate}
+
+\section{Synth\`ese du chapitre}
+
+L'impl\'ementation du syst\`eme a mobilis\'e des comp\'etences dans diff\'erents domaines : programmation embarqu\'ee (Arduino/C++), d\'eveloppement backend (Node.js/Express), d\'eveloppement frontend (Angular/TypeScript) et administration de base de donn\'ees (PostgreSQL). Chaque composant a \'et\'e d\'evelopp\'e, test\'e et int\'egr\'e de mani\`ere coh\'erente.

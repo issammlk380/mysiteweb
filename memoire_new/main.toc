@@ -1,0 +1,273 @@
+\babel@toc {french}{}\relax 
+\contentsline {chapter}{Remerciements}{ii}{chapter*.1}%
+\contentsline {chapter}{R\'esum\'e}{iii}{chapter*.2}%
+\contentsline {chapter}{Abstract}{iv}{chapter*.3}%
+\contentsline {chapter}{Liste des Figures}{xii}{chapter*.3}%
+\contentsline {chapter}{Liste des Tableaux}{xiii}{chapter*.3}%
+\contentsline {chapter}{Liste des Abr\'eviations}{xiv}{chapter*.4}%
+\contentsline {chapter}{\numberline {1}Introduction G\'en\'erale}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Contexte g\'en\'eral}{1}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Probl\'ematique}{1}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Objectifs du m\'emoire}{2}{section.1.3}%
+\contentsline {section}{\numberline {1.4}M\'ethodologie}{2}{section.1.4}%
+\contentsline {section}{\numberline {1.5}Organisation du m\'emoire}{3}{section.1.5}%
+\contentsline {chapter}{\numberline {2}\'Etat de l'art}{4}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Le syst\`eme Andon}{4}{section.2.1}%
+\contentsline {subsection}{\numberline {2.1.1}Historique et origines}{4}{subsection.2.1.1}%
+\contentsline {subsection}{\numberline {2.1.2}Principes de fonctionnement}{4}{subsection.2.1.2}%
+\contentsline {subsection}{\numberline {2.1.3}Limites du syst\`eme traditionnel}{5}{subsection.2.1.3}%
+\contentsline {section}{\numberline {2.2}L'Internet Industriel des Objets (IIoT)}{5}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}D\'efinition et concepts fondamentaux}{5}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}Architecture de r\'ef\'erence}{6}{subsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.2.3}Avantages pour l'industrie}{6}{subsection.2.2.3}%
+\contentsline {section}{\numberline {2.3}Protocoles de communication IoT}{6}{section.2.3}%
+\contentsline {subsection}{\numberline {2.3.1}MQTT (Message Queuing Telemetry Transport)}{6}{subsection.2.3.1}%
+\contentsline {subsubsection}{Architecture publish/subscribe}{6}{subsubsection*.7}%
+\contentsline {subsubsection}{Niveaux de Qualit\'e de Service (QoS)}{7}{subsubsection*.8}%
+\contentsline {subsubsection}{Structure des topics}{7}{subsubsection*.10}%
+\contentsline {subsection}{\numberline {2.3.2}OPC UA (Open Platform Communications Unified Architecture)}{8}{subsection.2.3.2}%
+\contentsline {subsection}{\numberline {2.3.3}Autres protocoles}{8}{subsection.2.3.3}%
+\contentsline {section}{\numberline {2.4}Technologies mat\'erielles pour l'IIoT}{8}{section.2.4}%
+\contentsline {subsection}{\numberline {2.4.1}Microcontr\^oleurs pour l'IoT}{8}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}L'ESP32 : choix pour notre application}{8}{subsection.2.4.2}%
+\contentsline {section}{\numberline {2.5}Technologies logicielles}{9}{section.2.5}%
+\contentsline {subsection}{\numberline {2.5.1}Node.js et Express}{9}{subsection.2.5.1}%
+\contentsline {subsection}{\numberline {2.5.2}PostgreSQL}{9}{subsection.2.5.2}%
+\contentsline {subsection}{\numberline {2.5.3}Angular}{10}{subsection.2.5.3}%
+\contentsline {section}{\numberline {2.6}Travaux connexes}{10}{section.2.6}%
+\contentsline {subsection}{\numberline {2.6.1}Syst\`emes Andon connect\'es}{10}{subsection.2.6.1}%
+\contentsline {subsection}{\numberline {2.6.2}Solutions commerciales}{11}{subsection.2.6.2}%
+\contentsline {subsection}{\numberline {2.6.3}Positionnement de notre travail}{11}{subsection.2.6.3}%
+\contentsline {section}{\numberline {2.7}Synth\`ese du chapitre}{11}{section.2.7}%
+\contentsline {chapter}{\numberline {3}Contexte de l'entreprise}{13}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Pr\'esentation de SEWS Maroc}{13}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}Le groupe SEWS}{13}{subsection.3.1.1}%
+\contentsline {subsection}{\numberline {3.1.2}SEWS Maroc : chiffres cl\'es}{13}{subsection.3.1.2}%
+\contentsline {section}{\numberline {3.2}Organisation du d\'epartement Maintenance}{14}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}Structure organisationnelle}{14}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}Le r\^ole du technicien de maintenance}{14}{subsection.3.2.2}%
+\contentsline {section}{\numberline {3.3}L'atelier Test \'Electrique}{14}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Description de l'atelier}{14}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}Processus de production}{14}{subsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.3.3}Probl\`emes rencontr\'es}{15}{subsection.3.3.3}%
+\contentsline {section}{\numberline {3.4}Besoins identifi\'es}{15}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Besoins fonctionnels}{15}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}Besoins techniques}{16}{subsection.3.4.2}%
+\contentsline {section}{\numberline {3.5}Synth\`ese du chapitre}{16}{section.3.5}%
+\contentsline {chapter}{\numberline {4}Analyse des besoins}{17}{chapter.4}%
+\contentsline {section}{\numberline {4.1}M\'ethodologie d'analyse}{17}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}Sources de besoins}{17}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}Acteurs du syst\`eme}{17}{subsection.4.1.2}%
+\contentsline {section}{\numberline {4.2}Besoin fonctionnels}{17}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Module de signalisation (capteurs)}{17}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}Module de traitement (backend)}{18}{subsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.2.3}Module de visualisation (frontend)}{18}{subsection.4.2.3}%
+\contentsline {section}{\numberline {4.3}Besoins non fonctionnels}{19}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Performance}{19}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}Fiabilit\'e}{19}{subsection.4.3.2}%
+\contentsline {subsection}{\numberline {4.3.3}S\'ecurit\'e}{19}{subsection.4.3.3}%
+\contentsline {subsection}{\numberline {4.3.4}Maintenabilit\'e}{19}{subsection.4.3.4}%
+\contentsline {section}{\numberline {4.4}Mod\`elisation UML}{20}{section.4.4}%
+\contentsline {subsection}{\numberline {4.4.1}Diagramme de cas d'utilisation}{20}{subsection.4.4.1}%
+\contentsline {subsection}{\numberline {4.4.2}Diagramme de s\'equence}{20}{subsection.4.4.2}%
+\contentsline {section}{\numberline {4.5}Sp\'ecifications fonctionnelles}{20}{section.4.5}%
+\contentsline {subsection}{\numberline {4.5.1}Mod\`ele de donn\'ees pr\'eliminaire}{20}{subsection.4.5.1}%
+\contentsline {subsection}{\numberline {4.5.2}R\`egles de gestion}{21}{subsection.4.5.2}%
+\contentsline {section}{\numberline {4.6}Synth\`ese du chapitre}{21}{section.4.6}%
+\contentsline {chapter}{\numberline {5}Conception du syst\`eme}{22}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Architecture globale du syst\`eme}{22}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}Vue d'ensemble}{22}{subsection.5.1.1}%
+\contentsline {subsection}{\numberline {5.1.2}Diagramme de d\'eploiement}{22}{subsection.5.1.2}%
+\contentsline {section}{\numberline {5.2}Architecture de la couche perception}{23}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Choix du microcontr\^oleur}{23}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}Sch\'ema de câblage}{23}{subsection.5.2.2}%
+\contentsline {section}{\numberline {5.3}Architecture de la couche communication}{24}{section.5.3}%
+\contentsline {subsection}{\numberline {5.3.1}Choix du protocole : MQTT}{24}{subsection.5.3.1}%
+\contentsline {subsection}{\numberline {5.3.2}Architecture du broker MQTT}{24}{subsection.5.3.2}%
+\contentsline {subsection}{\numberline {5.3.3}Structure des topics}{24}{subsection.5.3.3}%
+\contentsline {section}{\numberline {5.4}Architecture de la couche traitement}{25}{section.5.4}%
+\contentsline {subsection}{\numberline {5.4.1}Serveur backend : Node.js + Express}{25}{subsection.5.4.1}%
+\contentsline {subsection}{\numberline {5.4.2}Base de donn\'ees : PostgreSQL}{25}{subsection.5.4.2}%
+\contentsline {section}{\numberline {5.5}Architecture de la couche pr\'esentation}{25}{section.5.5}%
+\contentsline {subsection}{\numberline {5.5.1}Frontend web : Angular}{25}{subsection.5.5.1}%
+\contentsline {subsection}{\numberline {5.5.2}Diagramme des composants}{26}{subsection.5.5.2}%
+\contentsline {section}{\numberline {5.6}Flux de donn\'ees}{26}{section.5.6}%
+\contentsline {subsection}{\numberline {5.6.1}Flux d'un \'ev\'enement Andon}{26}{subsection.5.6.1}%
+\contentsline {subsection}{\numberline {5.6.2}Flux de r\'esolution}{26}{subsection.5.6.2}%
+\contentsline {section}{\numberline {5.7}Choix d'architecture : microservices vs monolithique}{27}{section.5.7}%
+\contentsline {subsection}{\numberline {5.7.1}Justification du choix monolithique}{27}{subsection.5.7.1}%
+\contentsline {subsection}{\numberline {5.7.2}Perspectives d'\'evolution vers les microservices}{27}{subsection.5.7.2}%
+\contentsline {section}{\numberline {5.8}Synth\`ese du chapitre}{27}{section.5.8}%
+\contentsline {chapter}{\numberline {6}Architecture mat\'erielle}{28}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Le n\oe {}ud Andon ESP32}{28}{section.6.1}%
+\contentsline {subsection}{\numberline {6.1.1}Choix du microcontr\^oleur}{28}{subsection.6.1.1}%
+\contentsline {subsection}{\numberline {6.1.2}Composants du n\oe {}ud}{28}{subsection.6.1.2}%
+\contentsline {subsection}{\numberline {6.1.3}Sch\'ema de câblage}{28}{subsection.6.1.3}%
+\contentsline {subsection}{\numberline {6.1.4}Fonctionnement du circuit}{29}{subsection.6.1.4}%
+\contentsline {section}{\numberline {6.2}Infrastructure r\'eseau}{30}{section.6.2}%
+\contentsline {subsection}{\numberline {6.2.1}R\'eseau Wi-Fi}{30}{subsection.6.2.1}%
+\contentsline {subsection}{\numberline {6.2.2}R\'eseau filaire}{30}{subsection.6.2.2}%
+\contentsline {section}{\numberline {6.3}Alimentation et fiabilit\'e}{30}{section.6.3}%
+\contentsline {subsection}{\numberline {6.3.1}Alimentation des n\oe {}uds}{30}{subsection.6.3.1}%
+\contentsline {subsection}{\numberline {6.3.2}Robustesse industrielle}{31}{subsection.6.3.2}%
+\contentsline {section}{\numberline {6.4}Dimensionnement du syst\`eme}{31}{section.6.4}%
+\contentsline {subsection}{\numberline {6.4.1}Nombre de n\oe {}uds}{31}{subsection.6.4.1}%
+\contentsline {section}{\numberline {6.5}Synth\`ese du chapitre}{31}{section.6.5}%
+\contentsline {chapter}{\numberline {7}Architecture logicielle}{32}{chapter.7}%
+\contentsline {section}{\numberline {7.1}Organisation globale du code}{32}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Le serveur backend}{32}{section.7.2}%
+\contentsline {subsection}{\numberline {7.2.1}Point d'entr\'ee : server.js}{33}{subsection.7.2.1}%
+\contentsline {subsection}{\numberline {7.2.2}Structure modulaire}{33}{subsection.7.2.2}%
+\contentsline {subsection}{\numberline {7.2.3}Connexion MQTT}{33}{subsection.7.2.3}%
+\contentsline {subsection}{\numberline {7.2.4}Diffusion Socket.IO}{34}{subsection.7.2.4}%
+\contentsline {subsection}{\numberline {7.2.5}API REST}{34}{subsection.7.2.5}%
+\contentsline {section}{\numberline {7.3}L'application frontend Angular}{34}{section.7.3}%
+\contentsline {subsection}{\numberline {7.3.1}Modules fonctionnels}{34}{subsection.7.3.1}%
+\contentsline {subsection}{\numberline {7.3.2}Services Angular}{35}{subsection.7.3.2}%
+\contentsline {subsection}{\numberline {7.3.3}Routing}{35}{subsection.7.3.3}%
+\contentsline {section}{\numberline {7.4}Int\'e-gration des composants}{35}{section.7.4}%
+\contentsline {subsection}{\numberline {7.4.1}Flux de communication}{35}{subsection.7.4.1}%
+\contentsline {subsection}{\numberline {7.4.2}S\'ecurit\'e}{36}{subsection.7.4.2}%
+\contentsline {section}{\numberline {7.5}Synth\`ese du chapitre}{36}{section.7.5}%
+\contentsline {chapter}{\numberline {8}Conception de la base de donn\'ees}{37}{chapter.8}%
+\contentsline {section}{\numberline {8.1}M\'ethodologie de conception}{37}{section.8.1}%
+\contentsline {subsection}{\numberline {8.1.1}Approche adopt\'ee}{37}{subsection.8.1.1}%
+\contentsline {subsection}{\numberline {8.1.2}Entit\'es principales}{37}{subsection.8.1.2}%
+\contentsline {section}{\numberline {8.2}Mod\`ele Entit\'e-Association}{37}{section.8.2}%
+\contentsline {subsection}{\numberline {8.2.1}Diagramme EA}{38}{subsection.8.2.1}%
+\contentsline {subsection}{\numberline {8.2.2}D\'efinition des attributs}{38}{subsection.8.2.2}%
+\contentsline {subsubsection}{Entit\'e Ligne}{38}{subsubsection*.25}%
+\contentsline {subsubsection}{Entit\'e Evenement}{38}{subsubsection*.27}%
+\contentsline {section}{\numberline {8.3}Mod\`ele relationnel}{38}{section.8.3}%
+\contentsline {subsection}{\numberline {8.3.1}Sch\'ema relationnel}{38}{subsection.8.3.1}%
+\contentsline {subsection}{\numberline {8.3.2}R\`egles d'int\'egrit\'e}{40}{subsection.8.3.2}%
+\contentsline {section}{\numberline {8.4}Impl\'ementation SQL}{40}{section.8.4}%
+\contentsline {subsection}{\numberline {8.4.1}Cr\'eation des tables}{40}{subsection.8.4.1}%
+\contentsline {subsection}{\numberline {8.4.2}Index de performance}{42}{subsection.8.4.2}%
+\contentsline {subsection}{\numberline {8.4.3}Donn\'ees de test}{42}{subsection.8.4.3}%
+\contentsline {section}{\numberline {8.5}Gestion des volumes de donn\'ees}{42}{section.8.5}%
+\contentsline {subsection}{\numberline {8.5.1}Strat\'egie de r\'etention}{42}{subsection.8.5.1}%
+\contentsline {subsection}{\numberline {8.5.2}Partitionnement temporel}{43}{subsection.8.5.2}%
+\contentsline {section}{\numberline {8.6}Synth\`ese du chapitre}{43}{section.8.6}%
+\contentsline {chapter}{\numberline {9}Architecture de communication}{44}{chapter.9}%
+\contentsline {section}{\numberline {9.1}Protocoles de communication utilis\'es}{44}{section.9.1}%
+\contentsline {subsection}{\numberline {9.1.1}MQTT : protocole principal}{44}{subsection.9.1.1}%
+\contentsline {subsubsection}{Justification du choix}{44}{subsubsection*.29}%
+\contentsline {subsubsection}{Configuration du broker}{44}{subsubsection*.30}%
+\contentsline {subsection}{\numberline {9.1.2}HTTP/HTTPS : API REST}{45}{subsection.9.1.2}%
+\contentsline {subsection}{\numberline {9.1.3}WebSocket (Socket.IO)}{45}{subsection.9.1.3}%
+\contentsline {section}{\numberline {9.2}Structure des topics MQTT}{45}{section.9.2}%
+\contentsline {subsection}{\numberline {9.2.1}Hierarchie des topics}{45}{subsection.9.2.1}%
+\contentsline {subsection}{\numberline {9.2.2}Format des messages}{46}{subsection.9.2.2}%
+\contentsline {section}{\numberline {9.3}Flux de donn\'ees d\'etaill\'e}{46}{section.9.3}%
+\contentsline {subsection}{\numberline {9.3.1}Flux d'un \'ev\'enement Andon}{46}{subsection.9.3.1}%
+\contentsline {subsection}{\numberline {9.3.2}Flux de r\'esolution}{47}{subsection.9.3.2}%
+\contentsline {section}{\numberline {9.4}Gestion de la s\'ecurit\'e des communications}{47}{section.9.4}%
+\contentsline {subsection}{\numberline {9.4.1}S\'ecurit\'e MQTT}{47}{subsection.9.4.1}%
+\contentsline {subsection}{\numberline {9.4.2}S\'ecurit\'e HTTP}{48}{subsection.9.4.2}%
+\contentsline {section}{\numberline {9.5}Gestion des erreurs et tol\'erance aux pannes}{48}{section.9.5}%
+\contentsline {subsection}{\numberline {9.5.1}Strat\'egie de reconnexion}{48}{subsection.9.5.1}%
+\contentsline {subsection}{\numberline {9.5.2}Persistence des donn\'ees}{48}{subsection.9.5.2}%
+\contentsline {section}{\numberline {9.6}Synth\`ese du chapitre}{48}{section.9.6}%
+\contentsline {chapter}{\numberline {10}Impl\'ementation du syst\`eme}{49}{chapter.10}%
+\contentsline {section}{\numberline {10.1}Environnement de d\'eveloppement}{49}{section.10.1}%
+\contentsline {subsection}{\numberline {10.1.1}Outils utilis\'es}{49}{subsection.10.1.1}%
+\contentsline {subsection}{\numberline {10.1.2}Installation des d\'e-pendances}{49}{subsection.10.1.2}%
+\contentsline {section}{\numberline {10.2}Mise en place de l'infrastructure}{50}{section.10.2}%
+\contentsline {subsection}{\numberline {10.2.1}Installation de PostgreSQL}{50}{subsection.10.2.1}%
+\contentsline {subsection}{\numberline {10.2.2}Configuration de Mosquitto}{50}{subsection.10.2.2}%
+\contentsline {section}{\numberline {10.3}D\'eveloppement du firmware ESP32}{50}{section.10.3}%
+\contentsline {subsection}{\numberline {10.3.1}Programme principal}{51}{subsection.10.3.1}%
+\contentsline {subsection}{\numberline {10.3.2}Fonction d'envoi d'alerte}{51}{subsection.10.3.2}%
+\contentsline {section}{\numberline {10.4}D\'eveloppement du serveur backend}{52}{section.10.4}%
+\contentsline {subsection}{\numberline {10.4.1}Structure du projet}{52}{subsection.10.4.1}%
+\contentsline {subsection}{\numberline {10.4.2}D\'emarrage du serveur}{52}{subsection.10.4.2}%
+\contentsline {section}{\numberline {10.5}D\'eveloppement du frontend Angular}{53}{section.10.5}%
+\contentsline {subsection}{\numberline {10.5.1}Structure du projet}{53}{subsection.10.5.1}%
+\contentsline {section}{\numberline {10.6}Tests et validation}{54}{section.10.6}%
+\contentsline {subsection}{\numberline {10.6.1}Tests unitaires}{54}{subsection.10.6.1}%
+\contentsline {subsection}{\numberline {10.6.2}Tests d'int\'e-gration}{54}{subsection.10.6.2}%
+\contentsline {section}{\numberline {10.7}Synth\`ese du chapitre}{54}{section.10.7}%
+\contentsline {chapter}{\numberline {11}Impl\'ementation du backend}{55}{chapter.11}%
+\contentsline {section}{\numberline {11.1}Point d'entr\'ee : server.js}{55}{section.11.1}%
+\contentsline {subsection}{\numberline {11.1.1}Initialisation du serveur}{55}{subsection.11.1.1}%
+\contentsline {subsection}{\numberline {11.1.2}Connexion MQTT et gestion des messages}{56}{subsection.11.1.2}%
+\contentsline {subsection}{\numberline {11.1.3}Traitement des alertes Andon}{56}{subsection.11.1.3}%
+\contentsline {section}{\numberline {11.2}Middleware d'authentification}{57}{section.11.2}%
+\contentsline {subsection}{\numberline {11.2.1}G\'en\'eration et validation des tokens JWT}{57}{subsection.11.2.1}%
+\contentsline {section}{\numberline {11.3}Routes API}{58}{section.11.3}%
+\contentsline {subsection}{\numberline {11.3.1}Route d'authentification}{58}{subsection.11.3.1}%
+\contentsline {subsection}{\numberline {11.3.2}Routes CRUD des \'ev\'enements}{59}{subsection.11.3.2}%
+\contentsline {subsection}{\numberline {11.3.3}Route de rapports}{60}{subsection.11.3.3}%
+\contentsline {section}{\numberline {11.4}Gestion des notifications}{61}{section.11.4}%
+\contentsline {subsection}{\numberline {11.4.1}Notifications par e-mail}{61}{subsection.11.4.1}%
+\contentsline {section}{\numberline {11.5}Synth\`ese du chapitre}{62}{section.11.5}%
+\contentsline {chapter}{\numberline {12}Impl\'ementation du frontend}{63}{chapter.12}%
+\contentsline {section}{\numberline {12.1}Initialisation du projet Angular}{63}{section.12.1}%
+\contentsline {subsection}{\numberline {12.1.1}Cr\'eation du projet}{63}{subsection.12.1.1}%
+\contentsline {section}{\numberline {12.2}Composants principaux}{63}{section.12.2}%
+\contentsline {subsection}{\numberline {12.2.1}Le tableau de bord (Dashboard)}{63}{subsection.12.2.1}%
+\contentsline {subsection}{\numberline {12.2.2}Le template du tableau de bord}{64}{subsection.12.2.2}%
+\contentsline {subsection}{\numberline {12.2.3}La page de d\'etail d'une ligne}{65}{subsection.12.2.3}%
+\contentsline {section}{\numberline {12.3}Services de communication}{66}{section.12.3}%
+\contentsline {subsection}{\numberline {12.3.1}Service API REST}{66}{subsection.12.3.1}%
+\contentsline {subsection}{\numberline {12.3.2}Service Socket.IO (temps r\'eel)}{67}{subsection.12.3.2}%
+\contentsline {section}{\numberline {12.4}Composants de visualisation}{68}{section.12.4}%
+\contentsline {subsection}{\numberline {12.4.1}Graphiques de tendances}{68}{subsection.12.4.1}%
+\contentsline {section}{\numberline {12.5}Authentification et gestion des sessions}{68}{section.12.5}%
+\contentsline {subsection}{\numberline {12.5.1}Routeur et gardes de navigation}{68}{subsection.12.5.1}%
+\contentsline {section}{\numberline {12.6}Responsive design}{69}{section.12.6}%
+\contentsline {section}{\numberline {12.7}Synth\`ese du chapitre}{69}{section.12.7}%
+\contentsline {chapter}{\numberline {13}Impl\'ementation ESP32}{70}{chapter.13}%
+\contentsline {section}{\numberline {13.1}Environnement de d\'eveloppement}{70}{section.13.1}%
+\contentsline {subsection}{\numberline {13.1.1}Arduino IDE}{70}{subsection.13.1.1}%
+\contentsline {subsection}{\numberline {13.1.2}Biblioth\`eques utilis\'ees}{70}{subsection.13.1.2}%
+\contentsline {section}{\numberline {13.2}Code source du firmware}{70}{section.13.2}%
+\contentsline {subsection}{\numberline {13.2.1}Configuration initiale}{70}{subsection.13.2.1}%
+\contentsline {subsection}{\numberline {13.2.2}Connexion WiFi et MQTT}{71}{subsection.13.2.2}%
+\contentsline {subsection}{\numberline {13.2.3}Boucle principale}{72}{subsection.13.2.3}%
+\contentsline {subsection}{\numberline {13.2.4}Envoi d'alerte Andon}{73}{subsection.13.2.4}%
+\contentsline {subsection}{\numberline {13.2.5}R\'e-ception de commandes}{74}{subsection.13.2.5}%
+\contentsline {section}{\numberline {13.3}Gestion de la fiabilit\'e}{74}{section.13.3}%
+\contentsline {subsection}{\numberline {13.3.1}Reconnexion automatique}{74}{subsection.13.3.1}%
+\contentsline {subsection}{\numberline {13.3.2}Surveillance de la connexion WiFi}{75}{subsection.13.3.2}%
+\contentsline {section}{\numberline {13.4}Tests du firmware}{75}{section.13.4}%
+\contentsline {subsection}{\numberline {13.4.1}Tests unitaires}{75}{subsection.13.4.1}%
+\contentsline {subsection}{\numberline {13.4.2}Tests en conditions r\'eelles}{76}{subsection.13.4.2}%
+\contentsline {section}{\numberline {13.5}Synth\`ese du chapitre}{76}{section.13.5}%
+\contentsline {chapter}{\numberline {14}R\'esultats exp\'erimentaux}{77}{chapter.14}%
+\contentsline {section}{\numberline {14.1}Protocole exp\'erimental}{77}{section.14.1}%
+\contentsline {subsection}{\numberline {14.1.1}Conditions de test}{77}{subsection.14.1.1}%
+\contentsline {subsection}{\numberline {14.1.2}Indicateurs mesur\'es}{77}{subsection.14.1.2}%
+\contentsline {section}{\numberline {14.2}R\'esultats de performance}{78}{section.14.2}%
+\contentsline {subsection}{\numberline {14.2.1}Temps de d\'etection}{78}{subsection.14.2.1}%
+\contentsline {subsection}{\numberline {14.2.2}Temps de r\'eponse}{78}{subsection.14.2.2}%
+\contentsline {section}{\numberline {14.3}Analyse des pannes}{79}{section.14.3}%
+\contentsline {subsection}{\numberline {14.3.1}Repartition par type}{79}{subsection.14.3.1}%
+\contentsline {subsection}{\numberline {14.3.2}Repartition par ligne}{79}{subsection.14.3.2}%
+\contentsline {section}{\numberline {14.4}Indicateurs de performance}{79}{section.14.4}%
+\contentsline {subsection}{\numberline {14.4.1}Taux de disponibilite global}{79}{subsection.14.4.1}%
+\contentsline {subsection}{\numberline {14.4.2}Fiabilite du systeme}{80}{subsection.14.4.2}%
+\contentsline {section}{\numberline {14.5}Retour des utilisateurs}{80}{section.14.5}%
+\contentsline {subsection}{\numberline {14.5.1}Enquete de satisfaction}{80}{subsection.14.5.1}%
+\contentsline {section}{\numberline {14.6}Cout-benefice}{80}{section.14.6}%
+\contentsline {subsection}{\numberline {14.6.1}Cout du systeme}{80}{subsection.14.6.1}%
+\contentsline {subsection}{\numberline {14.6.2}Benefices attendus}{80}{subsection.14.6.2}%
+\contentsline {section}{\numberline {14.7}Synthese du chapitre}{81}{section.14.7}%
+\contentsline {chapter}{\numberline {15}Conclusion g\'en\'erale}{82}{chapter.15}%
+\contentsline {section}{\numberline {15.1}Synth\`ese des travaux}{82}{section.15.1}%
+\contentsline {section}{\numberline {15.2}R\'ealisation des objectifs}{82}{section.15.2}%
+\contentsline {section}{\numberline {15.3}Principaux r\'esultats}{82}{section.15.3}%
+\contentsline {section}{\numberline {15.4}Difficult\'es rencontr\'ees}{83}{section.15.4}%
+\contentsline {section}{\numberline {15.5}Perspectives d'\'evolution}{83}{section.15.5}%
+\contentsline {subsection}{\numberline {15.5.1}Court terme}{83}{subsection.15.5.1}%
+\contentsline {subsection}{\numberline {15.5.2}Moyen terme}{83}{subsection.15.5.2}%
+\contentsline {subsection}{\numberline {15.5.3}Long terme}{84}{subsection.15.5.3}%
+\contentsline {section}{\numberline {15.6}Conclusion personnelle}{84}{section.15.6}%
+\contentsline {chapter}{References Bibliographiques}{85}{chapter*.41}%
+\contentsline {chapter}{\numberline {A}Annexes}{86}{appendix.A}%
+\contentsline {section}{\numberline {A.1}Annexe A : Code source du firmware ESP32}{86}{section.A.1}%
+\contentsline {subsection}{\numberline {A.1.1}Programme principal}{86}{subsection.A.1.1}%
+\contentsline {section}{\numberline {A.2}Annexe B : Script SQL}{88}{section.A.2}%
+\contentsline {section}{\numberline {A.3}Annexe C : package.json}{89}{section.A.3}%
+\contentsline {section}{\numberline {A.4}Annexe D : Pinout ESP32}{89}{section.A.4}%

@@ -1,0 +1,245 @@
+% ============================================================================
+% MEMOIRE DE FIN D'ETUDES - MASTER SCIENCES ET TECHNIQUES
+% Systeme Andon IIoT pour la Gestion des Pannes Industrielles
+% Universite Ibn Tofail - Faculte des Sciences - Kenitra
+% Auteur: Aissam MALKOUT
+% Annee: 2025-2026
+% ============================================================================
+
+\documentclass[12pt,a4paper,oneside]{report}
+
+% PACKAGES ESSENTIELS
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[top=2.5cm, bottom=2.5cm, left=3cm, right=2.5cm, headheight=16pt]{geometry}
+
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tocloft}
+\usepackage{setspace}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage{colortbl}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+
+\usepackage{listings}
+\usepackage{lstautogobble}
+
+\usepackage[hidelinks]{hyperref}
+\usepackage[backend=biber,style=numeric-comp,sorting=none,maxbibnames=99]{biblatex}
+
+% COULEURS SEWS
+\definecolor{sewsblue}{RGB}{0,45,114}
+\definecolor{sewsdark}{RGB}{0,30,76}
+\definecolor{sewslight}{RGB}{20,80,160}
+\definecolor{sewsaccent}{RGB}{0,150,200}
+\definecolor{codebg}{RGB}{248,249,250}
+\definecolor{codecomment}{RGB}{108,117,125}
+\definecolor{codekeyword}{RGB}{215,58,73}
+\definecolor{codestring}{RGB}{3,102,214}
+
+% MISE EN PAGE
+\setstretch{1.15}
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{0pt}
+\setlist{nosep,leftmargin=1.5cm,itemsep=3pt,parsep=2pt,topsep=5pt}
+
+% EN-TETES ET PIEDS DE PAGE
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textit{\nouppercase{\leftmark}}}
+\fancyhead[R]{\small\textbf{\thepage}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{sewsblue}\leaders\hrule height \headrulewidth\hfill}}
+
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyfoot[C]{\small\textbf{\thepage}}
+    \renewcommand{\headrulewidth}{0pt}
+}
+
+% TITRES DE CHAPITRES
+\titleformat{\chapter}[display]
+{\normalfont\huge\bfseries\color{sewsblue}}
+{\filleft\Huge\textsc{Chapitre} \thechapter}
+{4ex}
+{\titlerule[2pt]\vspace{2ex}\filleft}
+
+\titleformat{\section}
+{\normalfont\Large\bfseries\color{sewsdark}}
+{\thesection}{1em}{}
+
+\titleformat{\subsection}
+{\normalfont\large\bfseries\color{sewslight}}
+{\thesubsection}{1em}{}
+
+\titleformat{\subsubsection}
+{\normalfont\normalsize\bfseries\color{sewslight}}
+{\thesubsubsection}{1em}{}
+
+\titlespacing*{\chapter}{0pt}{-30pt}{20pt}
+\titlespacing*{\section}{0pt}{15pt}{10pt}
+\titlespacing*{\subsection}{0pt}{12pt}{8pt}
+\titlespacing*{\subsubsection}{0pt}{10pt}{6pt}
+
+% LISTINGS
+\lstset{
+    backgroundcolor=\color{codebg},
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    numberstyle=\tiny\color{gray},
+    numbers=left,
+    stepnumber=1,
+    numbersep=10pt,
+    tabsize=2,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    breaklines=true,
+    breakatwhitespace=true,
+    frame=single,
+    rulecolor=\color{gray!30},
+    xleftmargin=2em,
+    framexleftmargin=1.5em,
+    captionpos=b,
+    aboveskip=15pt,
+    belowskip=10pt,
+    autogobble=true
+}
+
+\lstdefinelanguage{JavaScript}{
+    keywords={const,let,var,function,return,if,else,for,while,async,await,try,catch,class,export,import,require,module},
+    keywordstyle=\color{codekeyword}\bfseries,
+    ndkeywords={console,pool,mqtt,io,express,socket},
+    ndkeywordstyle=\color{sewsaccent}\bfseries,
+    sensitive=true,
+    comment=[l]{//},
+    morecomment=[s]{/*}{*/},
+    morestring=[b]',
+    morestring=[b]"
+}
+
+% LEGENDES
+\captionsetup{
+    font={small,sf},
+    labelfont={bf,color=sewsblue},
+    labelsep=period,
+    justification=centering,
+    skip=10pt
+}
+
+% HYPERREF
+\hypersetup{
+    colorlinks=true,
+    linkcolor=sewsdark,
+    citecolor=sewslight,
+    urlcolor=sewsaccent,
+    pdftitle={Systeme Andon IIoT},
+    pdfauthor={Aissam MALKOUT},
+    pdfsubject={Master Sciences et Techniques},
+    pdfkeywords={IoT, IIoT, Andon, MQTT, Node.js, PostgreSQL}
+}
+
+% BIBLIOGRAPHIE
+\addbibresource{references.bib}
+
+% COMMANDES PERSONNALISEES
+\newcommand{\sews}{SEWS Maroc}
+\newcommand{\iiot}{IIoT}
+\newcommand{\iot}{IoT}
+
+\newcommand{\figplaceholder}[2]{%
+  \begin{figure}[htbp]
+  \centering
+  \fbox{\parbox{0.85\textwidth}{
+    \centering
+    \vspace{2.5cm}
+    {\Large\bfseries\color{sewsblue} #1}\\[0.5cm]
+    {\small\color{gray}(Figure a inserer)}
+    \vspace{2.5cm}
+  }}
+  \caption{#1}
+  \label{#2}
+  \end{figure}
+}
+
+% DOCUMENT
+\begin{document}
+
+\pagenumbering{roman}
+
+\input{chapters/00_cover}
+\cleardoublepage
+
+\input{chapters/01_dedication}
+\cleardoublepage
+
+\input{chapters/02_acknowledgements}
+\cleardoublepage
+
+\input{chapters/03_abstract_fr}
+\cleardoublepage
+
+\input{chapters/04_abstract_en}
+\cleardoublepage
+
+\tableofcontents
+\cleardoublepage
+
+\listoffigures
+\addcontentsline{toc}{chapter}{Liste des Figures}
+\cleardoublepage
+
+\listoftables
+\addcontentsline{toc}{chapter}{Liste des Tableaux}
+\cleardoublepage
+
+\input{chapters/05_acronyms}
+\cleardoublepage
+
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\input{chapters/06_introduction}
+\input{chapters/07_state_of_art}
+\input{chapters/08_company_context}
+\input{chapters/09_requirements_analysis}
+\input{chapters/10_system_design}
+\input{chapters/11_hardware_architecture}
+\input{chapters/12_software_architecture}
+\input{chapters/13_database_design}
+\input{chapters/14_communication_architecture}
+\input{chapters/15_system_implementation}
+\input{chapters/16_backend_implementation}
+\input{chapters/17_frontend_implementation}
+\input{chapters/18_esp32_implementation}
+\input{chapters/19_experimental_results}
+\input{chapters/20_conclusion}
+
+\printbibliography[heading=bibintoc,title={References Bibliographiques}]
+
+\appendix
+\input{chapters/21_appendices}
+
+\end{document}

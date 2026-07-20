@@ -1,0 +1,301 @@
+\chapter{\'Etat de l'art}
+
+Ce chapitre pr\'esente les fondements th\'eoriques et technologiques sur lesquels repose notre travail. Nous abordons successivement le syst\`eme Andon, les technologies de l'Internet Industriel des Objets, les protocoles de communication IoT, les architectures logicielles pour l'industrie, et les travaux connexes dans le domaine.
+
+\section{Le syst\`eme Andon}
+
+\subsection{Historique et origines}
+
+Le syst\`eme Andon trouve ses origines dans le Toyota Production System (TPS), d\'evelopp\'e au Japon apr\`es la Seconde Guerre mondiale. Le mot ``Andon'' (j\={o}nd\={o} en japonais) signifie litt\'eralement ``lampion'' ou ``lanterne'' et fait r\'ef\'erence aux signaux lumineuses utilis\'es pour indiquer l'\`etat d'une ligne de production \cite{liker2004toyota}.
+
+Le syst\`eme Andon a \'et\'e con\c{c}u par Taiichi Ohno, ing\'enieur en chef de Toyota, comme un m\'ecanisme de d\'etection rapide des anomalies en production. Le principe fondamental est d'autoriser tout op\'erateur \`a arr\^eter la ligne de production en cas de d\'etection d'un d\'efaut, permettant ainsi une intervention imm\'ediate et une correction \`a la source.
+
+\subsection{Principes de fonctionnement}
+
+Le fonctionnement d'un syst\`eme Andon repose sur trois piliers fondamentaux :
+
+\begin{enumerate}
+    \item \textbf{La d\'etection pr\'ecoce :} chaque op\'erateur est form\'e pour identifier les anomalies (d\'efaut de qualit\'e, panne machine, manque de mati\`ere premi\`ere, situation dangereuse).
+    
+    \item \textbf{La signalisation imm\'ediate :} l'op\'erateur active un signal (visuel ou sonore) pour alerter l'\'equipe de maintenance et le responsable de ligne.
+    
+    \item \textbf{La r\'eaction rapide :} l'\'equipe de maintenance intervient dans les d\'elais les plus courts pour diagnostiquer et corriger le probl\`eme.
+\end{enumerate}
+
+Les signaux Andon sont g\'en\'eralement cod\'es par couleur :
+\begin{itemize}
+    \item \textbf{Vert :} la ligne fonctionne normalement.
+    \item \textbf{Jaune :} anomalie d\'etect\'ee, intervention souhait\'ee.
+    \item \textbf{Rouge :} arr\^et de la ligne, intervention urgente requise.
+\end{itemize}
+
+\subsection{Limites du syst\`eme traditionnel}
+
+Bien que le syst\`eme Andon traditionnel ait fait ses preuves dans de nombreux environnements industriels, il pr\'esente des limitations dans le contexte de l'industrie 4.0 :
+
+\begin{itemize}
+    \item \textbf{Port\'ee limit\'ee :} les signaux visuels et sonores ne sont perceptibles que dans un rayon restreint.
+    \item \textbf{Absence de tra\c{c}abilit\'e :} aucune donn\'ee num\'erique n'est g\'en\'er\'ee automatiquement.
+    \item \textbf{Manque d'int\'egration :} le syst\`eme fonctionne en silo, d\'econnect\'e des autres syst\`emes d'information.
+    \item \textbf{Difficult\'e d'analyse :} pas de capacit\'e d'analyse statistique ou de reporting automatis\'e.
+    \item \textbf{Temps de r\'eponse :} d\'elai entre la d\'etection et l'intervention, d\^u \`a la d\'esinformation g\'eographique.
+\end{itemize}
+
+\section{L'Internet Industriel des Objets (IIoT)}
+
+\subsection{D\'efinition et concepts fondamentaux}
+
+L'Internet Industriel des Objets (\iiot) est l'application des technologies de l'Internet des Objets (\iot) aux environnements industriels. Il englobe l'ensemble des capteurs, actionneurs, machines et syst\`emes informatiques interconnect\'es dans un processus de production \cite{xu2018industry}.
+
+L'\iiot se distingue de l'\iot grand public par plusieurs caract\'eristiques :
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{p{4cm} p{5cm} p{5cm}}
+\toprule
+\textbf{Crit\`ere} & \textbf{\iot grand public} & \textbf{\iiot} \\
+\midrule
+Environnement & Domicile, bureau & Usine, atelier \\
+Sensibilit\'e aux erreurs & Tol\'erante & Critique \\
+Temps r\'eel & Non requis & Souvent requis \\
+S\'ecurit\'e & Standard & Renforc\'ee \\
+Volum\'etrie & Quelques dizaines & Des milliers \\
+Protocoles & Wi-Fi, Bluetooth & MQTT, OPC UA, Modbus \\
+\bottomrule
+\end{tabular}
+\caption{Comparaison \iot grand public et \iiot}
+\label{tab:iot_vs_iiot}
+\end{table}
+
+\subsection{Architecture de r\'ef\'erence}
+
+L'architecture de r\'ef\'erence de l'\iiot est g\'en\'eralement d\'ecrite en quatre couches :
+
+\begin{enumerate}
+    \item \textbf{Couche perception (capteurs) :} capteurs et actionneurs qui collectent les donn\'ees de l'environnement physique (temp\'erature, pression, pr\'esence, etc.).
+    
+    \item \textbf{Couche r\'eseau :} infrastructure de communication qui transmet les donn\'ees collect\'ees vers les couches sup\'erieures (Wi-Fi, Ethernet, LoRa, etc.).
+    
+    \item \textbf{Couche traitement :} serveurs et plateformes qui traitent, stockent et analysent les donn\'ees (cloud, edge computing).
+    
+    \item \textbf{Couche application :} interfaces utilisateur, tableaux de bord et syst\`emes d'aide \`a la d\'ecision.
+\end{enumerate}
+
+\subsection{Avantages pour l'industrie}
+
+L'adoption de l'\iiot dans les environnements industriels offre de nombreux avantages :
+
+\begin{itemize}
+    \item \textbf{Monitoring en temps r\'eel :} surveillance continue de l'\'etat des machines et des processus.
+    \item \textbf{Maintenance pr\'edictive :} anticipation des pannes gr\^ace \`a l'analyse des donn\'ees historiques.
+    \item \textbf{Optimisation des processus :} identification des goulots d'\'etranglement et des sources de perte.
+    \item \textbf{Tra\c{c}abilit\'e compl\`ete :} enregistrement automatique de tous les \'ev\'enements de production.
+    \item \textbf{R\'eduction des co\^uts :} diminution des temps d'arr\^et et des co\^uts de maintenance.
+\end{itemize}
+
+\section{Protocoles de communication IoT}
+
+\subsection{MQTT (Message Queuing Telemetry Transport)}
+
+MQTT est un protocole de messagerie l\'eger, con\c{c}u sp\'ecifiquement pour les environnements IoT. D\'evelopp\'e initialement par IBM en 1999, il est devenu un standard de l'OASIS (Organization for the Advancement of Structured Information Standards) \cite{banks2014mqtt}.
+
+\subsubsection{Architecture publish/subscribe}
+
+MQTT repose sur un mod\`ele publish/subscribe (pub/sub) qui d\'ecouple l'\'emetteur du r\'ecepteur :
+
+\begin{itemize}
+    \item \textbf{Publisher :} publie des messages sur un sujet (topic).
+    \item \textbf{Broker :} re\c{c}oit les messages et les distribue aux abonn\'es.
+    \item \textbf{Subscriber :} s'abonne \`a des sujets pour recevoir les messages.
+\end{itemize}
+
+Cette architecture pr\'esente des avantages pour l'\iiot :
+\begin{itemize}
+    \item D\'e-couplage temporel : l'\'emetteur et le r\'ecepteur n'ont pas besoin d'\^etre connect\'es simultan\'e-ment.
+    \item Scalabilit\'e : le broker peut g\'erer des milliers de connexions simultan\'ees.
+    \item L\'eg\`eret\'e : les en-t\^etes de message sont minimaux (2 octets minimum).
+\end{itemize}
+
+\subsubsection{Niveaux de Qualit\'e de Service (QoS)}
+
+MQTT d\'efinit trois niveaux de Qualit\'e de Service :
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{>{\bfseries}l p{10cm}}
+\toprule
+Niveau & Description \\
+\midrule
+QoS 0 & ``At most once'' : le message est envoy\'e une seule fois sans accus\'e de r\'eception. Rapide mais sans garantie de livraison. \\
+QoS 1 & ``At least once'' : le message est livr\'e au moins une fois. L'exp\'editeur re\c{c}oit un accus\'e de r\'eception. Possibilit\'e de doublons. \\
+QoS 2 & ``Exactly once'' : le message est livr\'e exactement une fois. Le plus fiable mais le plus lent (quatre \'echanges). \\
+\bottomrule
+\end{tabular}
+\caption{Niveaux de QoS de MQTT}
+\label{tab:mqtt_qos}
+\end{table}
+
+Pour notre application Andon, le niveau QoS 1 constitue le meilleur compromis entre fiabilit\'e et performance : les messages de pannes doivent \^etre livr\'es de mani\`ere fiable sans la surcharge du QoS 2.
+
+\subsubsection{Structure des topics}
+
+Les topics MQTT suivent une hi\'erarchie structur\'ee par des barres obliques (/). Pour notre syst\`eme Andon, nous proposons la structure suivante :
+
+\begin{lstlisting}[language=JavaScript,caption={Structure des topics MQTT},label={lst:mqtt_topics}]
+and
+and/<ligne>/status
+and/<ligne>/alert
+and/<ligne>/andon
+and/<ligne>/capteurs
+\end{lstlisting}
+
+\subsection{OPC UA (Open Platform Communications Unified Architecture)}
+
+OPC UA est un standard de communication industrielle développé par la Fondation OPC. Contrairement à MQTT, OPC UA offre un modèle de données riche avec sémantique intégrée, ce qui le rend particulièrement adapté aux systèmes d'automatisation industrielle complexes \cite{leitner2016industrial}.
+
+Cependant, OPC UA présente une complexité d'implémentation plus élevée et des besoins en ressources plus importants, ce qui le rend moins adapté aux microcontrôleurs à faible consommation comme l'ESP32. Pour notre application Andon, MQTT a été préféré pour sa simplicité et sa légèreté.
+
+\subsection{Autres protocoles}
+
+D'autres protocoles sont utilisés dans le domaine de l'\iiot :
+
+\begin{itemize}
+    \item \textbf{AMQP (Advanced Message Queuing Protocol) :} protocole plus lourd que MQTT, orienté entreprise.
+    \item \textbf{CoAP (Constrained Application Protocol) :} protocole REST pour les dispositifs contraints, basé sur UDP.
+    \item \textbf{Modbus :} protocole de communication industriel ancien, largement utilis\'e dans les automates programmables.
+    \item \textbf{LoRaWAN :} protocole de r\'eseau \`a longue port\'ee et faible consommation, adapt\'e aux zones industrielles \'etendues.
+\end{itemize}
+
+\section{Technologies mat\'erielles pour l'\iiot}
+
+\subsection{Microcontr\^oleurs pour l'IoT}
+
+Le choix du microcontr\^oleur est un \'el\'ement cl\'e de la conception d'un syst\`eme IoT industriel. Les crit\`eres principaux sont : la puissance de calcul, les capacit\'es de communication, la consommation \'electrique, la fiabilit\'e et le co\^ut.
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{l c c c c c}
+\toprule
+\textbf{Caract\'eristique} & \textbf{Arduino Uno} & \textbf{ESP8266} & \textbf{ESP32} & \textbf{STM32} & \textbf{Raspberry Pi} \\
+\midrule
+Processeur & ATmega328P & Xtensa LX106 & Xtensa LX6 & ARM Cortex-M & ARM Cortex-A \\
+Fr\'equence & 16 MHz & 80 MHz & 240 MHz & 168 MHz & 1.4 GHz \\
+RAM & 2 KB & 80 KB & 520 KB & 128 KB & 1-8 GB \\
+Wi-Fi & Non & Oui & Oui & Non & Oui \\
+Bluetooth & Non & Non & Oui & Non & Non \\
+GPIO & 14 & 11 & 34 & 37 & 26 \\
+Co\^ut & $\approx$ 5EUR & $\approx$ 3EUR & $\approx$ 4EUR & $\approx$ 10EUR & $\approx$ 35EUR \\
+\bottomrule
+\end{tabular}
+\caption{Comparaison des microcontr\^oleurs pour l'IoT}
+\label{tab:microcontrollers}
+\end{table}
+
+\subsection{L'ESP32 : choix pour notre application}
+
+L'ESP32, d\'evelopp\'e par Espressif Systems, s'impose comme le candidat id\'eal pour notre syst\`eme Andon en raison de ses capacit\'es multiples :
+
+\begin{itemize}
+    \item \textbf{Connectivit\'e int\'egr\'ee :} Wi-Fi 802.11 b/g/n et Bluetooth 4.2/BLE.
+    \item \textbf{Puissance de calcul :} processeur dual-core \`a 240 MHz avec 520 KB de RAM.
+    \item \textbf{Interface I$^2$C :} pour la communication avec des capteurs externes.
+    \item \textbf{GPIO num\'eriques :} 34 broches d'entr\'ee/sortie, dont 16 ADC.
+    \item \textbf{Faible co\^ut :} prix unitaire d'environ 4 euros.
+    \item \textbf{Communaut\'e active :} documentation extensive et biblioth\`eques Arduino disponibles.
+\end{itemize}
+
+\section{Technologies logicielles}
+
+\subsection{Node.js et Express}
+
+Node.js est un environnement d'exécution JavaScript côté serveur, basé sur le moteur V8 de Google. Son modèle d'E/S non bloquant en fait un choix pertinent pour les applications IoT nécessitant le traitement de nombreux événements simultanés \cite{tilkov2010node}.
+
+Express.js est le framework web le plus populaire pour Node.js. Il fournit une base solide pour la création d'API RESTful avec un minimum de surcharge :
+
+\begin{itemize}
+    \item \textbf{Performance :} le mod\`ele event-driven permet de g\'erer des milliers de connexions simultan\'ees.
+    \item \textbf{Simplicit\'e :} syntaxe intuitive et large \'ecosyst\`eme de middleware.
+    \item \textbf{Socket.IO :} int\'e-gration native pour les communications temps r\'eel bidirectionnelles.
+    \item \textbf{npm :} gestionnaire de paquets avec plus d'un million de biblioth\`eques.
+\end{itemize}
+
+\subsection{PostgreSQL}
+
+PostgreSQL est un syst\`eme de gestion de base de donn\'ees relationnelle open source, reconnu pour sa fiabilit\'e, ses capacit\'es d'extension et sa conformit\'e aux standards SQL \cite{momjian2001postgresql}.
+
+Pour notre application, PostgreSQL offre des avantages sp\'ecifiques :
+
+\begin{itemize}
+    \item \textbf{Type JSON :} support natif du type JSONB pour stocker les donn\'ees de capteurs de forme variable.
+    \item \textbf{Partitionnement :} capacit\'e de partitionnement des tables pour g\'erer les volumes importants d'\'ev\'enements.
+    \item \textbf{Indexation :} indexation avanc\'ee pour les requ\^etes temporelles.
+    \item \textbf{Extensions :} possibilit\'e d'ajouter des extensions comme PostGIS ou TimescaleDB pour l'analyse temporelle.
+    \item \textbf{ACID :} garantie des propri\'et\'es Transactionnelles m\^eme en cas de d\'efaut.
+\end{itemize}
+
+\subsection{HTML5, JavaScript ES6 et Socket.IO}
+
+Pour le d\'eveloppement du frontend, nous avons opt\'e pour une approche bas\'ee sur HTML5, JavaScript ES6 et Socket.IO, privil\'e-giant la simplicit\'e et les performances en temps r\'eel sans la surcharge d'un framework lourd.
+
+Les fonctionnalit\'es cl\'es de cette approche pour notre application incluent :
+
+\begin{itemize}
+    \item \textbf{HTML5 :} structure s\'emantique moderne avec support des balises pour les applications web progressives (PWA).
+    \item \textbf{JavaScript ES6 :} syntaxe moderne avec support des promises, async/await et modules pour une meilleure lisibilit\'e du code.
+    \item \textbf{Socket.IO :} communication bidirectionnelle en temps r\'eel avec le serveur via WebSocket, id\'eal pour les notifications instantan\'ees des \'ev\'enements Andon.
+    \item \textbf{CSS3 et Flexbox :} interfaces r\'eactives et adaptatives sans biblioth\`eque CSS externe.
+    \item \textbf{L\'eg\`eret\'e :} absence de framework lourd permet des temps de chargement rapides et une maintenance simplifi\'ee.
+\end{itemize}
+
+\section{Travaux connexes}
+
+\subsection{Syst\`emes Andon connect\'es}
+
+Plusieurs travaux de recherche ont explor\'e l'int\'egration des technologies IoT dans les syst\`emes Andon :
+
+\begin{itemize}
+    \item \textbf{Wang et al. (2019)} ont propos\'e un syst\`eme Andon bas\'e sur des tags RFID pour le suivi en temps r\'eel des \'ev\'enements de production. Leur approche utilisait des lecteurs RFID fixes le long de la ligne de production pour d\'etecter automatiquement les mouvements des pi\`eces et d\'eclencher des alertes en cas d'anomalie.
+    
+    \item \textbf{Zhang et al. (2020)} ont d\'evelopp\'e une plateforme Andon bas\'e sur le cloud avec des capteurs sans fil. Leur syst\`eme int\'e-grait un module d'analyse pr\'edictive utilisant l'apprentissage automatique pour anticiper les pannes.
+    
+    \item \textbf{Liu et al. (2021)} ont pr\'esent\'e un syst\`eme Andon intelligent utilisant des cam\'e-ras et le traitement d'image pour la d\'etection automatique des d\'efauts visuels.
+\end{itemize}
+
+\subsection{Solutions commerciales}
+
+Plusieurs solutions commerciales existent sur le march\'e :
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Solution} & \textbf{Fournisseur} & \textbf{Caract\'eristiques} \\
+\midrule
+Andon Board & Asprova & Tableau Andon num\'erique \\
+ThingWorx & PTC & Plateforme IIoT compl\`ete \\
+Ignition & Inductive Automation & SCADA + Andon \\
+SFA Andon & SFA & Syst\`eme Andon modulaire \\
+\bottomrule
+\end{tabular}
+\caption{Solutions commerciales Andon}
+\label{tab:solutions_commerciales}
+\end{table}
+
+\subsection{Positionnement de notre travail}
+
+Notre travail se distingue des approches existantes par plusieurs aspects :
+
+\begin{enumerate}
+    \item \textbf{Approche complète :} nous couvrons l'intégralité de la chaîne, des capteurs physiques à l'interface utilisateur.
+    \item \textbf{Technologies open source :} utilisation exclusive de technologies open source (ESP32, Node.js, PostgreSQL, Angular).
+    \item \textbf{Adaptation au contexte :} le syst\`eme est sp\'ecifiquement con\c{c}u pour les contraintes de l'atelier Test \'Electrique de \sews.
+    \item \textbf{Co\^ut ma\^itriss\'e :} le co\^ut total du syst\`eme est significativement inf\'erieur aux solutions commerciales.
+\end{enumerate}
+
+\section{Synth\`ese du chapitre}
+
+Ce chapitre a permis de poser les fondements th\'eoriques et technologiques de notre travail. Le syst\`eme Andon, n\'e dans le cadre du TPS, reste un outil fondamental de gestion des pannes en production. Son int\'e-gration avec les technologies \iiot, et en particulier avec le protocole MQTT et les microcontr\^oleurs connect\'es comme l'ESP32, permet de d\'e-passer ses limitations historiques. Les technologies logicielles choisies (Node.js, PostgreSQL, Angular) forment un ensemble coh\'erent et performant pour la r\'ealisation de notre syst\`eme Andon intelligent.

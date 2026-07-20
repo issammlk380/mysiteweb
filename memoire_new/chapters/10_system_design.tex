@@ -1,0 +1,215 @@
+\chapter{Conception du syst\`eme}
+
+Ce chapitre pr\'esente la conception globale du syst\`eme Andon IIoT, en d\'efinissant l'architecture technique, les choix technologiques et les m\'ecanismes d'int\'e-gration entre les diff\'erents composants.
+
+\section{Architecture globale du syst\`eme}
+
+\subsection{Vue d'ensemble}
+
+Le syst\`eme Andon d\'evelopp\'e suit une architecture en couches, permettant une s\'eparation claire des responsabilit\'es et facilitant la maintenance et l'\'evolution de chaque composant.
+
+L'architecture se compose de quatre couches principales :
+
+\begin{enumerate}
+    \item \textbf{Couche perception :} dispositifs physiques de d\'etection et de signalisation.
+    \item \textbf{Couche communication :} protocoles et infrastructure r\'eseau.
+    \item \textbf{Couche traitement :} serveur backend et base de donn\'ees.
+    \item \textbf{Couche pr\'esentation :} interface web et notifications.
+\end{enumerate}
+
+\figplaceholder{Architecture globale du syst\`eme Andon IIoT}{fig:architecture_globale}
+
+\subsection{Diagramme de d\'eploiement}
+
+Le diagramme de d\'eploiement illustre la r\'epartition physique des composants du syst\`eme :
+
+\begin{itemize}
+    \item \textbf{N\oe{}ud ESP32 (x8) :} un par ligne de production, connect\'e au r\'eseau Wi-Fi de l'atelier.
+    \item \textbf{Serveur backend :} machine virtuelle ou physique h\'ebergeant Node.js, PostgreSQL et le broker MQTT.
+    \item \textbf{Postes clients :} navigateurs web sur PC, tablettes ou smartphones pour acc\'eder au frontend Angular.
+\end{itemize}
+
+\section{Architecture de la couche perception}
+
+\subsection{Choix du microcontr\^oleur}
+
+Apr\`es analyse comparative (cf. Table~\ref{tab:microcontrollers}), l'ESP32 a \'et\'e s\'electionn\'e pour les raisons suivantes :
+
+\begin{itemize}
+    \item Connectivit\'e Wi-Fi int\'egr\'ee, \'eliminant le besoin de modules externes.
+    \item Processeur dual-core \`a 240 MHz, suffisant pour le traitement local.
+    \item Faible consommation (< 240 mA en transmission Wi-Fi).
+    \item Prix unitaire comp\'etitif ($\approx$ 4EUR).
+    \item Communaut\'e Arduino active, facilitant le d\'eveloppement.
+\end{itemize}
+
+\subsection{Sch\'ema de câblage}
+
+Le circuit de chaque n\oe{}ud Andon comprend :
+
+\begin{itemize}
+    \item Un bouton poussoir rouge (activation Andon).
+    \item Une LED verte (ligne OK).
+    \item Une LED rouge (panne active).
+    \item Un connecteur d'alimentation 5V.
+    \item Un r\'esistance de pull-down (10 k$\Omega$) pour le bouton.
+\end{itemize}
+
+La broche GPIO4 est utilis\'ee pour la d\'etection de l'appui sur le bouton, et les broches GPIO16 et GPIO17 contr\^olent les LED verte et rouge respectivement.
+
+\section{Architecture de la couche communication}
+
+\subsection{Choix du protocole : MQTT}
+
+Le protocole MQTT a \'et\'e retenu pour sa pertinence dans le contexte IoT :
+
+\begin{itemize}
+    \item L\'eg\`eret\'e des messages (en-t\^etes minimaux).
+    \item Le mod\`ele publish/subscribe, id\'eal pour la d\'e-couplage.
+    \item Les niveaux de QoS, garantissant la livraison des messages critiques.
+    \item La prise en charge native par de nombreuses biblioth\`eques IoT.
+\end{itemize}
+
+\subsection{Architecture du broker MQTT}
+
+Le broker MQTT constitue le c\oe{}ur du r\'eseau de communication. Nous avons choisi \textbf{Mosquitto}, un broker open source l\'eger et fiable :
+
+\begin{itemize}
+    \item Installation locale sur le serveur backend.
+    \item Port 1883 pour les connexions standard (TCP).
+    \item Port 8883 pour les connexions s\'ecuris\'ees (TLS).
+    \item Authentification par identifiant/mot de passe.
+    \item Persistance des messages pour les abonn\'es d\'econnect\'es.
+\end{itemize}
+
+\subsection{Structure des topics}
+
+La hie\'rarchie des topics MQTT est con\c{c}ue pour refl\'eter l'organisation physique de l'atelier :
+
+\begin{lstlisting}[caption={Hi\'erarchie des topics MQTT},label={lst:topics_structure}]
+# Topic principal pour les alertes Andon
+sews/andon/<ligne_id>/alert
+
+# Topic pour l'\`etat des capteurs
+sews/capteurs/<ligne_id>/status
+
+# Topic pour les mesures de temp\'erature
+sews/capteurs/<ligne_id>/temperature
+
+# Topic pour les commandes retour
+sews/command/<ligne_id>/led
+\end{lstlisting}
+
+\section{Architecture de la couche traitement}
+
+\subsection{Serveur backend : Node.js + Express}
+
+Le serveur backend est d\'evelopp\'e en Node.js avec le framework Express, offrant :
+
+\begin{itemize}
+    \item Un serveur HTTP pour l'API REST.
+    \item Une connexion MQTT au broker Mosquitto.
+    \item Un serveur WebSocket (Socket.IO) pour les mises \`a jour en temps r\'eel.
+    \item La logique métier de traitement des \'ev\'enements.
+    \item L'interface avec PostgreSQL pour la persistance des donn\'ees.
+\end{itemize}
+
+\figplaceholder{Architecture du serveur backend}{fig:architecture_backend}
+
+\subsection{Base de donn\'ees : PostgreSQL}
+
+PostgreSQL est utilis\'e pour la persistance des donn\'ees :
+
+\begin{itemize}
+    \item Stockage des \'ev\'enements Andon (cr\'eation, modification, cl\^oture).
+    \item Gestion des utilisateurs et des droits d'acc\`es.
+    \item Historique des notifications envoy\'ees.
+    \item Donn\'ees agr\'eg\'ees pour le calcul des indicateurs.
+\end{itemize}
+
+\section{Architecture de la couche pr\'esentation}
+
+\subsection{Frontend web : Angular}
+
+L'interface utilisateur est d\'evelopp\'ee en Angular, offrant :
+
+\begin{itemize}
+    \item Un tableau de bord interactif avec vue d'ensemble des lignes.
+    \item Des graphiques de tendances et d'analyses.
+    \item La mise \`a jour en temps r\'eel gr\^ace \`a Socket.IO.
+    \item La responsive design pour l'utilisation sur diff\'erents terminaux.
+    \item L'authentification s\'ecuris\'ee avec gestion des sessions.
+\end{itemize}
+
+\subsection{Diagramme des composants}
+
+Les composants principaux du frontend sont organis\'es en modules :
+
+\begin{itemize}
+    \item \textbf{Module Dashboard :} composant principal avec vue d'ensemble.
+    \item \textbf{Module Lignes :} liste et d\'etail des lignes de production.
+    \item \textbf{Module Evenements :} historique et gestion des pannes.
+    \item \textbf{Module Rapports :} g\'en\'eration et consultation des statistiques.
+    \item \textbf{Module Admin :} gestion des utilisateurs et configuration.
+\end{itemize}
+
+\section{Flux de donn\'ees}
+
+\subsection{Flux d'un \'ev\'enement Andon}
+
+Le parcours complet d'un \'ev\'enement Andon suit les \'etapes suivantes :
+
+\begin{enumerate}
+    \item L'op\'erateur appuie sur le bouton physique.
+    \item L'ESP32 g\'en\`ere un message JSON avec : id\_ligne, timestamp, type.
+    \item Le message est publi\'e sur le topic MQTT \texttt{sews/andon/\{ligne\_id\}/alert}.
+    \item Le broker MQTT redistribue le message aux abonn\'es.
+    \item Le serveur Node.js re\c{c}oit et traite le message.
+    \item L'\'ev\'enement est enregistr\'e dans PostgreSQL.
+    \item Le serveur diffuse l'\'ev\'enement via Socket.IO.
+    \item Le frontend Angular re\c{c}oit la notification et met \`a jour l'affichage.
+    \item Une notification e-mail est envoy\'ee si n\'ecessaire.
+    \item La LED rouge de l'ESP32 s'allume pour signaler visuellement la panne.
+\end{enumerate}
+
+\subsection{Flux de r\'esolution}
+
+Lorsqu'un technicien r\'e\'esout une panne :
+
+\begin{enumerate}
+    \item Le technicien acc\`ede \`a l'\'ev\'enement dans le frontend.
+    \item Il saisit le compte-rendu d'intervention.
+    \item Le frontend envoie une requ\^ete PUT \`a l'API REST.
+    \item Le serveur met \`a jour PostgreSQL et publie la cl\^oture sur MQTT.
+    \item L'ESP32 re\c{c}oit la commande et\'eint la LED rouge (allume le vert).
+    \item Le frontend affiche la ligne comme r\'e-solue.
+\end{enumerate}
+
+\section{Choix d'architecture : microservices vs monolithique}
+
+\subsection{Justification du choix monolithique}
+
+Pour un projet de cette envergure, une architecture monolithique a \'et\'e privil\'egi\'ee pour les raisons suivantes :
+
+\begin{itemize}
+    \item \textbf{Simplicit\'e :} un seul processus \`a d\'eployer et \`a maintenir.
+    \item \textbf{Performance :} pas de surcharge de communication inter-services.
+    \item \textbf{Coh\'erence :} transactions garanties au sein d'un m\^eme processus.
+    \item \textbf{Co\^ut :} infrastructure r\'eduite, adapt\'ee au budget du projet.
+    \item \textbf{\'Echelle :} le syst\`eme g\`ere 8 lignes, ce qui ne n\'ecessite pas de distribution.
+\end{itemize}
+
+\subsection{Perspectives d'\'evolution vers les microservices}
+
+Si le syst\`eme devait \^etre \'etendu \`a plusieurs sites de production, une migration vers une architecture microservices pourrait \^etre envisag\'ee, en s\'eparant notamment :
+
+\begin{itemize}
+    \item Un service MQTT d\'e-di\'e \`a la r\'eception des messages.
+    \item Un service de traitement et d'agr\'egation.
+    \item Un service de notification.
+    \item Un service d'API pour le frontend.
+\end{itemize}
+
+\section{Synth\`ese du chapitre}
+
+La conception du syst\`eme Andon IIoT repose sur une architecture en quatre couches : perception (ESP32), communication (MQTT), traitement (Node.js/PostgreSQL) et pr\'esentation (Angular). Le choix d'une architecture monolithique est justifi\'e par l'envergure du projet et les contraintes de d\'eveloppement. La structure des topics MQTT et le flux de donn\'ees ont \'et\'e con\c{c}us pour assurer la fiabilit\'e et la r\'eactivité du syst\`eme en conditions industrielles.

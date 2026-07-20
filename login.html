@@ -522,32 +522,32 @@
     <!-- JAVASCRIPT CORE ENGINE -->
     <!-- ============================================ -->
    <script>
-// هاد الدالة دابا ولات ف المستوى العالمي (Global) باش يشوفها السطر 134 نيشان
+// This function is now globally accessible so line 134 can see it
 async function handleLogin(event) {
-    // 1. كنحبسو التحديث ديال الصفحة
+    // 1. Prevent page refresh
     event.preventDefault(); 
     
-    // 2. كناخدو Inputs
+    // 2. Get inputs
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
     
     if (!usernameInput || !passwordInput) {
-        alert("تأكد خويا بلي الـ Inputs عندك فيهم id='username' و id='password'!");
+        alert("Make sure your inputs have id='username' and id='password'!");
         return;
     }
     
     const username = usernameInput.value.trim();
     const password = passwordInput.value.trim();
     
-    // 🚀 3. الحل السريع: إلا كتبتي admin و admin123 غيطير بك نيشان للداشبورد بزز
+    // 🚀 3. Quick solution: If you enter admin and admin123, redirect to dashboard
     if (username === 'admin' && password === 'admin123') {
         localStorage.setItem('isAdminAuth', 'true');
         window.location.href = '/dashboard';
     } else {
-        // يلا دخل معلومات غالطين
+        // Incorrect credentials
         const errorMsg = document.getElementById('errorMsg');
         if (errorMsg) errorMsg.classList.remove('hidden');
-        else alert('Identifiants incorrects! (جرب admin / admin123)');
+        else alert('Incorrect credentials! (Try admin / admin123)');
     }
 }
 </script>
