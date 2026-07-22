@@ -444,7 +444,14 @@ app.use(express.urlencoded({ extended: true }));
 ═══════════════════════════════════════════════════════════════════ */
 
 // ✅ 1. ROUTES EXPLICITES (prioritaires)
+// La page d'accueil sert désormais le NOUVEAU dashboard (carte KA01 temps réel,
+// tableau unique des interventions). L'ancien index.html reste accessible via /index.html ou /home.
 app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
+
+// Ancien dashboard conservé (accessible mais plus en page d'accueil)
+app.get('/home', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
