@@ -155,6 +155,26 @@ uint32_t lastWatchdogReset = 0;
 Statistics stats = {0};
 String currentOperatorId = "UNKNOWN";
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔑 RFID — RÔLES & SESSION DE BADGE (gating strict des boutons)
+//    UIDs alignés avec la base de données (tables technicians / operators).
+// ═══════════════════════════════════════════════════════════════════════════
+#define ROLE_NONE        0
+#define ROLE_OPERATOR    1
+#define ROLE_TECHNICIAN  2
+
+const char* TECH_UIDS[] = { "04A3B8FA", "04C5D2FB", "04E7F6FC", "04B9A4FD", "04D1C8FE" };
+const char* OP_UIDS[]   = { "04F1E2A1", "04F2E3B2", "04F3E4C3" };
+const uint8_t TECH_COUNT = 5;
+const uint8_t OP_COUNT   = 3;
+
+const uint32_t BADGE_SESSION_MS = 20000;   // un badge reste valide 20 s après le scan
+
+uint8_t  currentRole     = ROLE_NONE;      // rôle du dernier badge scané
+uint32_t badgeScanTime   = 0;              // instant du dernier scan
+String   lastPublishedUid = "";            // anti-spam publication RFID
+uint32_t lastRfidPublish = 0;
+
 ButtonState buttons[5] = {
   {BTN_DOWNTIME, 0, 0, HIGH, HIGH},
   {BTN_MAINT, 0, 0, HIGH, HIGH},
@@ -291,21 +311,62 @@ void blinkLed(uint8_t pin, uint8_t times, uint16_t delayMs) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🔑 RFID — helpers rôle / session / gating
+// ═══════════════════════════════════════════════════════════════════════════
+uint8_t roleForUid(const String& uid) {
+  for (uint8_t i = 0; i < TECH_COUNT; i++) if (uid.equalsIgnoreCase(TECH_UIDS[i])) return ROLE_TECHNICIAN;
+  for (uint8_t i = 0; i < OP_COUNT;   i++) if (uid.equalsIgnoreCase(OP_UIDS[i]))   return ROLE_OPERATOR;
+  return ROLE_NONE;
+}
+const char* roleName(uint8_t r) {
+  return r == ROLE_TECHNICIAN ? "TECHNICIEN" : (r == ROLE_OPERATOR ? "OPERATEUR" : "AUCUN");
+}
+bool badgeValid() {
+  return currentRole != ROLE_NONE && (millis() - badgeScanTime) < BADGE_SESSION_MS;
+}
+
+// Réaffiche de façon déterministe l'UNIQUE LED correspondant à l'état courant
+// (garantit qu'on n'a jamais deux LEDs allumées en même temps).
+void updateStateLed() {
+  allLedsOff();
+  switch (currentAlert) {
+    case ALERT_DOWNTIME:    digitalWrite(LED_RED,    HIGH); break;
+    case ALERT_MAINTENANCE: digitalWrite(LED_BLUE,   HIGH); break;
+    case ALERT_BREAK:       digitalWrite(LED_YELLOW, HIGH); break;
+    case ALERT_MATERIAL:    digitalWrite(LED_ORANGE, HIGH); break;
+    default:                digitalWrite(LED_GREEN,  HIGH); break; // ALERT_NONE = opérationnel
+  }
+}
+
+// Feedback "refusé" : fait clignoter 3× la LED d'état courant puis la restaure.
+void rejectFeedback() {
+  for (uint8_t i = 0; i < 3; i++) { allLedsOff(); delay(70); updateStateLed(); delay(70); }
+}
+
+// Autorise (ou refuse) un bouton selon la présence d'un badge valide du bon rôle.
+bool allowButton(uint8_t requiredRole, const char* btnName) {
+  if (!badgeValid()) {
+    String m = F("⛔ "); m += btnName; m += F(" refusé — scannez d'abord un badge RFID");
+    LOG_W(m);
+    rejectFeedback();
+    return false;
+  }
+  if (currentRole != requiredRole) {
+    String m = F("⛔ "); m += btnName; m += F(" refusé — badge "); m += roleName(requiredRole);
+    m += F(" requis (badge actuel: "); m += roleName(currentRole); m += F(")");
+    LOG_W(m);
+    rejectFeedback();
+    return false;
+  }
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // 🔘 GESTION AVANCÉE DES BOUTONS
 // ═══════════════════════════════════════════════════════════════════════════
 bool readButtonStable(ButtonState* btn) {
   bool reading = digitalRead(btn->pin);
-  
-  // DEBUG: Log each reading
-  static uint32_t lastPinLog = 0;
-  if (millis() - lastPinLog > 2000) {
-    Serial.print(F("[DEBUG] Pin "));
-    Serial.print(btn->pin);
-    Serial.print(F(" = "));
-    Serial.println(reading == LOW ? "PRESSED (LOW)" : "RELEASED (HIGH)");
-    lastPinLog = millis();
-  }
-  
+
   if (reading != btn->currentState) {
     btn->currentState = reading;
     btn->stableCount = 0;
@@ -327,9 +388,7 @@ bool readButtonStable(ButtonState* btn) {
     
     if (reading == LOW) {
       btn->stableCount = 0;
-      Serial.print(F("[DEBUG] Button STABLE PRESS detected on pin "));
-      Serial.println(btn->pin);
-      return true;
+      return true;   // front d'appui stable détecté
     }
   }
   
@@ -340,85 +399,56 @@ bool readButtonStable(ButtonState* btn) {
 // 🔘 LIFECYCLE 3 PHASES - Gestion Boutons Intelligente
 // ═══════════════════════════════════════════════════════════════════════════
 void scanButtons() {
-  // DEBUG: Log entrée dans la fonction
-  static uint32_t lastScanLog = 0;
-  if (millis() - lastScanLog > 10000) {
-    Serial.println(F("[DEBUG] scanButtons() - Lecture des 5 boutons..."));
-    Serial.print(F("[DEBUG] Bouton states: DWN="));
-    Serial.print(digitalRead(BTN_DOWNTIME));
-    Serial.print(F(" MNT="));
-    Serial.print(digitalRead(BTN_MAINT));
-    Serial.print(F(" BRK="));
-    Serial.print(digitalRead(BTN_BREAK));
-    Serial.print(F(" MAT="));
-    Serial.print(digitalRead(BTN_MATERIAL));
-    Serial.print(F(" RES="));
-    Serial.println(digitalRead(BTN_RESOLVE));
-    lastScanLog = millis();
-  }
-  
   // ═══════════════════════════════════════════════════════════════════════
-  // 🔴 PHASE 1: DOWNTIME (Opérateur signale panne)
+  // 🔒 GATING RFID : un bouton n'agit QUE si un badge valide du bon rôle
+  //    a été scanné récemment (session de BADGE_SESSION_MS).
+  //    OPÉRATEUR → 🔴 DOWNTIME · 🟡 BREAK · 🟠 MATERIAL
+  //    TECHNICIEN → 🔵 MAINTENANCE · 🟢 RESOLVE
   // ═══════════════════════════════════════════════════════════════════════
-  // Opérateur détecte panne → Appuie sur bouton rouge
-  // → Backend enregistre: date_panne, lifecycle_phase='detected'
-  // ═══════════════════════════════════════════════════════════════════════
+
+  // 🔴 DOWNTIME — OPÉRATEUR
   if (readButtonStable(&buttons[0])) {
-    Serial.println(F("[DEBUG] ✅ BTN_DOWNTIME pressé!"));
-    LOG_I(F("🔴 PHASE 1: DOWNTIME détecté par opérateur"));
-    LOG_I(F("   → Lifecycle: DETECTED"));
-    setAlertMode(LED_RED, ALERT_DOWNTIME);
-    sendAlertMqtt(0, "detected");
+    if (allowButton(ROLE_OPERATOR, "DOWNTIME")) {
+      LOG_I(F("🔴 PHASE 1: DOWNTIME (opérateur) → DETECTED"));
+      setAlertMode(LED_RED, ALERT_DOWNTIME);
+      sendAlertMqtt(0, "detected");
+    }
   }
-  
-  // ═══════════════════════════════════════════════════════════════════════
-  // 🔵 PHASE 2: MAINTENANCE (Technicien arrive)
-  // ═══════════════════════════════════════════════════════════════════════
-  // Technicien arrive sur site → Appuie sur bouton bleu
-  // → Backend enregistre: date_arrivee_technicien, lifecycle_phase='acknowledged'
-  // → Backend calcule: temps_reaction_minutes = arrivée - panne
-  // ═══════════════════════════════════════════════════════════════════════
+
+  // 🔵 MAINTENANCE — TECHNICIEN
   if (readButtonStable(&buttons[1])) {
-    LOG_I(F("🔵 PHASE 2: Technicien ARRIVÉ sur site"));
-    LOG_I(F("   → Lifecycle: ACKNOWLEDGED"));
-    LOG_I(F("   → Backend va calculer MTTA (temps réaction)"));
-    setAlertMode(LED_BLUE, ALERT_MAINTENANCE);
-    sendAlertMqtt(1, "acknowledged");
+    if (allowButton(ROLE_TECHNICIAN, "MAINTENANCE")) {
+      LOG_I(F("🔵 PHASE 2: MAINTENANCE (technicien) → ACKNOWLEDGED"));
+      setAlertMode(LED_BLUE, ALERT_MAINTENANCE);
+      sendAlertMqtt(1, "acknowledged");
+    }
   }
-  
-  // ═══════════════════════════════════════════════════════════════════════
-  // 🟡 BREAK (Pause opérateur - pas lifecycle)
-  // ═══════════════════════════════════════════════════════════════════════
+
+  // 🟡 BREAK — OPÉRATEUR
   if (readButtonStable(&buttons[2])) {
-    LOG_I(F("🟡 BTN: BREAK pressé"));
-    setAlertMode(LED_YELLOW, ALERT_BREAK);
-    sendAlertMqtt(2, "detected");
+    if (allowButton(ROLE_OPERATOR, "BREAK")) {
+      LOG_I(F("🟡 BREAK (opérateur)"));
+      setAlertMode(LED_YELLOW, ALERT_BREAK);
+      sendAlertMqtt(2, "detected");
+    }
   }
-  
-  // ═══════════════════════════════════════════════════════════════════════
-  // 🟠 MATERIAL (Manque matériel - pas lifecycle)
-  // ═══════════════════════════════════════════════════════════════════════
+
+  // 🟠 MATERIAL — OPÉRATEUR
   if (readButtonStable(&buttons[3])) {
-    LOG_I(F("🟠 BTN: MATERIAL pressé"));
-    setAlertMode(LED_ORANGE, ALERT_MATERIAL);
-    sendAlertMqtt(3, "detected");
+    if (allowButton(ROLE_OPERATOR, "MATERIAL")) {
+      LOG_I(F("🟠 MANQUE MATÉRIEL (opérateur)"));
+      setAlertMode(LED_ORANGE, ALERT_MATERIAL);
+      sendAlertMqtt(3, "detected");
+    }
   }
-  
-  // ═══════════════════════════════════════════════════════════════════════
-  // 🟢 PHASE 3: RESOLVE (Réparation terminée)
-  // ═══════════════════════════════════════════════════════════════════════
-  // Technicien termine réparation → Appuie sur bouton vert
-  // → Backend enregistre: date_reparation, lifecycle_phase='resolved'
-  // → Backend calcule: 
-  //    - temps_reparation_minutes = réparation - arrivée
-  //    - temps_total_arret_minutes = réparation - panne (MTTR)
-  // ═══════════════════════════════════════════════════════════════════════
+
+  // 🟢 RESOLVE — TECHNICIEN
   if (readButtonStable(&buttons[4])) {
-    LOG_I(F("🟢 PHASE 3: Réparation TERMINÉE"));
-    LOG_I(F("   → Lifecycle: RESOLVED"));
-    LOG_I(F("   → Backend va calculer MTTR (temps total)"));
-    setOperationalMode();
-    sendAlertMqtt(4, "resolved");
+    if (allowButton(ROLE_TECHNICIAN, "RESOLVE")) {
+      LOG_I(F("🟢 PHASE 3: RÉPARATION TERMINÉE (technicien) → RESOLVED"));
+      setOperationalMode();
+      sendAlertMqtt(4, "resolved");
+    }
   }
 }
 
@@ -722,52 +752,50 @@ void scanRFID() {
   if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
     return;
   }
-  
+
   String uid = "";
   for (byte i = 0; i < rfid.uid.size; i++) {
     uid += String(rfid.uid.uidByte[i] < 0x10 ? "0" : "");
     uid += String(rfid.uid.uidByte[i], HEX);
   }
   uid.toUpperCase();
-  
+
+  // ── Ouvre une SESSION de badge : rôle + horodatage (déverrouille les boutons) ──
+  currentRole      = roleForUid(uid);
+  badgeScanTime    = millis();
   currentOperatorId = uid;
 
-  String rfidMsg = F("🏷️ RFID: ");
+  String rfidMsg = F("🏷️ Badge: ");
   rfidMsg += uid;
+  rfidMsg += F(" | Rôle: ");
+  rfidMsg += roleName(currentRole);
   LOG_I(rfidMsg);
+  if (currentRole == ROLE_NONE) {
+    LOG_W(F("   ⚠️ Badge inconnu — aucun bouton déverrouillé"));
+  } else if (currentRole == ROLE_OPERATOR) {
+    LOG_I(F("   → Boutons autorisés: 🔴 DOWNTIME · 🟡 BREAK · 🟠 MATERIAL"));
+  } else {
+    LOG_I(F("   → Boutons autorisés: 🔵 MAINTENANCE · 🟢 RESOLVE"));
+  }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // ✅ NEW: Publish the badge scan to the dedicated RFID topic.
-  //    The backend bridge resolves the role from the UID:
-  //      • Technician card → registers arrival (Phase 2), computes response time,
-  //        switches the machine to MAINTENANCE and notifies the dashboard.
-  //      • Operator card   → identified only (Andon buttons remain available).
-  // ─────────────────────────────────────────────────────────────────────────
-  String rfidJson = F("{");
-  rfidJson += F("\"machine_id\":\"KA01\",");
-  rfidJson += F("\"zone\":\"KA\",");
-  rfidJson += F("\"rfid_uid\":\"");
-  rfidJson += uid;
-  rfidJson += F("\",");
-  rfidJson += F("\"timestamp\":");
-  rfidJson += String(millis());
-  rfidJson += F("}");
-  publishMqtt(TOPIC_RFID, rfidJson);
+  // ── Publie au backend (anti-spam : seulement si l'UID change ou après 30 s) ──
+  //    Le backend résout le rôle : badge TECHNICIEN → enregistre l'arrivée (Phase 2) ;
+  //    badge OPÉRATEUR → simple identification.
+  if (uid != lastPublishedUid || (millis() - lastRfidPublish) > 30000) {
+    String rfidJson = F("{");
+    rfidJson += F("\"machine_id\":\"KA01\",");
+    rfidJson += F("\"zone\":\"KA\",");
+    rfidJson += F("\"rfid_uid\":\"");  rfidJson += uid;  rfidJson += F("\",");
+    rfidJson += F("\"role\":\"");      rfidJson += roleName(currentRole);  rfidJson += F("\",");
+    rfidJson += F("\"timestamp\":");   rfidJson += String(millis());
+    rfidJson += F("}");
+    publishMqtt(TOPIC_RFID, rfidJson);
+    lastPublishedUid = uid;
+    lastRfidPublish  = millis();
+  }
 
-  // Backward-compatible status message (kept so nothing that relied on it breaks)
-  String json = F("{");
-  json += F("\"machine_id\":\"KA01\",");
-  json += F("\"event\":\"operator_scan\",");
-  json += F("\"operator_id\":\"");
-  json += uid;
-  json += F("\",");
-  json += F("\"timestamp\":");
-  json += String(millis());
-  json += F("}");
-  publishMqtt(TOPIC_STATUS, json);
-
-  // Visual feedback: blue LED blink acknowledges the scan
-  blinkLed(LED_BLUE, 2, 100);
+  // Feedback NON bloquant : on réaffiche simplement la LED de l'état courant
+  updateStateLed();
 
   rfid.PICC_HaltA();
   rfid.PCD_StopCrypto1();
@@ -781,8 +809,9 @@ void setup() {
   delay(500);
   
   Serial.println(F("\n════════════════════════════════════════════════════"));
-  Serial.println(F("  🏭 SYSTÈME ANDON KA01 v2.0 Pro"));
-  Serial.println(F("  📡 ESP32 + MQTT + RFID + FSM + Watchdog"));
+  Serial.println(F("  🏭 SYSTÈME ANDON KA01 v2.1 — RFID Role Gating"));
+  Serial.println(F("  📡 ESP32 + MQTT + RFID (rôles) + FSM"));
+  Serial.println(F("  🔒 Boutons verrouillés tant qu'aucun badge n'est scanné"));
   Serial.println(F("════════════════════════════════════════════════════"));
   
   stats.bootTime = millis();
@@ -836,6 +865,9 @@ void setup() {
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(mqttCallback);
   mqtt.setKeepAlive(MQTT_KEEPALIVE_SEC);
+  // ✅ Limite le blocage lors d'une (re)connexion à 2 s → évite le gel des boutons
+  //    et réduit la latence perçue quand le broker public est lent.
+  mqtt.setSocketTimeout(2);
   
   // Connexion MQTT
   if (currentState == STATE_MQTT_CONNECT) {
@@ -868,27 +900,10 @@ void loop() {
     mqtt.loop();
   }
   
-  // Scanner boutons (si opérationnel)
-  if (currentState == STATE_OPERATIONAL || currentState == STATE_ALERT_ACTIVE) {
-    // DEBUG: Vérifier que scanButtons() s'exécute
-    static uint32_t lastDebugLog = 0;
-    if (millis() - lastDebugLog > 5000) {
-      Serial.println(F("[DEBUG] scanButtons() est en cours..."));
-      lastDebugLog = millis();
-    }
-    scanButtons();
-  } else {
-    // DEBUG: État bloque scanButtons
-    static uint32_t lastStateLog = 0;
-    if (millis() - lastStateLog > 5000) {
-      Serial.print(F("[DEBUG] scanButtons() BLOQUÉ! currentState="));
-      Serial.println(currentState);
-      lastStateLog = millis();
-    }
-  }
-  
-  // Scanner RFID
+  // ✅ Boutons + RFID scannés à CHAQUE boucle (jamais bloqués par l'état FSM).
+  //    Le contrôle d'accès est assuré par le gating RFID dans scanButtons().
   scanRFID();
+  scanButtons();
   
   // Heartbeat (10 secondes)
   if (millis() - lastHeartbeat > HEARTBEAT_INTERVAL_MS) {
