@@ -459,6 +459,15 @@
                   <svg id="btnIcon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                   <span id="btnText">Enregistrer l'Intervention</span>
                 </button>
+
+                <!-- ✅ NEW: Réparation terminée (Phase 3) → POST /api/breakdown/resolve -->
+                <button type="button" id="btnRepairDone" onclick="terminerReparation()"
+                        style="margin-top:.75rem;width:100%;display:flex;align-items:center;justify-content:center;gap:.5rem;
+                               background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-weight:800;
+                               padding:.9rem 1rem;border-radius:.9rem;border:none;cursor:pointer;box-shadow:0 8px 20px rgba(16,185,129,.35)">
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                  <span id="btnRepairText">Réparation terminée</span>
+                </button>
                 <p class="text-center text-xs text-slate-400 mt-4 flex items-center justify-center gap-1.5">
                   <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
                   Données chiffrées et transmises de façon sécurisée au serveur GMAO
@@ -806,7 +815,7 @@
 
       Btn.setLoading();
 
-      fetch('https://mysiteweb-production.up.railway.app/api/intervention', {
+      fetch(window.location.origin + '/api/intervention', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -853,6 +862,57 @@
         Toast.show('error', 'Erreur de connexion', error.message || 'Impossible de joindre le serveur GMAO.', 5000);
       });
     }
+
+    // ═══════════════════════════════════════════════════════════
+    // ✅ PHASE 3 — Réparation terminée → /api/breakdown/resolve
+    //    Enregistre date_reparation, calcule Temps réparation
+    //    (fin − arrivée) et Arrêt total (fin − panne), repasse la
+    //    machine en OPERATIONAL et publie la mise à jour via MQTT.
+    // ═══════════════════════════════════════════════════════════
+    function terminerReparation() {
+      const idPanne = document.getElementById('idPanne').value.trim();
+      const obs = document.getElementById('observation').value.trim();
+      const technicien = 'TC - Dupont Jean';
+
+      if (!idPanne || Number(idPanne) <= 0) {
+        setFieldError('idPanne', 'err-idPanne');
+        Toast.show('error', 'ID de panne requis', 'Renseignez l\'ID de la panne à clôturer.', 4000);
+        return;
+      }
+
+      const btn = document.getElementById('btnRepairDone');
+      const btnText = document.getElementById('btnRepairText');
+      const prevText = btnText.textContent;
+      btn.disabled = true; btn.style.opacity = '.7'; btnText.textContent = 'Clôture en cours…';
+
+      fetch(window.location.origin + '/api/breakdown/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          logId: Number(idPanne),
+          resolvedBy: technicien,
+          actionsTaken: obs || null
+        })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          const mttr = data.data?.mttr ?? data.data?.log?.temps_total_arret_minutes;
+          const rep  = data.data?.repairTime ?? data.data?.log?.temps_reparation_minutes;
+          Toast.show('success', 'Réparation terminée !',
+            `Panne #${idPanne} clôturée — Réparation ${rep ?? '—'} min · Arrêt total ${mttr ?? '—'} min`, 6000);
+        } else {
+          throw new Error(data.message || 'Clôture refusée par le serveur.');
+        }
+      })
+      .catch(err => {
+        console.error('[GMAO] ❌ Résolution:', err);
+        Toast.show('error', 'Erreur', err.message || 'Impossible de clôturer la panne.', 5000);
+      })
+      .finally(() => {
+        btn.disabled = false; btn.style.opacity = '1'; btnText.textContent = prevText;
+      });
+    }
   </script>
 
   <!-- ═══════════════════════════════════════════════════════════
@@ -884,7 +944,7 @@ navigator.serviceWorker.register('/sw.js', { scope: '/technicien.html' })       
   ═══════════════════════════════════════════════════════════ -->
   <script>
     function modifierStatutDepuisInterface(codeMachine, nouveauStatut, typeErreur = null) {
-      fetch('https://mysiteweb-production.up.railway.app/api/machines/update-status', {
+      fetch(window.location.origin + '/api/machines/update-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: codeMachine, status: nouveauStatut, type_erreur: typeErreur })
@@ -898,6 +958,40 @@ navigator.serviceWorker.register('/sw.js', { scope: '/technicien.html' })       
       })
       .catch(erreur => console.error("❌ Erreur de synchro:", erreur));
     }
+  </script>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       ✅ NEW: Notifications temps réel (panne détectée → technicien)
+  ═══════════════════════════════════════════════════════════ -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script>
+    try {
+      const socketTech = io(window.location.origin, {
+        transports: ['polling', 'websocket'], timeout: 5000, reconnectionAttempts: 5
+      });
+      socketTech.on('connect', () => console.log('⚡ [Technicien] Socket.IO connecté'));
+
+      // Phase 1 : l'opérateur a signalé une panne → alerter le technicien
+      socketTech.on('breakdown_detected', (d) => {
+        const machine = d.machine || d.code || '—';
+        const fault = d.alert_type || d.type || 'Panne';
+        if (typeof Toast !== 'undefined') {
+          Toast.show('error', '🔴 Nouvelle panne signalée', `${machine} — ${fault}${d.logId ? ' (ID #' + d.logId + ')' : ''}`, 8000);
+        }
+        // Pré-remplit l'ID de panne pour accélérer la prise en charge
+        if (d.logId) {
+          const idField = document.getElementById('idPanne');
+          if (idField && !idField.value) { idField.value = d.logId; idField.dispatchEvent(new Event('input')); }
+        }
+      });
+
+      // Phase 2 : confirmation d'arrivée technicien
+      socketTech.on('technician_arrived', (d) => {
+        if (typeof Toast !== 'undefined') {
+          Toast.show('info', '🔧 Arrivée enregistrée', `${d.technician || 'Technicien'} sur ${d.machine || d.code || '—'} à ${d.heureArrivee || ''}`, 5000);
+        }
+      });
+    } catch (e) { console.warn('Socket.IO (technicien) non initialisé :', e); }
   </script>
 </body>
 </html>

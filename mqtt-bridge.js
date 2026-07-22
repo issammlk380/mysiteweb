@@ -6,6 +6,9 @@ const mqtt = require('mqtt');
 const TOPIC_ALERT = 'factory/ligne1/andon/alert';
 const TOPIC_STATUS = 'factory/ligne1/andon/status';
 const TOPIC_HEART = 'andon/zone/ka/machine/ka01/heartbeat';
+// ✅ NEW: RFID scans from the ESP32 (role resolution) + outbound technician notifications
+const TOPIC_RFID = 'factory/ligne1/andon/rfid';
+const TOPIC_TECH_NOTIFY = 'factory/ligne1/andon/technician';
 
 // ============================================================================
 // ÉTAT GLOBAL
@@ -72,6 +75,7 @@ function init(pool, io) {
         // Subscribe avec QoS
         mqttClient.subscribe({
             [TOPIC_ALERT]: { qos: 1 },
+            [TOPIC_RFID]:  { qos: 1 },
             [TOPIC_HEART]: { qos: 0 }
         }, (err) => {
             if (err) {
@@ -79,6 +83,7 @@ function init(pool, io) {
             } else {
                 console.log('  ✅ Subscribed:');
                 console.log('     -', TOPIC_ALERT, '(QoS 1)');
+                console.log('     -', TOPIC_RFID, '(QoS 1)');
                 console.log('     -', TOPIC_HEART, '(QoS 0)');
                 console.log('========================================');
             }
@@ -101,6 +106,8 @@ function init(pool, io) {
 
             if (topic === TOPIC_ALERT) {
                 await handleAlert(JSON.parse(payload));
+            } else if (topic === TOPIC_RFID) {
+                await handleRfidScan(JSON.parse(payload));
             } else if (topic === TOPIC_HEART) {
                 await handleHeartbeat(JSON.parse(payload));
             }
@@ -256,6 +263,140 @@ async function acknowledgeTechnician(machine, technicianName, timestamp) {
 
     } catch (err) {
         console.error('❌ Erreur acknowledgeTechnician:', err.message);
+    }
+}
+
+// ============================================================================
+// 🏷️ RFID SCAN HANDLER — ROLE RESOLUTION (Technician vs Operator)
+// ============================================================================
+//   - Technician card  → registers arrival on the active breakdown, computes the
+//                        response time, switches the machine to MAINTENANCE and
+//                        notifies the dashboard (name + avatar + arrival time).
+//   - Operator card    → identified only (operators may ONLY use the Andon buttons).
+//   - Unknown card     → rejected.
+async function handleRfidScan(data) {
+    const machine = data.machine_id || data.machine || 'KA01';
+    const zone = data.zone || 'KA';
+    const uid = String(data.rfid_uid || data.uid || data.operator_id || '').toUpperCase().trim();
+
+    if (!uid) { console.warn('[RFID] Scan sans UID, ignoré'); return; }
+    console.log(`[RFID] 🏷️  Scan UID=${uid} sur ${machine}`);
+
+    try {
+        // 1) Technician?
+        const tech = await poolRef.query(
+            'SELECT * FROM technicians WHERE UPPER(rfid_uid) = $1 AND active = true LIMIT 1', [uid]
+        );
+        if (tech.rows.length > 0) {
+            const t = tech.rows[0];
+            console.log(`[RFID] ✅ Technicien reconnu: ${t.name} → enregistrement de l'arrivée`);
+            await acknowledgeByRfid(machine, zone, t);
+            return;
+        }
+
+        // 2) Operator?
+        const op = await poolRef.query(
+            'SELECT * FROM operators WHERE UPPER(rfid_uid) = $1 AND active = true LIMIT 1', [uid]
+        );
+        if (op.rows.length > 0) {
+            const o = op.rows[0];
+            console.log(`[RFID] 👷 Opérateur reconnu: ${o.name} (badge Andon uniquement)`);
+            if (ioRef) {
+                ioRef.emit('operator_identified', {
+                    code: machine, machine, rfid_uid: uid, name: o.name, role: 'operator',
+                    timestamp: Date.now()
+                });
+            }
+            return;
+        }
+
+        // 3) Unknown
+        console.warn(`[RFID] ❌ Badge inconnu: ${uid}`);
+        if (ioRef) ioRef.emit('rfid_unknown', { code: machine, machine, rfid_uid: uid, timestamp: Date.now() });
+
+    } catch (err) {
+        console.error('❌ Erreur handleRfidScan:', err.message);
+    }
+}
+
+// Register a technician arrival triggered by an RFID badge scan (Phase 2).
+async function acknowledgeByRfid(machine, zone, tech) {
+    try {
+        const now = new Date();
+        const heureArrivee = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        const query = `
+            UPDATE downtime_logs
+            SET
+                technician = $1,
+                rfid_uid = $2,
+                date_arrivee_technicien = $3,
+                heure_arrivee = $4,
+                heure_arret_technicien = $4,
+                lifecycle_phase = 'acknowledged',
+                status = 'En cours',
+                temps_reaction_minutes = GREATEST(0, EXTRACT(EPOCH FROM ($3 - date_panne)) / 60)::INTEGER,
+                updated_at = $3
+            WHERE id = (
+                SELECT id FROM downtime_logs
+                WHERE machine = $5
+                  AND status NOT IN ('Resolved', 'Termine', 'Completed', 'resolved', 'termine', 'completed')
+                  AND status IS NOT NULL
+                ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC
+                LIMIT 1
+            )
+            RETURNING *;
+        `;
+        const result = await poolRef.query(query, [tech.name, tech.rfid_uid, now, heureArrivee, machine]);
+
+        if (result.rows.length === 0) {
+            console.log(`[RFID/PHASE 2] ⚠️ Aucune panne active pour ${machine} — arrivée ignorée`);
+            if (ioRef) ioRef.emit('rfid_no_active_breakdown', { code: machine, machine, technician: tech.name });
+            return;
+        }
+
+        const row = result.rows[0];
+        await upsertMachineState(machine, zone, 'maintenance', 'En cours');
+        console.log(`[RFID/PHASE 2] ✅ ${tech.name} arrivé sur ${machine} | MTTA=${row.temps_reaction_minutes} min`);
+
+        const ackEvent = {
+            logId: row.id,
+            code: machine,
+            machine,
+            status: 'maintenance',
+            type: row.alert_type || 'En cours',
+            color: 'blue',
+            technician: tech.name,
+            technicianName: tech.name,
+            photo_url: tech.photo_url || null,
+            specialization: tech.specialization || null,
+            rfid_uid: tech.rfid_uid,
+            dateArrivee: now.toISOString(),
+            heureArrivee,
+            tempsReaction: row.temps_reaction_minutes,
+            criticite: row.criticite,
+            observation: row.piece_observation,
+            lifecycle_phase: 'acknowledged',
+            timestamp: Date.now()
+        };
+
+        if (ioRef) {
+            ioRef.emit('technician_acknowledged', ackEvent);
+            ioRef.emit('technician_arrived', ackEvent);   // ← rich dashboard notification
+            ioRef.emit('machineStatusChanged', ackEvent);
+            ioRef.emit('updateMachines', [ackEvent]);
+        }
+
+        lastKnownMachineState[machine] = { status: 'maintenance', type: 'En cours', lifecycle_phase: 'acknowledged', timestamp: Date.now() };
+
+        // Re-publish over MQTT for device-level sync + technician notification channel
+        publishLifecycleEvent('acknowledged', machine, {
+            technician: tech.name, rfid_uid: tech.rfid_uid, reaction_time: row.temps_reaction_minutes
+        });
+        publishTechnicianNotification(ackEvent);
+
+    } catch (err) {
+        console.error('❌ Erreur acknowledgeByRfid:', err.message);
     }
 }
 
@@ -443,6 +584,46 @@ function emitToDashboard(machineId, zone, status, type, color, operator, timesta
 }
 
 // ============================================================================
+// 📤 OUTBOUND PUBLISHERS (Backend → MQTT)
+// ============================================================================
+// Helper: publish (queues the message if the broker is momentarily disconnected)
+function safePublish(topic, obj, opts = { qos: 1, retain: false }) {
+    const payload = JSON.stringify(obj);
+    if (mqttClient && isConnected) {
+        mqttClient.publish(topic, payload, opts);
+        console.log(`[MQTT] 📤 TX [${topic}] ${payload}`);
+    } else {
+        messageQueue.push({ topic, payload });
+        console.log(`[MQTT] 💾 Queued [${topic}] (broker offline)`);
+    }
+}
+
+// Re-broadcast a lifecycle transition so the ESP32 / Technician App / other bridges
+// stay in sync when a phase is triggered from the web side (buttons in the apps).
+function publishLifecycleEvent(phase, machine, extra = {}) {
+    const statusByPhase = { detected: 'DOWNTIME', acknowledged: 'MAINTENANCE', resolved: 'RESOLVED' };
+    safePublish(TOPIC_ALERT, {
+        machine_id: machine,
+        zone: deriveZone(machine),
+        status: statusByPhase[phase] || 'OPERATIONAL',
+        lifecycle_phase: phase,
+        source: 'backend',
+        timestamp: Date.now(),
+        ...extra
+    });
+}
+
+// Dedicated technician-notification channel (Technician App can subscribe to it).
+function publishTechnicianNotification(evt) {
+    safePublish(TOPIC_TECH_NOTIFY, { event: 'technician_arrived', ...evt });
+}
+
+function deriveZone(machine) {
+    if (!machine) return 'KA';
+    return String(machine).substring(0, 2).toUpperCase();
+}
+
+// ============================================================================
 // HEARTBEAT (Optionnel)
 // ============================================================================
 async function handleHeartbeat(data) {
@@ -453,8 +634,12 @@ async function handleHeartbeat(data) {
 // ============================================================================
 // EXPORTS
 // ============================================================================
-module.exports = { 
+module.exports = {
     init,
+    // ✅ Now exported (was referenced by server.js but missing → MQTT re-publish was dead)
+    publishLifecycleEvent,
+    publishTechnicianNotification,
+    handleRfidScan,
     // ✅ FIX GREEN BUTTON: Export function to update state tracker when manual interventions occur
     updateMachineStateTracker: function(machineId, status, type) {
         if (machineId && status) {

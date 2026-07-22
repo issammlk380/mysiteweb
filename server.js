@@ -183,6 +183,9 @@ async function runMigrations() {
             { name: 'temps_reaction_minutes', type: 'INTEGER', default: 'NULL' },
             { name: 'temps_reparation_minutes', type: 'INTEGER', default: 'NULL' },
             { name: 'temps_total_arret_minutes', type: 'INTEGER', default: 'NULL' },
+            // ✅ RE-ADD 'duration' (dropped by cleanup-columns.sql but still referenced by the
+            //    resolve queries in server.js & mqtt-bridge.js) to keep resolution working.
+            { name: 'duration', type: 'INTEGER', default: 'NULL' },
             { name: 'lifecycle_phase', type: 'VARCHAR(50)', default: "'detected'" },
             { name: 'operator', type: 'VARCHAR(100)', default: 'NULL' },
             // ✅ ADDITIONAL LIFECYCLE FIELDS
@@ -235,6 +238,28 @@ async function runMigrations() {
             )
         `);
         console.log('[DB] Table technicians ready');
+
+        // ✅ NEW: photo/avatar for the "Technician Arrived" dashboard notification
+        try {
+            await client.query(`ALTER TABLE technicians ADD COLUMN IF NOT EXISTS photo_url VARCHAR(300) DEFAULT NULL`);
+            console.log("[DB] Column technicians.photo_url ready");
+        } catch (e) { console.warn('[DB] photo_url:', e.message); }
+
+        // ✅ NEW: Operators table for RFID role management.
+        //    Operator cards may ONLY drive the Andon buttons — they never register a
+        //    technician arrival. Technician cards (technicians table) register arrivals.
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS operators (
+                id SERIAL PRIMARY KEY,
+                rfid_uid VARCHAR(100) UNIQUE NOT NULL,
+                name VARCHAR(100) NOT NULL,
+                machine VARCHAR(20),
+                shift VARCHAR(50),
+                active BOOLEAN DEFAULT true,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log('[DB] Table operators ready');
 
         // ✅ NEW: KPI summary table for performance tracking
         await client.query(`
@@ -333,19 +358,32 @@ async function runMigrations() {
             console.log(`[DB] Table already has ${count} records, skipping seed`);
         }
 
-        // ✅ SEED: Technicians with RFID UIDs
+        // ✅ SEED: Technicians with RFID UIDs (photo_url left NULL → dashboard renders initials avatar)
         const techCount = await client.query('SELECT COUNT(*) FROM technicians');
         if (parseInt(techCount.rows[0].count, 10) === 0) {
             await client.query(`
-                INSERT INTO technicians (rfid_uid, name, specialization, contact_info, shift, active)
-                VALUES 
-                ('04A3B8FA', 'Ahmed Benali', 'Électrique', 'ahmed.benali@sews.ma', 'Matin', true),
-                ('04C5D2FB', 'Karim Fassi', 'Mécanique', 'karim.fassi@sews.ma', 'Après-midi', true),
-                ('04E7F6FC', 'Youssef Amrani', 'Hydraulique', 'youssef.amrani@sews.ma', 'Nuit', true),
-                ('04B9A4FD', 'Omar Alami', 'Électronique', 'omar.alami@sews.ma', 'Matin', true),
-                ('04D1C8FE', 'Hassan Idrissi', 'Polyvalent', 'hassan.idrissi@sews.ma', 'Après-midi', true)
+                INSERT INTO technicians (rfid_uid, name, specialization, contact_info, shift, active, photo_url)
+                VALUES
+                ('04A3B8FA', 'Ahmed Benali', 'Électrique', 'ahmed.benali@sews.ma', 'Matin', true, NULL),
+                ('04C5D2FB', 'Karim Fassi', 'Mécanique', 'karim.fassi@sews.ma', 'Après-midi', true, NULL),
+                ('04E7F6FC', 'Youssef Amrani', 'Hydraulique', 'youssef.amrani@sews.ma', 'Nuit', true, NULL),
+                ('04B9A4FD', 'Omar Alami', 'Électronique', 'omar.alami@sews.ma', 'Matin', true, NULL),
+                ('04D1C8FE', 'Hassan Idrissi', 'Polyvalent', 'hassan.idrissi@sews.ma', 'Après-midi', true, NULL)
             `);
             console.log('[DB] Technicians seeded');
+        }
+
+        // ✅ SEED: Operators with RFID UIDs (operator cards → Andon buttons only)
+        const opCount = await client.query('SELECT COUNT(*) FROM operators');
+        if (parseInt(opCount.rows[0].count, 10) === 0) {
+            await client.query(`
+                INSERT INTO operators (rfid_uid, name, machine, shift, active)
+                VALUES
+                ('04F1E2A1', 'Rachid Ouazzani', 'KA01', 'Matin', true),
+                ('04F2E3B2', 'Salma Bennani', 'KA01', 'Après-midi', true),
+                ('04F3E4C3', 'Mehdi Tazi', 'KB03', 'Nuit', true)
+            `);
+            console.log('[DB] Operators seeded');
         }
 
         // ✅ SEED: Breakdown categories
@@ -549,19 +587,40 @@ app.post('/api/logs', validateLogPayload, async (req, res) => {
         const newLog = result.rows[0];
         console.log(`[LOGS] ✅ Log créé - Machine: ${newLog.machine} | Status: "${newLog.status}" | ID: ${newLog.id}`);
         
-        // ✅ Socket.IO notification
+        // ✅ Socket.IO notification (Dashboard + Technician App)
         const io = req.app.get('io');
         if (io) {
-            io.emit('machineStatusChanged', { 
-                machine: newLog.machine, 
-                status: newLog.status, 
-                alert_type: newLog.alert_type, 
-                criticite: newLog.criticite, 
+            const detectedEvent = {
+                machine: newLog.machine,
+                code: newLog.machine,
+                status: newLog.status,
+                alert_type: newLog.alert_type,
+                type: newLog.alert_type,
+                criticite: newLog.criticite,
+                atelier: newLog.atelier,
+                operator: newLog.operator,
+                heure_panne: newLog.heure_panne,
+                date_panne: newLog.date_panne,
                 logId: newLog.id,
+                lifecycle_phase: 'detected',
                 source: 'api_post'
+            };
+            io.emit('machineStatusChanged', detectedEvent);
+            io.emit('breakdown_detected', detectedEvent);   // ← notifies Dashboard + Technician App
+            io.emit('updateMachines', [detectedEvent]);
+        }
+
+        // ✅ Re-publish over MQTT so the ESP32 / Technician App / other bridges stay in sync
+        const bridge = req.app.get('mqttBridge');
+        if (bridge && bridge.publishLifecycleEvent) {
+            bridge.publishLifecycleEvent('detected', newLog.machine, {
+                alert_type: newLog.alert_type,
+                criticite: newLog.criticite,
+                operator: newLog.operator,
+                logId: newLog.id
             });
         }
-        
+
         return sendSuccess(res, newLog, 'Log créé avec succès', 201);
         
     } catch (err) { 
@@ -979,6 +1038,39 @@ app.get('/api/technicians/rfid/:uid', async (req, res) => {
   }
 });
 
+// ✅ NEW: Unified RFID role resolver
+//    Determines whether a scanned RFID UID belongs to a Technician or an Operator.
+//    Used by the Technician App / any client to enforce role-based access:
+//      - operator → may ONLY use the Andon buttons
+//      - technician → registers arrival, starts maintenance KPIs
+app.get('/api/rfid/:uid', async (req, res) => {
+  const uid = (req.params.uid || '').toUpperCase().trim();
+  if (!uid) return sendError(res, 400, 'RFID UID requis');
+
+  try {
+    const tech = await safeQuery(
+      'SELECT * FROM technicians WHERE UPPER(rfid_uid) = $1 AND active = true LIMIT 1',
+      [uid]
+    );
+    if (tech.rows.length > 0) {
+      return sendSuccess(res, { role: 'technician', profile: tech.rows[0] }, 'Badge technicien reconnu');
+    }
+
+    const op = await safeQuery(
+      'SELECT * FROM operators WHERE UPPER(rfid_uid) = $1 AND active = true LIMIT 1',
+      [uid]
+    );
+    if (op.rows.length > 0) {
+      return sendSuccess(res, { role: 'operator', profile: op.rows[0] }, 'Badge opérateur reconnu');
+    }
+
+    return sendError(res, 404, 'Badge RFID inconnu (ni technicien ni opérateur)');
+  } catch (err) {
+    console.error('[RFID ROLE] Erreur:', err.message);
+    return sendError(res, 500, 'Erreur résolution du rôle RFID', err.message);
+  }
+});
+
 // ✅ NEW: Get breakdown categories for classification
 app.get('/api/breakdown-categories', async (req, res) => {
   try {
@@ -1144,16 +1236,36 @@ app.post('/api/technician/acknowledge', async (req, res) => {
     console.log(`   Criticité: ${updatedLog.criticite}`);
     console.log(`   Lifecycle: detected → acknowledged → waiting for resolution`);
     
+    // ✅ Look up the technician profile (name + photo/avatar) for the dashboard notification
+    let techPhoto = null, techSpecialization = null;
+    try {
+      const techRow = await safeQuery(
+        `SELECT name, photo_url, specialization FROM technicians
+         WHERE ($1::text IS NOT NULL AND UPPER(rfid_uid) = UPPER($1))
+            OR name = $2
+         LIMIT 1`,
+        [rfidUid || null, technicianName]
+      );
+      if (techRow.rows.length > 0) {
+        techPhoto = techRow.rows[0].photo_url || null;
+        techSpecialization = techRow.rows[0].specialization || null;
+      }
+    } catch (e) { /* non-blocking */ }
+
     // Emit real-time event
     const io = req.app.get('io');
     if (io) {
       const ackEvent = {
         logId: updatedLog.id,
         code: updatedLog.machine,
+        machine: updatedLog.machine,
         status: 'maintenance',
         type: updatedLog.alert_type || 'En cours',
         color: 'blue',
         technicianName: technicianName,
+        technician: technicianName,
+        photo_url: techPhoto,
+        specialization: techSpecialization,
         rfid_uid: rfidUid,
         dateArrivee: now.toISOString(),
         heureArrivee: heureArrivee,
@@ -1163,11 +1275,12 @@ app.post('/api/technician/acknowledge', async (req, res) => {
         lifecycle_phase: 'acknowledged',
         timestamp: Date.now()
       };
-      
+
       io.emit('technician_acknowledged', ackEvent);
+      io.emit('technician_arrived', ackEvent);   // ← dedicated notification event
       io.emit('machineStatusChanged', ackEvent);
       io.emit('updateMachines', [ackEvent]);
-      
+
       console.log(`   📡 Real-time acknowledgment events sent to dashboard`);
     }
     

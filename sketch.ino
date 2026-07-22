@@ -49,6 +49,7 @@ const uint16_t MQTT_KEEPALIVE_SEC = 60;
 
 // Topics MQTT
 const char* TOPIC_ALERT      = "factory/ligne1/andon/alert";
+const char* TOPIC_RFID       = "factory/ligne1/andon/rfid";   // ← NEW: badge scans (role resolution)
 const char* TOPIC_HEARTBEAT  = "andon/zone/ka/machine/ka01/heartbeat";
 const char* TOPIC_STATUS     = "andon/zone/ka/machine/ka01/status";
 const char* TOPIC_DIAGNOSTICS = "andon/zone/ka/machine/ka01/diagnostics";
@@ -730,11 +731,30 @@ void scanRFID() {
   uid.toUpperCase();
   
   currentOperatorId = uid;
-  
+
   String rfidMsg = F("🏷️ RFID: ");
   rfidMsg += uid;
   LOG_I(rfidMsg);
-  
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // ✅ NEW: Publish the badge scan to the dedicated RFID topic.
+  //    The backend bridge resolves the role from the UID:
+  //      • Technician card → registers arrival (Phase 2), computes response time,
+  //        switches the machine to MAINTENANCE and notifies the dashboard.
+  //      • Operator card   → identified only (Andon buttons remain available).
+  // ─────────────────────────────────────────────────────────────────────────
+  String rfidJson = F("{");
+  rfidJson += F("\"machine_id\":\"KA01\",");
+  rfidJson += F("\"zone\":\"KA\",");
+  rfidJson += F("\"rfid_uid\":\"");
+  rfidJson += uid;
+  rfidJson += F("\",");
+  rfidJson += F("\"timestamp\":");
+  rfidJson += String(millis());
+  rfidJson += F("}");
+  publishMqtt(TOPIC_RFID, rfidJson);
+
+  // Backward-compatible status message (kept so nothing that relied on it breaks)
   String json = F("{");
   json += F("\"machine_id\":\"KA01\",");
   json += F("\"event\":\"operator_scan\",");
@@ -744,11 +764,11 @@ void scanRFID() {
   json += F("\"timestamp\":");
   json += String(millis());
   json += F("}");
-  
   publishMqtt(TOPIC_STATUS, json);
-  
+
+  // Visual feedback: blue LED blink acknowledges the scan
   blinkLed(LED_BLUE, 2, 100);
-  
+
   rfid.PICC_HaltA();
   rfid.PCD_StopCrypto1();
 }

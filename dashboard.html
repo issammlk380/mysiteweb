@@ -678,6 +678,33 @@
             </div>
         </section>
 
+        <!-- ══ CARTE STATUT KA01 EN TEMPS RÉEL ══════════════════
+             La couleur reflète en direct le dernier bouton Andon pressé :
+             ROUGE=Panne · BLEU=Maintenance · JAUNE=Pause · ORANGE=Manque matériel · VERT=Opérationnel -->
+        <section id="ka01Card"
+                 class="rounded-3xl border-2 shadow-card p-5 sm:p-6 transition-all duration-500"
+                 style="border-color:#475569; background:linear-gradient(135deg, rgba(100,116,139,.10), transparent)">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <span id="ka01Dot" class="w-5 h-5 rounded-full animate-pulse shrink-0"
+                          style="background:#64748b; box-shadow:0 0 0 4px rgba(100,116,139,.25)"></span>
+                    <div>
+                        <span class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                            Machine pilote · Atelier A · Temps réel
+                        </span>
+                        <h3 class="text-3xl font-extrabold text-slate-900 dark:text-slate-100 leading-none mt-1">KA01</h3>
+                        <p id="ka01Sub" class="text-xs text-slate-400 mt-1.5">En attente de données temps réel…</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <i id="ka01Icon" class="fa-solid fa-circle-question text-3xl" style="color:#64748b"></i>
+                    <span id="ka01Pill"
+                          class="px-6 py-3 rounded-2xl text-white font-extrabold text-xl tracking-wide shadow-lg transition-all duration-500"
+                          style="background:#64748b">—</span>
+                </div>
+            </div>
+        </section>
+
         <!-- ══ TAB: DASHBOARD ════════════════════════════════ -->
         <section id="tab-dashboard" class="tab-panel space-y-6">
 
@@ -944,73 +971,48 @@
                         <thead>
                             <tr class="bg-slate-50/90 dark:bg-slate-800/50 text-[10px]
                                        uppercase tracking-[0.15em] text-slate-400 font-extrabold">
-                                <th class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 w-12">
-                                    #
+                                <th data-sort="jour"
+                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-2">Date<i class="fa-solid fa-arrow-up sort-icon"></i></div>
                                 </th>
                                 <th data-sort="machine"
                                     class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    <div class="flex items-center gap-2">
-                                        Machine
-                                        <i class="fa-solid fa-arrow-up sort-icon"></i>
-                                    </div>
-                                </th>
-                                <th data-sort="atelier"
-                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    <div class="flex items-center gap-2">
-                                        Atelier
-                                        <i class="fa-solid fa-arrow-up sort-icon"></i>
-                                    </div>
-                                </th>
-                                <th data-sort="status"
-                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    <div class="flex items-center gap-2">
-                                        Statut
-                                        <i class="fa-solid fa-arrow-up sort-icon"></i>
-                                    </div>
-                                </th>
-                                <th data-sort="jour"
-                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    <div class="flex items-center gap-2">
-                                        Date
-                                        <i class="fa-solid fa-arrow-up sort-icon"></i>
-                                    </div>
+                                    <div class="flex items-center gap-2">Machine<i class="fa-solid fa-arrow-up sort-icon"></i></div>
                                 </th>
                                 <th class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    Déclaration
-                                </th>
-                                <th class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    Arr. tech.
-                                </th>
-                                <th data-sort="temps_attente"
-                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    <div class="flex items-center gap-2">
-                                        Attente
-                                        <i class="fa-solid fa-arrow-up sort-icon"></i>
-                                    </div>
-                                </th>
-                                <th data-sort="temps_reparation"
-                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    <div class="flex items-center gap-2">
-                                        Réparation
-                                        <i class="fa-solid fa-arrow-up sort-icon"></i>
-                                    </div>
-                                </th>
-                                <th data-sort="criticite"
-                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    <div class="flex items-center gap-2">
-                                        Criticité
-                                        <i class="fa-solid fa-arrow-up sort-icon"></i>
-                                    </div>
+                                    Panne
                                 </th>
                                 <th data-sort="technicien"
                                     class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    <div class="flex items-center gap-2">
-                                        Technicien
-                                        <i class="fa-solid fa-arrow-up sort-icon"></i>
-                                    </div>
+                                    <div class="flex items-center gap-2">Technicien<i class="fa-solid fa-arrow-up sort-icon"></i></div>
                                 </th>
                                 <th class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    Pièce / Observation
+                                    Heure panne
+                                </th>
+                                <th class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    Heure arrivée
+                                </th>
+                                <th data-sort="temps_attente"
+                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-2">Tps réaction<i class="fa-solid fa-arrow-up sort-icon"></i></div>
+                                </th>
+                                <th data-sort="temps_reparation"
+                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-2">Tps réparation<i class="fa-solid fa-arrow-up sort-icon"></i></div>
+                                </th>
+                                <th class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    Arrêt total
+                                </th>
+                                <th data-sort="criticite"
+                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-2">Criticité<i class="fa-solid fa-arrow-up sort-icon"></i></div>
+                                </th>
+                                <th data-sort="status"
+                                    class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-2">Statut<i class="fa-solid fa-arrow-up sort-icon"></i></div>
+                                </th>
+                                <th class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    Observation
                                 </th>
                             </tr>
                         </thead>
@@ -1364,50 +1366,9 @@
                 </div>
             </div>
 
-            <!-- Résumé techniciens -->
-            <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800
-                        rounded-3xl shadow-card overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-                    <h3 class="font-bold text-slate-900 dark:text-slate-100
-                               flex items-center gap-2.5">
-                        <span class="w-1.5 h-6 rounded-full bg-cyan-500 block"></span>
-                        Synthèse par technicien
-                    </h3>
-                </div>
-                <div class="table-scroll">
-                    <table class="w-full min-w-[860px] text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-50/90 dark:bg-slate-800/50 text-[10px]
-                                       uppercase tracking-[0.15em] text-slate-400 font-extrabold">
-                                <th class="px-6 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    Technicien
-                                </th>
-                                <th class="px-6 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    Total
-                                </th>
-                                <th class="px-6 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    Terminées
-                                </th>
-                                <th class="px-6 py-3.5 border-b border-slate-100 dark:border-slate-800 w-52">
-                                    Taux résolution
-                                </th>
-                                <th class="px-6 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    Attente moy.
-                                </th>
-                                <th class="px-6 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    Réparation moy.
-                                </th>
-                                <th class="px-6 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                                    Score perf.
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="techSummaryBody"
-                               class="text-sm divide-y divide-slate-50 dark:divide-slate-800/80">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <!-- (Deuxième tableau « Synthèse par technicien » supprimé :
+                 le tableau unique « Journal des interventions » ci-dessus est la seule
+                 source de vérité, conformément à la demande.) -->
         </section>
 
     </div><!-- /content -->
@@ -1431,9 +1392,10 @@ const _originalFetch = window.fetch;
 window.fetch = async function(...args) {
     let [url, options = {}] = args;
 
-    // Convert relative URLs to absolute Railway URL
+    // Keep relative URLs on the SAME ORIGIN that serves this page
+    // (works both locally with the Wokwi bridge and on Railway in production).
     if (typeof url === 'string' && url.startsWith('/')) {
-        url = 'https://mysiteweb-production.up.railway.app' + url;
+        url = window.location.origin + url;
     }
 
     // Headers for Railway API
@@ -1579,16 +1541,21 @@ function normalizeStatus(status) {
     return s;
 }
 
-function statusBadge(status) {
-    const ns = normalizeStatus(status);
-    const map = {
-        'termine': { cls: 's-termine', label: 'Terminé' },
-        'en_reparation': { cls: 's-en_reparation', label: 'En réparation' },
-        'en_attente': { cls: 's-en_attente', label: 'En attente' },
-        'arret': { cls: 's-arret', label: 'Arrêt' },
-    };
-    const m = map[ns] || { cls: 's-en_attente', label: status || '—' };
-    return `<span class="status-pill ${m.cls}">${m.label}</span>`;
+// ✅ Badges de statut harmonisés avec la carte KA01 (mêmes 5 couleurs Andon).
+//    On tient compte du type de panne pour distinguer Pause (jaune) et Manque matériel (orange),
+//    car ces états sont stockés avec status = "En attente".
+function statusBadge(status, type) {
+    const s = String(status || '').toLowerCase();
+    const t = String(type || '').toLowerCase();
+    let color, label;
+    if (/termin|résolu|resolu|operational|opérationnel/.test(s)) { color = 'green';  label = 'Terminé'; }
+    else if (/en cours|répar|repar|maintenance/.test(s))          { color = 'blue';   label = 'En réparation'; }
+    else if (/pause|break/.test(t))                                { color = 'yellow'; label = 'Pause'; }
+    else if (/matériel|materiel|material/.test(t))                 { color = 'orange'; label = 'Manque matériel'; }
+    else if (/en attente|arret|arrêt|panne|down/.test(s))          { color = 'red';    label = 'En panne'; }
+    else { color = 'slate'; label = status || '—'; }
+    const C = { red:'#dc2626', blue:'#2563eb', yellow:'#ca8a04', orange:'#ea580c', green:'#059669', slate:'#64748b' };
+    return `<span style="display:inline-flex;align-items:center;padding:.25rem .7rem;border-radius:999px;font-size:.72rem;font-weight:800;color:#fff;background:${C[color]}">${label}</span>`;
 }
 
 function critBadge(criticite) {
@@ -1615,7 +1582,7 @@ function fmtMin(min) {
    CONFIGURATION
 ════════════════════════════════════════════════════════════ */
 const CFG = {
-    API_BASE: 'https://mysiteweb-production.up.railway.app',
+    API_BASE: window.location.origin,
     REFRESH_INTERVAL: 60000,
 };
 
@@ -2000,31 +1967,32 @@ function renderTable() {
         return;
     }
 
-    tbody.innerHTML = slice.map((r, idx) => {
-        const rowNum = start + idx + 1;
-        // ✅ Using correct columns from pgAdmin
-        const declaration = r.breakdown_category || r.heure_declaration || r.start_time || '—';
-        const arrTech = r.heure_arrivee || r.heure_arret_technicien || '—';
-        const attente = r.temps_reaction_minutes || r.temps_attente || 0;
-        const reparation = r.temps_reparation_minutes || r.temps_reparation || r.duration || 0;
-        const technicien = r.technician || r.technicien || '—';
-        
+    tbody.innerHTML = slice.map((r) => {
+        // ✅ ONE clean intervention table — full maintenance lifecycle
+        const fault = (r.alert_type && r.alert_type !== 'N/A') ? r.alert_type
+                    : (r.breakdown_category && r.breakdown_category !== '—') ? r.breakdown_category : '—';
+        const heurePanne   = r.heure_panne || '—';
+        const heureArrivee = r.heure_arrivee || r.heure_arret_technicien || '—';
+        const reaction     = r.temps_reaction_minutes ?? r.temps_attente ?? 0;
+        const reparation   = r.temps_reparation_minutes ?? r.temps_reparation ?? 0;
+        const totalArret   = r.temps_total_arret_minutes ?? 0;
+        const technicien   = r.technician || r.technicien || '—';
+        const obs          = r.piece_observation || '—';
+
         return `
         <tr class="table-row-hover transition-colors">
-            <td class="px-5 py-4 text-slate-400 text-xs font-mono">${rowNum}</td>
-            <td class="px-5 py-4">
-                <span class="font-bold text-slate-800 dark:text-slate-200">${r.machine}</span>
-            </td>
-            <td class="px-5 py-4 text-slate-500 dark:text-slate-400">${r.atelier}</td>
-            <td class="px-5 py-4">${statusBadge(r.status)}</td>
-            <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs">${r.jour}</td>
-            <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs">${declaration}</td>
-            <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs">${arrTech}</td>
-            <td class="px-5 py-4 text-xs font-semibold text-amber-600 dark:text-amber-400">${fmtMin(attente)}</td>
-            <td class="px-5 py-4 text-xs font-semibold text-blue-600 dark:text-blue-400">${fmtMin(reparation)}</td>
-            <td class="px-5 py-4">${critBadge(r.criticite)}</td>
+            <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs whitespace-nowrap">${r.jour}</td>
+            <td class="px-5 py-4"><span class="font-bold text-slate-800 dark:text-slate-200">${r.machine}</span></td>
+            <td class="px-5 py-4 text-slate-600 dark:text-slate-300 text-xs">${fault}</td>
             <td class="px-5 py-4 font-medium text-slate-700 dark:text-slate-300">${technicien}</td>
-            <td class="px-5 py-4 text-slate-400 text-xs max-w-[180px] truncate" title="${r.piece_observation}">${r.piece_observation}</td>
+            <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs font-mono">${heurePanne}</td>
+            <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs font-mono">${heureArrivee}</td>
+            <td class="px-5 py-4 text-xs font-semibold text-amber-600 dark:text-amber-400">${fmtMin(reaction)}</td>
+            <td class="px-5 py-4 text-xs font-semibold text-blue-600 dark:text-blue-400">${fmtMin(reparation)}</td>
+            <td class="px-5 py-4 text-xs font-semibold text-rose-600 dark:text-rose-400">${fmtMin(totalArret)}</td>
+            <td class="px-5 py-4">${critBadge(r.criticite)}</td>
+            <td class="px-5 py-4">${statusBadge(r.status, r.alert_type)}</td>
+            <td class="px-5 py-4 text-slate-400 text-xs max-w-[200px] truncate" title="${obs}">${obs}</td>
         </tr>`;
     }).join('');
 
@@ -2654,29 +2622,164 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
-    // 🚀 Connexion Socket.IO avec fallback silencieux
-    const SOCKET_URL = 'https://mysiteweb-production.up.railway.app';
+    // 🚀 Connexion Socket.IO — même origine (local + Railway)
+    const SOCKET_URL = window.location.origin;
+
+    // Rafraîchit le tableau unique en direct (léger anti-rebond)
+    let _rtRefreshTimer = null;
+    function realtimeRefresh() {
+        clearTimeout(_rtRefreshTimer);
+        _rtRefreshTimer = setTimeout(() => {
+            if (typeof APP !== 'undefined' && APP.refresh) APP.refresh();
+        }, 400);
+    }
+
+    // Avatar : photo si disponible, sinon initiales colorées (aucune ressource externe)
+    function techAvatar(name, photoUrl) {
+        if (photoUrl) {
+            return `<img src="${photoUrl}" alt="${name}" class="w-11 h-11 rounded-full object-cover border-2 border-white/70 shadow">`;
+        }
+        const initials = (name || '?').split(/\s+/).map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+        let h = 0; for (const c of (name || '')) h = (h * 31 + c.charCodeAt(0)) % 360;
+        return `<div class="w-11 h-11 rounded-full flex items-center justify-center text-white font-extrabold text-sm shadow border-2 border-white/70"
+                     style="background:hsl(${h},58%,45%)">${initials}</div>`;
+    }
+
+    // 🔔 Notification temps réel « Technicien arrivé »
+    function showTechnicianArrived(evt) {
+        const name = evt.technician || evt.technicianName || 'Technicien';
+        const machine = evt.machine || evt.code || '—';
+        const heure = evt.heureArrivee || new Date().toLocaleTimeString('fr-FR');
+        const reaction = (evt.tempsReaction ?? evt.temps_reaction) ;
+        let host = document.getElementById('rtNotifyHost');
+        if (!host) {
+            host = document.createElement('div');
+            host.id = 'rtNotifyHost';
+            host.style.cssText = 'position:fixed;top:1rem;right:1rem;z-index:9999;display:flex;flex-direction:column;gap:.6rem;max-width:360px';
+            document.body.appendChild(host);
+        }
+        const card = document.createElement('div');
+        card.className = 'rt-toast';
+        card.style.cssText = 'display:flex;gap:.75rem;align-items:center;padding:.85rem 1rem;border-radius:1rem;background:#0f172a;color:#fff;box-shadow:0 12px 30px rgba(2,8,23,.35);border:1px solid rgba(148,163,184,.25);transform:translateX(120%);transition:transform .35s ease';
+        card.innerHTML = `
+            ${techAvatar(name, evt.photo_url)}
+            <div style="flex:1;min-width:0">
+                <div style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:#38bdf8;font-weight:800">Technicien arrivé</div>
+                <div style="font-weight:800;font-size:.95rem;line-height:1.15">${name}</div>
+                <div style="font-size:.78rem;color:#cbd5e1">Machine <b style="color:#fff">${machine}</b> · arrivée <b style="color:#fff">${heure}</b>${(reaction!==undefined&&reaction!==null)?` · réaction ${reaction} min`:''}</div>
+            </div>`;
+        host.appendChild(card);
+        requestAnimationFrame(() => { card.style.transform = 'translateX(0)'; });
+        setTimeout(() => { card.style.transform = 'translateX(120%)'; setTimeout(() => card.remove(), 400); }, 7000);
+
+        if (typeof toast === 'function') toast(`🔧 ${name} est arrivé sur ${machine} (${heure})`, 'info', 4000);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // 🎨 CARTE KA01 — couleur en temps réel selon le bouton Andon
+    //    ROUGE=Panne · BLEU=Maintenance · JAUNE=Pause · ORANGE=Manque matériel · VERT=Opérationnel
+    // ══════════════════════════════════════════════════════════════
+    const KA01_STATES = {
+        red:    { label: 'PANNE',            solid: '#dc2626', glow: '#ef4444', icon: 'fa-triangle-exclamation' },
+        blue:   { label: 'MAINTENANCE',      solid: '#2563eb', glow: '#3b82f6', icon: 'fa-screwdriver-wrench' },
+        yellow: { label: 'PAUSE',            solid: '#ca8a04', glow: '#eab308', icon: 'fa-mug-hot' },
+        orange: { label: 'MANQUE MATÉRIEL',  solid: '#ea580c', glow: '#f97316', icon: 'fa-box-open' },
+        green:  { label: 'OPÉRATIONNEL',     solid: '#059669', glow: '#10b981', icon: 'fa-circle-check' },
+    };
+    function _hexA(hex, a) {
+        const n = parseInt(hex.replace('#', ''), 16);
+        return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+    }
+    // Déduit la couleur à partir d'un événement socket (a un champ color) OU d'une ligne BD (status + type)
+    function ka01Color(d) {
+        if (!d) return null;
+        const c = String(d.color || '').toLowerCase();
+        if (KA01_STATES[c]) return c;
+        const s = String(d.status || '').toLowerCase();
+        const t = String(d.type || d.alert_type || '').toLowerCase();
+        const ph = String(d.lifecycle_phase || '').toLowerCase();
+        if (ph === 'resolved' || /termin|résolu|resolu|operational|opérationnel/.test(s)) return 'green';
+        if (ph === 'acknowledged' || /en cours|répar|repar|maintenance/.test(s) || /maintenance/.test(t)) return 'blue';
+        if (/break|pause/.test(s) || /pause|break/.test(t)) return 'yellow';
+        if (/material|matériel|materiel/.test(s) || /matériel|materiel|material/.test(t)) return 'orange';
+        if (ph === 'detected' || /en attente|arret|arrêt|panne|down/.test(s) || /panne/.test(t)) return 'red';
+        return null;
+    }
+    function setKA01(color, extra) {
+        const st = KA01_STATES[color];
+        if (!st) return;
+        const card = document.getElementById('ka01Card');
+        const pill = document.getElementById('ka01Pill');
+        const dot  = document.getElementById('ka01Dot');
+        const sub  = document.getElementById('ka01Sub');
+        const icon = document.getElementById('ka01Icon');
+        if (pill) { pill.style.background = st.solid; pill.textContent = st.label; }
+        if (dot)  { dot.style.background = st.glow; dot.style.boxShadow = '0 0 0 4px ' + _hexA(st.glow, .28); }
+        if (icon) { icon.className = 'fa-solid ' + st.icon + ' text-3xl'; icon.style.color = st.glow; }
+        if (card) {
+            card.style.borderColor = st.glow;
+            card.style.background = 'linear-gradient(135deg, ' + _hexA(st.glow, .16) + ', transparent)';
+        }
+        if (sub) {
+            let s = 'Mise à jour ' + new Date().toLocaleTimeString('fr-FR');
+            if (extra && extra.technician) s += ' · 🔧 ' + (extra.technician || extra.technicianName);
+            else if (extra && extra.technicianName) s += ' · 🔧 ' + extra.technicianName;
+            else if (extra && extra.operator) s += ' · 👷 ' + extra.operator;
+            sub.textContent = s;
+        }
+    }
+    // Applique un événement (objet ou tableau) à la carte KA01 s'il concerne KA01
+    function applyKA01(payload) {
+        const list = Array.isArray(payload) ? payload : [payload];
+        list.forEach(d => {
+            if (!d) return;
+            const m = String(d.code || d.machine || '').toUpperCase();
+            if (m && m !== 'KA01') return;   // carte dédiée à KA01
+            const c = ka01Color(d);
+            if (c) setKA01(c, d);
+        });
+    }
+    // État initial : lit la panne active de KA01 (sinon = opérationnel/vert)
+    async function initKA01() {
+        try {
+            const r = await fetch(window.location.origin + '/api/breakdowns/active');
+            const j = await r.json();
+            const rows = (j && j.data) || [];
+            const ka = rows.find(x => String(x.machine || '').toUpperCase() === 'KA01');
+            if (ka) { const c = ka01Color(ka); if (c) { setKA01(c, {}); return; } }
+            setKA01('green', {});
+        } catch (e) { /* backend indisponible → laisse l'état neutre */ }
+    }
+    initKA01();
+
     try {
         const socket = io(SOCKET_URL, {
             transports: ['polling', 'websocket'],
-            extraHeaders: {},
             timeout: 5000,
-            reconnectionAttempts: 3
+            reconnectionAttempts: 5
         });
 
-        socket.on('connect', () => {
-            console.log("⚡ [Live] Connexion Socket.IO réussie !");
+        socket.on('connect', () => console.log("⚡ [Live] Socket.IO connecté :", socket.id));
+        socket.on('connect_error', (err) => console.warn("❌ [Live] Socket.IO indisponible :", err.message));
+
+        // ── Événements du cycle de vie → refresh tableau + recolorisation carte KA01 ──
+        [
+            'panne_mise_a_jour', 'machineStatusChanged', 'updateMachines',
+            'breakdown_detected', 'breakdown_resolved', 'alert_resolved',
+            'technician_acknowledged', 'status_update', 'machine_status_updated'
+        ].forEach(ev => socket.on(ev, (payload) => { realtimeRefresh(); applyKA01(payload); }));
+
+        // ── Phase 1 : panne détectée ──
+        socket.on('breakdown_detected', (d) => {
+            if (typeof toast === 'function') toast(`🔴 Panne détectée — ${d.machine || d.code || ''} ${d.alert_type ? '(' + d.alert_type + ')' : ''}`, 'warn', 5000);
         });
 
-        socket.on('panne_mise_a_jour', (data) => {
-            console.log("🔄 [Live] Mise à jour reçue :", data);
-            if (typeof APP !== 'undefined' && APP.refresh) {
-                APP.refresh();
-            }
-        });
+        // ── Phase 2 : technicien arrivé (notification enrichie avec avatar) ──
+        socket.on('technician_arrived', (d) => { showTechnicianArrived(d); realtimeRefresh(); applyKA01(d); });
 
-        socket.on('connect_error', (err) => {
-            console.warn("❌ [Live] Socket.IO indisponible :", err.message);
+        // ── Phase 3 : réparation terminée ──
+        socket.on('breakdown_resolved', (d) => {
+            if (typeof toast === 'function') toast(`🟢 Réparation terminée — ${d.machine || d.code || ''}`, 'success', 5000);
         });
     } catch (e) {
         console.warn('Socket.IO non initialisé :', e);

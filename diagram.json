@@ -92,7 +92,7 @@
       "id": "rfid",
       "top": 280,
       "left": 600,
-      "attrs": {}
+      "attrs": { "uid": "04:A3:B8:FA" }
     },
     {
       "type": "wokwi-resistor",

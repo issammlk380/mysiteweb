@@ -1,0 +1,4 @@
+# Wokwi external libraries for the Andon KA01 ESP32 project
+# (WiFi, SPI and the ESP32 core are built-in and are NOT listed here)
+PubSubClient
+MFRC522
